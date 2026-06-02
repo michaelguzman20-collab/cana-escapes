@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 40% 97%;
+    --foreground: 215 35% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 35% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 35% 12%;
+
+    /* Primary: dark navy #0F2B4C */
+    --primary: 213 63% 18%;
+    --primary-foreground: 210 40% 97%;
+
+    --secondary: 210 30% 92%;
+    --secondary-foreground: 213 40% 20%;
+
+    --muted: 210 25% 94%;
+    --muted-foreground: 213 20% 48%;
+
+    --accent: 210 35% 90%;
+    --accent-foreground: 213 40% 18%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 210 25% 87%;
+    --input: 210 25% 87%;
+    --ring: 213 63% 18%;
+
+    --radius: 0.6rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-serif;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Hide scrollbar utility (works in all browsers) */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Prevent body from overflowing horizontally on mobile */
+html, body {
+  overflow-x: hidden;
+}
+
+/* Landing page animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out both;
+}
+.animate-slide-up {
+  animation: slide-up 0.6s ease-out both;
+}

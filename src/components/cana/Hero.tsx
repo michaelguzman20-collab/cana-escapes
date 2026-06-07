@@ -1,5 +1,8 @@
-import { MapPin } from "lucide-react";
+import { MapPin, Home, Building2, ArrowRight } from "lucide-react";
 import { useLang } from "@/lib/LangContext";
+
+const HERO_IMG =
+  "https://images.unsplash.com/photo-1588504633950-9dc518941e93?auto=format&fit=crop&w=1920&q=80";
 
 export function Hero() {
   const { t } = useLang();
@@ -19,11 +22,18 @@ export function Hero() {
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0a1f36] via-[#0F2B4C] to-[#163a5c]" />
-        {/* Decorative elements */}
-        <div className="absolute top-1/4 right-0 w-[600px] h-[600px] bg-[#F0A030]/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#2D6A9F]/10 rounded-full blur-3xl" />
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2260%22%20height%3D%2260%22%20viewBox%3D%220%200%2060%2060%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cg%20fill%3D%22none%22%20fill-rule%3D%22evenodd%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.02%22%3E%3Cpath%20d%3D%22M36%2034v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6%2034v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6%204V0H4v4H0v2h4v4h2V6h4V4H6z%22%2F%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E')] opacity-40" />
+        {/* Hero photo */}
+        <img
+          src={HERO_IMG}
+          alt="Villa de lujo frente al mar en Punta Cana al atardecer"
+          className="absolute inset-0 w-full h-full object-cover"
+          loading="eager"
+        />
+        {/* Navy overlays for text legibility (stronger on the left) */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0a1f36]/95 via-[#0F2B4C]/80 to-[#0F2B4C]/35" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a1f36]/80 via-transparent to-[#0a1f36]/25" />
+        {/* Subtle amber glow */}
+        <div className="absolute top-1/4 right-0 w-[500px] h-[500px] bg-[#F0A030]/10 rounded-full blur-3xl" />
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 w-full">
@@ -53,15 +63,19 @@ export function Hero() {
           <div className="flex flex-col sm:flex-row gap-4 mb-16 animate-slide-up" style={{ animationDelay: "0.3s" }}>
             <button
               onClick={() => scrollTo("#reservar")}
-              className="px-8 py-4 text-base font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-xl transition-all shadow-xl shadow-[#F0A030]/20 hover:shadow-[#F0A030]/30 hover:-translate-y-0.5"
+              className="group inline-flex items-center justify-center gap-2.5 px-8 py-4 text-base font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-xl transition-all duration-300 shadow-xl shadow-[#F0A030]/20 hover:shadow-[#F0A030]/40 hover:scale-[1.03] hover:-translate-y-0.5"
             >
+              <Home size={18} />
               {t("hero_btn_guest")}
+              <ArrowRight size={18} className="transition-transform duration-300 group-hover:translate-x-1" />
             </button>
             <button
-              onClick={() => scrollTo("#propietarios")}
-              className="px-8 py-4 text-base font-semibold text-white border-2 border-white/20 hover:border-white/40 hover:bg-white/5 rounded-xl transition-all hover:-translate-y-0.5"
+              onClick={() => scrollTo("#porque")}
+              className="group inline-flex items-center justify-center gap-2.5 px-8 py-4 text-base font-semibold text-white border-2 border-white/25 hover:border-white/50 bg-white/5 hover:bg-white/10 backdrop-blur-sm rounded-xl transition-all duration-300 hover:scale-[1.03] hover:-translate-y-0.5"
             >
+              <Building2 size={18} />
               {t("hero_btn_owner")}
+              <ArrowRight size={18} className="transition-transform duration-300 group-hover:translate-x-1" />
             </button>
           </div>
 

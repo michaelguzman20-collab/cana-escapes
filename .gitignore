@@ -43,3 +43,8 @@ dist-ssr/
 
 # Local Netlify folder
 .netlify
+
+# Local-only (contain secrets / backups) — never commit
+BACKUP_COMPLETO.md
+scripts/
+.claude/settings.local.json

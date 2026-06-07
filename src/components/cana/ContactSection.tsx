@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Send, CheckCircle2, Phone, Mail, MapPin, Clock, User } from "lucide-react";
+import { Send, CheckCircle2, Phone, Mail, MapPin, Clock } from "lucide-react";
 import { useLang } from "@/lib/LangContext";
 
 type Tab = "guest" | "owner";
@@ -157,7 +157,12 @@ export function ContactSection() {
             {/* Manager card */}
             <div className="bg-[#0F2B4C] rounded-2xl p-6 text-center">
               <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
-                <User size={32} className="text-[#F0A030]" />
+                {/* Brand sun mark */}
+                <svg width="44" height="30" viewBox="0 0 60 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M 12 26 A 18 18 0 0 1 48 26 Z" fill="#F0A030" />
+                  <line x1="2" y1="26" x2="58" y2="26" stroke="rgba(255,255,255,0.95)" strokeWidth="2" strokeLinecap="round" />
+                  <line x1="9" y1="32" x2="51" y2="32" stroke="rgba(240,160,48,0.85)" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
               </div>
               <h3 className="text-lg font-semibold text-white">{t("contact_manager")}</h3>
               <p className="text-sm text-white/50 mb-6">{t("contact_manager_role")}</p>

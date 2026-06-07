@@ -1,4 +1,4 @@
-import { Cpu, MapPinned, Eye, Wrench } from "lucide-react";
+import { Cpu, MapPinned, Eye, Wrench, ClipboardCheck, Image as ImageIcon, Headphones, CalendarCheck } from "lucide-react";
 import { useLang } from "@/lib/LangContext";
 
 const PILLARS = [
@@ -8,7 +8,13 @@ const PILLARS = [
   { titleKey: "own_pillar4_title", descKey: "own_pillar4_desc", icon: Wrench, color: "bg-purple-500/10 text-purple-500" },
 ];
 
-const STEPS = ["own_step1", "own_step2", "own_step3", "own_step4", "own_step5"] as const;
+const STEPS = [
+  { key: "own_step1", icon: ClipboardCheck },
+  { key: "own_step2", icon: ImageIcon },
+  { key: "own_step3", icon: Headphones },
+  { key: "own_step4", icon: Wrench },
+  { key: "own_step5", icon: CalendarCheck },
+] as const;
 
 export function OwnerValueProp() {
   const { t } = useLang();
@@ -57,18 +63,16 @@ export function OwnerValueProp() {
             <div className="hidden md:block absolute top-8 left-0 right-0 h-0.5 bg-gradient-to-r from-[#F0A030]/20 via-[#F0A030] to-[#F0A030]/20" />
 
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6 md:gap-4">
-              {STEPS.map((stepKey, i) => (
-                <div key={stepKey} className="relative text-center group">
+              {STEPS.map((step, i) => (
+                <div key={step.key} className="relative text-center group">
                   {/* Step circle */}
                   <div className="relative mx-auto w-16 h-16 rounded-full bg-white border-2 border-[#F0A030] flex items-center justify-center mb-4 shadow-lg shadow-[#F0A030]/10 group-hover:scale-110 group-hover:bg-[#F0A030] transition-all duration-300 z-10">
-                    <span className="text-lg font-bold text-[#F0A030] group-hover:text-white transition-colors">
-                      {i + 1}
-                    </span>
+                    <step.icon size={24} className="text-[#F0A030] group-hover:text-white transition-colors" />
                   </div>
                   <span className="text-[10px] uppercase tracking-wider text-[#F0A030] font-semibold">
                     {t("own_step_label")} {i + 1}
                   </span>
-                  <h4 className="text-sm font-semibold text-[#0F2B4C] mt-1">{t(stepKey)}</h4>
+                  <h4 className="text-sm font-semibold text-[#0F2B4C] mt-1">{t(step.key)}</h4>
                 </div>
               ))}
             </div>

@@ -532,6 +532,60 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["owner_payments"]["Insert"]>;
         Relationships: [];
       };
+      config: {
+        Row: { id: number; clave: string; valor: string; descripcion: string | null };
+        Insert: { id?: number; clave: string; valor: string; descripcion?: string | null };
+        Update: Partial<Database["public"]["Tables"]["config"]["Insert"]>;
+        Relationships: [];
+      };
+      contactos: {
+        Row: {
+          id: number; telefono: string; nombre: string | null; modo_humano: boolean | null;
+          primer_contacto: string | null; ultimo_contacto: string | null; total_mensajes: number | null;
+        };
+        Insert: {
+          id?: number; telefono: string; nombre?: string | null; modo_humano?: boolean | null;
+          primer_contacto?: string | null; ultimo_contacto?: string | null; total_mensajes?: number | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["contactos"]["Insert"]>;
+        Relationships: [];
+      };
+      conversaciones: {
+        Row: {
+          id: number; telefono: string; nombre: string | null; mensaje: string; respuesta: string;
+          tipo: string | null; para_revisar: boolean | null; fecha: string | null; wa_message_id: string | null;
+        };
+        Insert: {
+          id?: number; telefono: string; nombre?: string | null; mensaje: string; respuesta: string;
+          tipo?: string | null; para_revisar?: boolean | null; fecha?: string | null; wa_message_id?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["conversaciones"]["Insert"]>;
+        Relationships: [];
+      };
+      base_conocimiento: {
+        Row: {
+          id: number; categoria: string; titulo: string; contenido: string;
+          activo: boolean | null; fecha_creacion: string | null;
+        };
+        Insert: {
+          id?: number; categoria: string; titulo: string; contenido: string;
+          activo?: boolean | null; fecha_creacion?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["base_conocimiento"]["Insert"]>;
+        Relationships: [];
+      };
+      faqs: {
+        Row: {
+          id: number; pregunta: string; keywords: string | null; respuesta: string;
+          categoria: string | null; activo: boolean | null; usos: number | null; fecha_creacion: string | null;
+        };
+        Insert: {
+          id?: number; pregunta: string; keywords?: string | null; respuesta: string;
+          categoria?: string | null; activo?: boolean | null; usos?: number | null; fecha_creacion?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["faqs"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -582,4 +636,15 @@ export type MaintenanceScheduleUpdate = Database["public"]["Tables"]["maintenanc
 
 export type OwnerPayment = Database["public"]["Tables"]["owner_payments"]["Row"];
 export type OwnerPaymentInsert = Database["public"]["Tables"]["owner_payments"]["Insert"];
+
+// ── WhatsApp Bot ────────────────────────────────────────────────────────────
+export type BotConfig = Database["public"]["Tables"]["config"]["Row"];
+export type Contacto = Database["public"]["Tables"]["contactos"]["Row"];
+export type Conversacion = Database["public"]["Tables"]["conversaciones"]["Row"];
+export type KnowledgeItem = Database["public"]["Tables"]["base_conocimiento"]["Row"];
+export type KnowledgeItemInsert = Database["public"]["Tables"]["base_conocimiento"]["Insert"];
+export type KnowledgeItemUpdate = Database["public"]["Tables"]["base_conocimiento"]["Update"];
+export type Faq = Database["public"]["Tables"]["faqs"]["Row"];
+export type FaqInsert = Database["public"]["Tables"]["faqs"]["Insert"];
+export type FaqUpdate = Database["public"]["Tables"]["faqs"]["Update"];
 export type OwnerPaymentUpdate = Database["public"]["Tables"]["owner_payments"]["Update"];

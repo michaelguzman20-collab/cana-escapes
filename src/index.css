@@ -74,6 +74,28 @@ html, body {
   overflow-x: hidden;
 }
 
+/* Smooth scrolling (anchor jumps + general feel) */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Scroll-reveal: elements fade/slide up as they enter the viewport */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .reveal { opacity: 1; transform: none; }
+}
+
 /* Landing page animations */
 @keyframes fade-in {
   from { opacity: 0; }
@@ -88,4 +110,16 @@ html, body {
 }
 .animate-slide-up {
   animation: slide-up 0.6s ease-out both;
+}
+
+/* Infinite logo marquee (the list is duplicated, so -50% loops seamlessly) */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 28s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee { animation: none; }
 }

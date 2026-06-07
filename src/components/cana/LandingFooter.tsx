@@ -1,8 +1,8 @@
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Instagram } from "lucide-react";
 import { useLang } from "@/lib/LangContext";
-import { Logo } from "@/components/layout/Logo";
 
 const WA_URL = "https://wa.me/18092102773";
+const IG_URL = "https://instagram.com/canaescapes";
 
 export function LandingFooter() {
   const { t } = useLang();
@@ -28,9 +28,19 @@ export function LandingFooter() {
             {/* Logo & desc */}
             <div>
               <div className="mb-4">
-                <Logo size="md" variant="light" />
+                <img src="/brand/logo-light.png" alt="Cana Escapes" className="h-20 w-auto" />
               </div>
               <p className="text-sm text-white/50 leading-relaxed">{t("footer_desc")}</p>
+              <a
+                href={IG_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram de Cana Escapes"
+                className="mt-4 inline-flex items-center gap-2 text-sm text-white/60 hover:text-[#F0A030] transition-colors"
+              >
+                <Instagram size={18} />
+                <span>@canaescapes</span>
+              </a>
             </div>
 
             {/* Nav */}
@@ -74,9 +84,15 @@ export function LandingFooter() {
         href={WA_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 z-50 bg-green-500 hover:bg-green-600 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
+        aria-label="WhatsApp"
+        className="group fixed bottom-6 right-6 z-50 w-14 h-14 animate-float"
       >
-        <MessageCircle size={26} />
+        {/* Pulsing ring */}
+        <span className="absolute inset-0 rounded-full bg-green-500 opacity-60 animate-ping" />
+        {/* Button */}
+        <span className="relative w-14 h-14 bg-green-500 group-hover:bg-green-600 text-white rounded-full flex items-center justify-center shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:scale-110">
+          <MessageCircle size={26} />
+        </span>
       </a>
     </>
   );

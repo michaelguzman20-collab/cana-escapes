@@ -16,6 +16,7 @@ import { AdminCanaEscapes } from "@/pages/admin/AdminCanaEscapes";
 import { AdminContabilidad } from "@/pages/admin/AdminContabilidad";
 import { AdminMantenimiento } from "@/pages/admin/AdminMantenimiento";
 import { AdminPagosPropietarios } from "@/pages/admin/AdminPagosPropietarios";
+import { AdminWhatsapp } from "@/pages/admin/AdminWhatsapp";
 import { GuestDashboard } from "@/pages/guest/GuestDashboard";
 import { ShareView } from "@/pages/share/ShareView";
 import { UpdatePassword } from "@/pages/UpdatePassword";
@@ -97,6 +98,7 @@ export default function App() {
               <Route path="/admin/pagos-propietarios" element={<AdminPagosPropietarios />} />
               <Route path="/admin/cana-escapes" element={<AdminCanaEscapes />} />
               <Route path="/admin/contabilidad" element={<AdminContabilidad />} />
+              <Route path="/admin/whatsapp" element={<AdminWhatsapp />} />
               <Route path="/admin/configuracion" element={<AdminConfiguracion />} />
             </Route>
           </Route>

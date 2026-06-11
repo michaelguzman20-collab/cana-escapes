@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { NavLink, Link, useNavigate } from "react-router-dom";
-import { LayoutDashboard, CalendarDays, CalendarRange, Settings, LogOut, User, Users, Globe, UserCheck, Receipt, TrendingUp, Landmark, Wrench, Banknote, Bell, CheckCheck, KeyRound, MessageCircle } from "lucide-react";
+import { NavLink, Link, useNavigate, useLocation } from "react-router-dom";
+import { LayoutDashboard, CalendarDays, CalendarRange, Settings, LogOut, User, Users, Globe, UserCheck, Receipt, TrendingUp, Landmark, Wrench, Banknote, Bell, CheckCheck, KeyRound, MessageCircle, MoreHorizontal, X } from "lucide-react";
 import { Logo } from "./Logo";
 import { PropertySwitcher } from "./PropertySwitcher";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,11 @@ const navItems = [
   { to: "/admin/whatsapp",      icon: MessageCircle,   label: "WhatsApp Bot"    },
   { to: "/admin/configuracion", icon: Settings,        label: "Configuración"   },
 ];
+
+// First 4 pinned in the bottom bar; rest go in the "Más" drawer
+const PINNED_COUNT = 4;
+const pinnedItems = navItems.slice(0, PINNED_COUNT);
+const moreItems   = navItems.slice(PINNED_COUNT);
 
 function timeAgo(date: string) {
   const diff = Date.now() - new Date(date).getTime();
@@ -136,6 +141,8 @@ function NotificationBell({ variant = "desktop" }: { variant?: "desktop" | "mobi
 export function AdminNav() {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   async function handleSignOut() {
     await signOut();
@@ -242,14 +249,14 @@ export function AdminNav() {
 
       {/* ══ MOBILE BOTTOM NAV (< md) ══════════════════════════════════════ */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0F2B4C] border-t border-white/10">
-        <div className="flex overflow-x-auto scrollbar-none" style={{ scrollbarWidth: "none" }}>
-          {navItems.map(({ to, icon: Icon, label }) => (
+        <div className="flex">
+          {pinnedItems.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}
               className={({ isActive }) =>
                 cn(
-                  "shrink-0 min-w-[72px] flex flex-col items-center justify-center py-2 px-2 gap-1 transition-colors",
+                  "flex-1 flex flex-col items-center justify-center py-2 px-1 gap-1 transition-colors",
                   "text-[10px] font-medium",
                   isActive ? "text-[#F0A030] bg-white/5" : "text-white/60 hover:text-white/90"
                 )
@@ -259,8 +266,73 @@ export function AdminNav() {
               <span className="whitespace-nowrap">{label}</span>
             </NavLink>
           ))}
+
+          {/* Más button */}
+          <button
+            onClick={() => setMoreOpen(true)}
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center py-2 px-1 gap-1 transition-colors",
+              "text-[10px] font-medium",
+              moreItems.some(item => location.pathname === item.to)
+                ? "text-[#F0A030] bg-white/5"
+                : "text-white/60 hover:text-white/90"
+            )}
+          >
+            <MoreHorizontal size={20} />
+            <span>Más</span>
+          </button>
         </div>
       </nav>
+
+      {/* ══ MOBILE "MÁS" DRAWER ══════════════════════════════════════════ */}
+      {moreOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="md:hidden fixed inset-0 z-[60] bg-black/50"
+            onClick={() => setMoreOpen(false)}
+          />
+          {/* Panel */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-[70] bg-[#0F2B4C] rounded-t-2xl border-t border-white/10 pb-safe">
+            {/* Handle + header */}
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/10">
+              <h2 className="text-sm font-semibold text-white/80">Menú</h2>
+              <button
+                onClick={() => setMoreOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Grid of remaining items */}
+            <div className="grid grid-cols-3 gap-1 p-3">
+              {moreItems.map(({ to, icon: Icon, label }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={() => setMoreOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex flex-col items-center justify-center gap-2 py-3 px-2 rounded-xl transition-colors",
+                      "text-[11px] font-medium text-center",
+                      isActive
+                        ? "bg-[#F0A030] text-[#0F2B4C]"
+                        : "text-white/70 hover:bg-white/10 hover:text-white"
+                    )
+                  }
+                >
+                  <Icon size={22} />
+                  <span className="leading-tight">{label}</span>
+                </NavLink>
+              ))}
+            </div>
+
+            {/* Safe area spacer for home indicator */}
+            <div className="h-6" />
+          </div>
+        </>
+      )}
     </>
   );
 }

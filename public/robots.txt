@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /guest/
+Disallow: /login
+Disallow: /update-password
+Disallow: /compartir/
+Disallow: /dev/
+
+Sitemap: https://canaescapes.com/sitemap.xml

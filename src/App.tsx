@@ -23,6 +23,8 @@ import { UpdatePassword } from "@/pages/UpdatePassword";
 import { Toaster } from "@/components/ui/toaster";
 import { supabaseConfigured } from "@/lib/supabase";
 import { HomePage } from "@/pages/HomePage";
+import { PropietariosPage } from "@/pages/PropietariosPage";
+import { ServiciosPage } from "@/pages/ServiciosPage";
 import { Logo } from "@/components/layout/Logo";
 
 function SetupScreen() {
@@ -122,8 +124,10 @@ export default function App() {
             </Route>
           )}
 
-          {/* Landing page */}
+          {/* Landing pages */}
           <Route path="/" element={<HomePage />} />
+          <Route path="/propietarios" element={<PropietariosPage />} />
+          <Route path="/servicios" element={<ServiciosPage />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />

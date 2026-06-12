@@ -115,34 +115,35 @@ async function handleEvent(body: any) {
     const text = extractText(msg);
     if (!from || !text) continue;
 
-    // Anti-duplicados: Meta a veces reenvía el mismo mensaje.
+    const nombre = profileName ?? "Desconocido";
+
+    // ── Anti-duplicados ATÓMICO ──────────────────────────────────────────
+    // Meta a veces entrega el MISMO mensaje por dos rutas casi a la vez.
+    // Insertamos primero, usando wa_message_id como "candado" (índice único).
+    // Si otra copia ya lo insertó, este insert falla y la ignoramos. Así el
+    // bot responde UNA sola vez.
     if (waId) {
-      const { data: dup } = await db
-        .from("conversaciones")
-        .select("id")
-        .eq("wa_message_id", waId)
-        .maybeSingle();
-      if (dup) continue;
+      const { error: claimErr } = await db.from("conversaciones").insert({
+        telefono: from, nombre, mensaje: text, respuesta: "",
+        tipo: "ia", para_revisar: false, wa_message_id: waId,
+      });
+      if (claimErr) continue; // duplicado: ya lo está atendiendo otra copia
     }
 
     const contacto = await ensureContacto(from, profileName);
-
-    // ¿El bot está encendido globalmente?
     const botActivo = (await getConfig("bot_activo")) === "true";
     const modoHumano = contacto?.modo_humano === true;
 
-    // Si el bot está apagado o este chat está en modo humano: solo guardamos
-    // el mensaje del cliente, NO respondemos (respondes tú desde el teléfono).
+    // Apagado o en modo humano: registramos el mensaje pero NO respondemos.
     if (!botActivo || modoHumano) {
-      await db.from("conversaciones").insert({
-        telefono: from,
-        nombre: profileName ?? contacto?.nombre ?? "Desconocido",
-        mensaje: text,
-        respuesta: "",
-        tipo: "humano",
-        para_revisar: false,
-        wa_message_id: waId ?? null,
-      });
+      if (waId) {
+        await db.from("conversaciones").update({ tipo: "humano" }).eq("wa_message_id", waId);
+      } else {
+        await db.from("conversaciones").insert({
+          telefono: from, nombre, mensaje: text, respuesta: "",
+          tipo: "humano", para_revisar: false, wa_message_id: null,
+        });
+      }
       continue;
     }
 
@@ -150,15 +151,14 @@ async function handleEvent(body: any) {
     const { reply, tipo } = await generarRespuesta(text, from);
     await enviarWhatsApp(from, reply, phoneNumberId);
 
-    await db.from("conversaciones").insert({
-      telefono: from,
-      nombre: profileName ?? contacto?.nombre ?? "Desconocido",
-      mensaje: text,
-      respuesta: reply,
-      tipo,
-      para_revisar: false,
-      wa_message_id: waId ?? null,
-    });
+    if (waId) {
+      await db.from("conversaciones").update({ respuesta: reply, tipo }).eq("wa_message_id", waId);
+    } else {
+      await db.from("conversaciones").insert({
+        telefono: from, nombre, mensaje: text, respuesta: reply,
+        tipo, para_revisar: false, wa_message_id: null,
+      });
+    }
   }
 }
 
@@ -187,6 +187,7 @@ async function generarRespuesta(
       .from("conversaciones")
       .select("mensaje,respuesta")
       .eq("telefono", telefono)
+      .neq("respuesta", "")
       .order("fecha", { ascending: false })
       .limit(6),
   ]);
@@ -197,10 +198,19 @@ async function generarRespuesta(
 
   const nombreBot = cfg["bot_nombre"] ?? "Asistente Virtual";
   const tono = cfg["bot_tono"] ?? "amable y profesional";
+  const instrucciones = cfg["bot_instrucciones"] ?? "";
+  const descripcion = cfg["bot_descripcion"] ?? "CanaEscapes es una empresa de gestión y alquiler de propiedades de lujo en Punta Cana, República Dominicana.";
+  const ahora = new Intl.DateTimeFormat("es-DO", {
+    timeZone: "America/Santo_Domingo", weekday: "long", day: "numeric",
+    month: "long", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(new Date());
 
-  const system = `Eres "${nombreBot}", el asistente virtual de CanaEscapes, una agencia de turismo y alquiler de villas de lujo en Punta Cana, República Dominicana.
+  const system = `Eres "${nombreBot}" de CanaEscapes.
+${descripcion}
 
-TONO: ${tono}. Estilo agencia de lujo: cálido, cercano y servicial, pero profesional. Mensajes cortos y claros (es WhatsApp).
+CONTEXTO TEMPORAL (hora de República Dominicana): ${ahora}. Usa esto para saludar acorde al día de la semana y al momento del día.
+
+TONO: ${tono}. Estilo cálido, cercano y servicial, pero profesional. Mensajes cortos y claros (es WhatsApp).
 
 IDIOMA: Responde SIEMPRE en el mismo idioma en que te escribe el cliente (español o inglés). Detéctalo automáticamente.
 
@@ -209,7 +219,7 @@ REGLAS:
 - Si no sabes algo o no está en la base de conocimiento, NO lo inventes. Di amablemente que un asesor humano le confirmará en breve.
 - Nunca prometas precios o fechas que no estén confirmados en la base de conocimiento.
 - Si el cliente quiere reservar o hablar con una persona, dile que con gusto un asesor le atenderá.
-
+${instrucciones ? `\nINSTRUCCIONES DEL NEGOCIO:\n${instrucciones}\n` : ""}
 BASE DE CONOCIMIENTO:
 ${kbTexto || "(sin información cargada todavía)"}`;
 

@@ -2,31 +2,26 @@ import { useEffect, useRef } from "react";
 import { LangProvider } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
-import { GuestHero } from "@/components/cana/GuestHero";
-import { PasarelaPlayas } from "@/components/cana/PasarelaPlayas";
-import { PropertyCatalog } from "@/components/cana/PropertyCatalog";
-import { Experiences } from "@/components/cana/Experiences";
-import { PathSelector } from "@/components/cana/PathSelector";
+import { Hero } from "@/components/cana/Hero";
+import { OwnerValueProp } from "@/components/cana/OwnerValueProp";
+import { EarningsCalculator } from "@/components/cana/EarningsCalculator";
 import { ContactSection } from "@/components/cana/ContactSection";
+import { PlatformsStrip } from "@/components/cana/PlatformsStrip";
 import { LandingFooter } from "@/components/cana/LandingFooter";
 
-export function HomePage() {
+export function PropietariosPage() {
   const ref = useRef<HTMLDivElement>(null);
 
   useSeo({
-    title: "Cana Escapes | Alquiler Vacacional y Gestión de Propiedades en Punta Cana",
+    title: "Para Propietarios | Gestión de Propiedades en Punta Cana — Cana Escapes",
     description:
-      "Villas y apartamentos para tus vacaciones en Bávaro y Punta Cana, y gestión integral de propiedades para propietarios. Reserva tu escapada o maximiza los retornos de tu inversión.",
-    path: "/",
+      "Gestionamos tu propiedad en Punta Cana con tecnología, transparencia y máximos retornos: comisiones progresivas, mantenimiento preventivo y reportes financieros claros.",
+    path: "/propietarios",
   });
 
-  // Scroll to a hash target when arriving from another route (e.g. /#experiencias)
+  // Start at the top when navigating in from another route
   useEffect(() => {
-    if (!window.location.hash) return;
-    const el = document.querySelector(window.location.hash);
-    if (el) {
-      window.setTimeout(() => el.scrollIntoView({ behavior: "smooth" }), 120);
-    }
+    window.scrollTo(0, 0);
   }, []);
 
   useEffect(() => {
@@ -34,7 +29,6 @@ export function HomePage() {
     if (!root) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    // Reveal each content section (skip the hero, which animates on load; ignores navbar + WhatsApp button)
     const targets = (
       Array.from(root.querySelectorAll(":scope > section, :scope > footer")) as HTMLElement[]
     ).filter((_, i) => i !== 0);
@@ -56,11 +50,10 @@ export function HomePage() {
       }
     };
 
-    reveal(); // reveal whatever is already in view on load
+    reveal();
     window.addEventListener("scroll", reveal, { passive: true });
     window.addEventListener("resize", reveal);
 
-    // Failsafe: never leave content hidden if scroll events never fire
     const failsafe = window.setTimeout(() => {
       targets.forEach((el) => el.classList.add("is-visible"));
     }, 3000);
@@ -76,12 +69,11 @@ export function HomePage() {
     <LangProvider>
       <div ref={ref} className="min-h-screen bg-white">
         <LandingNavbar />
-        <GuestHero />
-        <PasarelaPlayas />
-        <PropertyCatalog />
-        <Experiences />
-        <PathSelector />
-        <ContactSection />
+        <Hero />
+        <OwnerValueProp />
+        <EarningsCalculator />
+        <ContactSection defaultTab="owner" />
+        <PlatformsStrip />
         <LandingFooter />
       </div>
     </LangProvider>

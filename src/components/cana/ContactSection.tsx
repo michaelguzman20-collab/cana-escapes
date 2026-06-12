@@ -4,9 +4,9 @@ import { useLang } from "@/lib/LangContext";
 
 type Tab = "guest" | "owner";
 
-export function ContactSection() {
+export function ContactSection({ defaultTab = "guest" }: { defaultTab?: Tab }) {
   const { t } = useLang();
-  const [tab, setTab] = useState<Tab>("guest");
+  const [tab, setTab] = useState<Tab>(defaultTab);
   const [submitted, setSubmitted] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {

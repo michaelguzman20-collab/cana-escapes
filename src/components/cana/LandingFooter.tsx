@@ -1,21 +1,34 @@
-import { MessageCircle, Instagram } from "lucide-react";
+import { Instagram } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useLang } from "@/lib/LangContext";
+import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
 
 const WA_URL = "https://wa.me/18092102773";
 const IG_URL = "https://instagram.com/canaescapes";
 
 export function LandingFooter() {
   const { t } = useLang();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const navLinks = [
-    { label: t("nav_book"), href: "#reservar" },
-    { label: t("nav_why"), href: "#porque" },
-    { label: t("nav_owners"), href: "#propietarios" },
-    { label: t("nav_returns"), href: "#calculadora" },
+    { label: t("nav_book_short"), href: "#reservar" },
+    { label: t("nav_experiences"), href: "#experiencias" },
+    { label: t("nav_services"), href: "/servicios" },
     { label: t("nav_contact"), href: "#contacto" },
+    { label: t("nav_owner_btn"), href: "/propietarios" },
   ];
 
-  function scrollTo(href: string) {
+  function go(href: string) {
+    if (href.startsWith("/")) {
+      navigate(href);
+      window.scrollTo(0, 0);
+      return;
+    }
+    if (location.pathname !== "/") {
+      navigate("/" + href);
+      return;
+    }
     const el = document.querySelector(href);
     if (el) el.scrollIntoView({ behavior: "smooth" });
   }
@@ -50,7 +63,7 @@ export function LandingFooter() {
                 {navLinks.map((link) => (
                   <button
                     key={link.href}
-                    onClick={() => scrollTo(link.href)}
+                    onClick={() => go(link.href)}
                     className="block text-sm text-white/50 hover:text-[#F0A030] transition-colors"
                   >
                     {link.label}
@@ -84,14 +97,26 @@ export function LandingFooter() {
         href={WA_URL}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="WhatsApp"
-        className="group fixed bottom-6 right-6 z-50 w-14 h-14 animate-float"
+        aria-label={t("wa_float_label")}
+        className="group fixed bottom-6 right-6 z-50 flex items-center gap-3 animate-float"
       >
-        {/* Pulsing ring */}
-        <span className="absolute inset-0 rounded-full bg-green-500 opacity-60 animate-ping" />
+        {/* Inviting label (slides in on hover, desktop) */}
+        <span className="hidden sm:flex items-center whitespace-nowrap px-4 py-2 rounded-full bg-white text-[#0F2B4C] text-sm font-semibold shadow-lg opacity-0 translate-x-3 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+          {t("wa_float_label")}
+        </span>
+
         {/* Button */}
-        <span className="relative w-14 h-14 bg-green-500 group-hover:bg-green-600 text-white rounded-full flex items-center justify-center shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:scale-110">
-          <MessageCircle size={26} />
+        <span className="relative w-16 h-16 flex-shrink-0">
+          {/* Pulsing ring */}
+          <span className="absolute inset-0 rounded-full bg-[#25D366] opacity-70 animate-ping" />
+          {/* Circle */}
+          <span className="relative w-16 h-16 bg-[#25D366] group-hover:bg-[#1ebe5d] text-white rounded-full flex items-center justify-center shadow-xl shadow-[#25D366]/40 group-hover:shadow-2xl transition-all duration-300 group-hover:scale-110">
+            <WhatsAppIcon size={34} />
+          </span>
+          {/* New-message badge */}
+          <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center ring-2 ring-white animate-bounce">
+            1
+          </span>
         </span>
       </a>
     </>

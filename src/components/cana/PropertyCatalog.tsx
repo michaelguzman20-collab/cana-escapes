@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin, CheckCircle2, ArrowRight, Mail, Sparkles } from "lucide-react";
+import { MapPin, CheckCircle2, Mail, Sparkles } from "lucide-react";
 import { useLang } from "@/lib/LangContext";
 
 const ZONES = [
@@ -69,7 +69,7 @@ export function PropertyCatalog() {
         </div>
 
         {/* Zones */}
-        <div className="mb-16">
+        <div>
           <div className="text-center mb-10">
             <h3 className="text-2xl sm:text-3xl font-serif font-bold text-[#0F2B4C] mb-3">{t("cat_zones_title")}</h3>
             <p className="text-gray-500 max-w-xl mx-auto">{t("cat_zones_desc")}</p>
@@ -91,33 +91,6 @@ export function PropertyCatalog() {
                 <p className="text-sm text-gray-500">{t(zone.descKey)}</p>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* Owner CTA */}
-        <div className="bg-gradient-to-r from-[#fdf8f0] to-[#fef6e8] border border-[#F0A030]/20 rounded-2xl p-8 sm:p-10">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-8">
-            <div className="flex-1">
-              <h3 className="text-2xl font-serif font-bold text-[#0F2B4C] mb-2">{t("cat_owner_title")}</h3>
-              <p className="text-gray-500 mb-6">{t("cat_owner_desc")}</p>
-              <ul className="space-y-3">
-                {(["cat_why1", "cat_why2", "cat_why3", "cat_why4"] as const).map((key) => (
-                  <li key={key} className="flex items-start gap-3 text-sm text-gray-600">
-                    <CheckCircle2 size={16} className="text-[#F0A030] mt-0.5 flex-shrink-0" />
-                    {t(key)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="flex-shrink-0">
-              <button
-                onClick={() => document.querySelector("#contacto")?.scrollIntoView({ behavior: "smooth" })}
-                className="inline-flex items-center gap-2 px-8 py-4 bg-[#F0A030] hover:bg-[#e5952a] text-[#0F2B4C] font-semibold rounded-xl transition-all shadow-lg shadow-[#F0A030]/20 hover:shadow-[#F0A030]/30 hover:-translate-y-0.5"
-              >
-                {t("cat_eval_btn")}
-                <ArrowRight size={16} />
-              </button>
-            </div>
           </div>
         </div>
       </div>

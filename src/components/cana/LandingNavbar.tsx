@@ -1,20 +1,29 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { Menu, X, Globe, LogIn } from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Menu, X, Globe, LogIn, Home } from "lucide-react";
 import { useLang } from "@/lib/LangContext";
 
+// Guest-focused home sections (anchors live on the "/" route)
 const NAV_LINKS = [
-  { key: "nav_book", href: "#reservar" },
-  { key: "nav_why", href: "#porque" },
-  { key: "nav_owners", href: "#propietarios" },
-  { key: "nav_returns", href: "#calculadora" },
+  { key: "nav_book_short", href: "#reservar" },
+  { key: "nav_experiences", href: "#experiencias" },
   { key: "nav_contact", href: "#contacto" },
+];
+
+// Sub-page links, rendered with the same style right after the anchors:
+// Reservar · Experiencias · Contacto · Propietarios · Servicios
+const ROUTE_LINKS = [
+  { key: "nav_owners", to: "/propietarios" },
+  { key: "nav_services", to: "/servicios" },
 ];
 
 export function LandingNavbar() {
   const { lang, setLang, t } = useLang();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isHome = location.pathname === "/";
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -30,8 +39,13 @@ export function LandingNavbar() {
     };
   }, [mobileOpen]);
 
+  // Scroll to a home anchor; if we're on another route, go home first then scroll.
   function scrollTo(href: string) {
     setMobileOpen(false);
+    if (location.pathname !== "/") {
+      navigate("/" + href);
+      return;
+    }
     const el = document.querySelector(href);
     if (el) el.scrollIntoView({ behavior: "smooth" });
   }
@@ -48,10 +62,17 @@ export function LandingNavbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
-          {/* Logo */}
-          <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex-shrink-0">
+          {/* Logo — always returns to the home page */}
+          <Link
+            to="/"
+            onClick={() => {
+              setMobileOpen(false);
+              if (location.pathname === "/") window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className="flex-shrink-0"
+          >
             <img src="/brand/logo-light-mark.png" alt="Cana Escapes" className="h-11 sm:h-14 w-auto" />
-          </button>
+          </Link>
 
           {/* Desktop nav */}
           <div className="hidden lg:flex items-center gap-1">
@@ -64,6 +85,16 @@ export function LandingNavbar() {
                 {t(link.key)}
                 <span className="absolute left-3 right-3 -bottom-0.5 h-0.5 rounded-full bg-[#F0A030] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
               </button>
+            ))}
+            {ROUTE_LINKS.map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className="group relative px-3 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors"
+              >
+                {t(link.key)}
+                <span className="absolute left-3 right-3 -bottom-0.5 h-0.5 rounded-full bg-[#F0A030] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
+              </Link>
             ))}
           </div>
 
@@ -85,12 +116,15 @@ export function LandingNavbar() {
               {t("nav_login")}
             </Link>
 
-            <button
-              onClick={() => scrollTo("#contacto")}
-              className="px-5 py-2 text-sm font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-lg transition-colors shadow-lg shadow-[#F0A030]/20"
-            >
-              {t("nav_cta")}
-            </button>
+            {!isHome && (
+              <Link
+                to="/"
+                className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-lg transition-colors shadow-lg shadow-[#F0A030]/20"
+              >
+                <Home size={14} />
+                {t("nav_back_home")}
+              </Link>
+            )}
           </div>
 
           {/* Mobile right: language toggle (outside menu) + menu button */}
@@ -130,6 +164,16 @@ export function LandingNavbar() {
               {t(link.key)}
             </button>
           ))}
+          {ROUTE_LINKS.map((link) => (
+            <Link
+              key={link.to}
+              to={link.to}
+              onClick={() => setMobileOpen(false)}
+              className="text-left px-4 py-3 text-lg font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
+            >
+              {t(link.key)}
+            </Link>
+          ))}
           <div className="border-t border-white/10 my-4" />
           <button
             onClick={() => { setLang(lang === "es" ? "en" : "es"); }}
@@ -146,12 +190,16 @@ export function LandingNavbar() {
             <LogIn size={16} />
             {t("nav_login")}
           </Link>
-          <button
-            onClick={() => scrollTo("#contacto")}
-            className="mt-2 px-6 py-3 text-center font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-xl transition-colors"
-          >
-            {t("nav_cta")}
-          </button>
+          {!isHome && (
+            <Link
+              to="/"
+              onClick={() => setMobileOpen(false)}
+              className="mt-2 flex items-center justify-center gap-2 px-6 py-3 text-center font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-xl transition-colors"
+            >
+              <Home size={16} />
+              {t("nav_back_home")}
+            </Link>
+          )}
         </div>
       </div>
     </nav>

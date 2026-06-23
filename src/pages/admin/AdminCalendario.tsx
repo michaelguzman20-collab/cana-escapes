@@ -13,7 +13,7 @@ import {
   useCreateReservation,
   useUpdateReservation,
 } from "@/hooks/useReservations";
-import { useBrackets, getActiveBracket } from "@/hooks/useBrackets";
+import { useBrackets, getActiveBracket, resolveBracketsForProperty } from "@/hooks/useBrackets";
 import { usePlatformConfigs } from "@/hooks/usePlatformConfigs";
 import { useMaintenanceTickets } from "@/hooks/useMaintenance";
 import { ReservationFormDialog } from "./ReservationFormDialog";
@@ -400,7 +400,8 @@ const [filterOpen,     setFilterOpen]     = useState(false);
   const propId = selectedPropertyId;
 
   const { data: platforms  = [] } = usePlatformConfigs();
-  const { data: brackets   = [] } = useBrackets();
+  const { data: allBrackets = [] } = useBrackets();
+  const brackets = resolveBracketsForProperty(allBrackets, propId);
   const { data: maintenanceTickets = [] } = useMaintenanceTickets();
 
   const { data: resLeft  = [], isLoading: loadLeft  } = useReservations(propId, month,     year);

@@ -8,7 +8,10 @@ import {
   useDeletePlatformConfig,
 } from "@/hooks/usePlatformConfigs";
 import { useProperties, useCreateProperty, useUpdateProperty } from "@/hooks/useProperties";
-import { useBrackets, useUpdateBracket } from "@/hooks/useBrackets";
+import {
+  useBrackets, useUpdateBracket, resolveBracketsForProperty,
+  hasCustomBrackets, useCustomizePropertyBrackets, useResetPropertyBrackets,
+} from "@/hooks/useBrackets";
 import { useGuestUsers, useUnlinkGuestProperty } from "@/hooks/useGuestUsers";
 import { useAccessLogs } from "@/hooks/useAccessLogs";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
@@ -585,14 +588,21 @@ interface BracketEditForm {
 }
 
 function BracketsTab() {
-  const { data: brackets = [], isLoading } = useBrackets();
+  const { selectedProperty, selectedPropertyId } = useProperty();
+  const { data: allBrackets = [], isLoading } = useBrackets();
   const updateBracket = useUpdateBracket();
-  const sorted = [...brackets].sort((a, b) => a.sort_order - b.sort_order);
+  const customize = useCustomizePropertyBrackets();
+  const resetToTemplate = useResetPropertyBrackets();
+
+  const isCustom = hasCustomBrackets(allBrackets, selectedPropertyId);
+  const sorted = resolveBracketsForProperty(allBrackets, selectedPropertyId);
+  const canEdit = !!selectedPropertyId && isCustom;
 
   const [editingId,   setEditingId]   = useState<string | null>(null);
   const [editForm,    setEditForm]    = useState<BracketEditForm | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [original,    setOriginal]    = useState<Bracket | null>(null);
+  const [resetOpen,   setResetOpen]   = useState(false);
 
   function rangeLabel(b: Bracket) {
     const min = b.range_min === 0 ? "$0" : fmtUSD(b.range_min);
@@ -601,6 +611,7 @@ function BracketsTab() {
   }
 
   function startEdit(b: Bracket) {
+    if (!canEdit) return;
     setEditingId(b.id);
     setOriginal(b);
     setEditForm({
@@ -619,9 +630,18 @@ function BracketsTab() {
     setConfirmOpen(false);
   }
 
-  function handleOwnerPctChange(val: string) {
-    const pct = Math.min(100, Math.max(0, Number(val) || 0));
-    setEditForm((f) => f ? { ...f, owner_pct: String(pct), ce_pct: String(+(100 - pct).toFixed(4)) } : f);
+  async function handleCustomize() {
+    if (!selectedPropertyId) return;
+    await customize.mutateAsync(selectedPropertyId);
+    toast({ title: "Bracket personalizado", description: `Ahora puedes editar los rangos de ${selectedProperty?.name ?? "esta propiedad"}.` });
+  }
+
+  async function handleReset() {
+    if (!selectedPropertyId) return;
+    await resetToTemplate.mutateAsync(selectedPropertyId);
+    setResetOpen(false);
+    cancelEdit();
+    toast({ title: "Restablecido a plantilla", description: "La propiedad vuelve a usar la plantilla por defecto." });
   }
 
   function requestSave() {
@@ -667,9 +687,43 @@ function BracketsTab() {
 
   return (
     <div className="space-y-5">
+      {/* Active-property banner */}
+      {!selectedPropertyId ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+          <AlertTriangle size={15} className="text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-xs text-muted-foreground">
+            Selecciona una <strong>propiedad activa</strong> (arriba a la izquierda) para personalizar su bracket. Abajo se muestra la <strong>plantilla por defecto</strong>.
+          </p>
+        </div>
+      ) : (
+        <div className={`rounded-xl border px-4 py-3 flex flex-wrap items-center justify-between gap-3 ${isCustom ? "border-emerald-200 bg-emerald-50" : "border-[#2D6A9F]/20 bg-[#2D6A9F]/5"}`}>
+          <div className="flex items-center gap-2.5">
+            <Home size={16} className={isCustom ? "text-emerald-600" : "text-[#2D6A9F]"} />
+            <div>
+              <p className="text-sm font-semibold text-foreground">{selectedProperty?.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {isCustom ? "Bracket personalizado para esta propiedad" : "Usando la plantilla por defecto"}
+              </p>
+            </div>
+          </div>
+          {isCustom ? (
+            <Button size="sm" variant="outline" onClick={() => setResetOpen(true)} className="gap-1.5">
+              <RefreshCw size={13} /> Restablecer a plantilla
+            </Button>
+          ) : (
+            <Button size="sm" onClick={handleCustomize} disabled={customize.isPending} className="gap-1.5">
+              {customize.isPending ? <Loader2 size={13} className="animate-spin" /> : <Pencil size={13} />}
+              Personalizar para esta propiedad
+            </Button>
+          )}
+        </div>
+      )}
+
       <p className="text-sm text-muted-foreground">
-        Los brackets definen el porcentaje de distribución entre propietario y Cana Escapes según el ingreso bruto mensual acumulado.
-        Haz clic en <strong>Editar</strong> en cualquier fila para modificarla — se pedirá confirmación antes de guardar.
+        Los brackets definen el porcentaje de distribución entre propietario y Cana Escapes según el ingreso bruto mensual.
+        {canEdit
+          ? " Edita los rangos en $ — los porcentajes son fijos para todas las propiedades."
+          : " Personaliza la propiedad para poder editar sus rangos de forma independiente."}
       </p>
 
       {isLoading ? (
@@ -724,27 +778,14 @@ function BracketsTab() {
                       )}
                     </td>
 
-                    {/* Owner pct */}
+                    {/* Owner pct (read-only — fixed scheme across properties) */}
                     <td className="px-4 py-3 text-center">
-                      {isEditing && editForm ? (
-                        <Input
-                          type="number" min="0" max="100" step="0.5"
-                          value={editForm.owner_pct}
-                          onChange={(e) => handleOwnerPctChange(e.target.value)}
-                          className="w-20 h-7 text-xs text-center mx-auto"
-                        />
-                      ) : (
-                        <span className="text-lg font-bold text-emerald-700">{b.owner_pct}%</span>
-                      )}
+                      <span className="text-lg font-bold text-emerald-700">{b.owner_pct}%</span>
                     </td>
 
-                    {/* CE pct */}
+                    {/* CE pct (read-only — fixed scheme across properties) */}
                     <td className="px-4 py-3 text-center">
-                      {isEditing && editForm ? (
-                        <span className="text-base font-bold text-[#2D6A9F] tabular-nums">{editForm.ce_pct}%</span>
-                      ) : (
-                        <span className="text-lg font-bold text-[#2D6A9F]">{b.ce_pct}%</span>
-                      )}
+                      <span className="text-lg font-bold text-[#2D6A9F]">{b.ce_pct}%</span>
                     </td>
 
                     {/* Description */}
@@ -772,7 +813,7 @@ function BracketsTab() {
                             <X size={11} />
                           </Button>
                         </div>
-                      ) : (
+                      ) : canEdit ? (
                         <Button
                           size="sm" variant="ghost"
                           onClick={() => startEdit(b)}
@@ -780,7 +821,7 @@ function BracketsTab() {
                         >
                           <Pencil size={11} />Editar
                         </Button>
-                      )}
+                      ) : null}
                     </td>
                   </tr>
                 );
@@ -794,8 +835,8 @@ function BracketsTab() {
       <div className="rounded-xl border border-[#2D6A9F]/20 bg-[#2D6A9F]/5 px-4 py-3 flex items-start gap-3">
         <Target size={15} className="text-[#2D6A9F] shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground">
-          Los brackets se aplican automáticamente en el Dashboard según el ingreso bruto USD acumulado del mes.
-          El porcentaje de Cana Escapes se calcula automáticamente como <code className="bg-muted px-1 rounded">100 − Propietario%</code>.
+          El bracket aplica a la <strong>propiedad activa</strong>. Cambiar de propiedad (arriba) muestra y edita su bracket de forma independiente —
+          un cambio en una propiedad no afecta a las demás. Los porcentajes (80 → 70) son iguales para todas; solo cambian los rangos en $.
         </p>
       </div>
 
@@ -830,6 +871,28 @@ function BracketsTab() {
             <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={updateBracket.isPending}>Cancelar</Button>
             <Button onClick={confirmSave} disabled={updateBracket.isPending || confirmChanges.length === 0}>
               {updateBracket.isPending ? <><Loader2 size={13} className="mr-1.5 animate-spin" />Guardando…</> : "Confirmar y guardar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset-to-template confirmation */}
+      <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-serif">
+              <ShieldAlert size={18} className="text-amber-500" />
+              Restablecer a plantilla
+            </DialogTitle>
+            <DialogDescription>
+              Se eliminarán los rangos personalizados de <strong>{selectedProperty?.name}</strong> y la propiedad volverá a usar la
+              plantilla por defecto (techo $2,000). Las reservas ya registradas no cambian.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetOpen(false)} disabled={resetToTemplate.isPending}>Cancelar</Button>
+            <Button onClick={handleReset} disabled={resetToTemplate.isPending}>
+              {resetToTemplate.isPending ? <><Loader2 size={13} className="mr-1.5 animate-spin" />Restableciendo…</> : "Restablecer"}
             </Button>
           </DialogFooter>
         </DialogContent>

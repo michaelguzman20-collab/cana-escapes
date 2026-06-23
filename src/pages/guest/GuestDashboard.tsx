@@ -3,7 +3,7 @@ import { Home, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useProperties } from "@/hooks/useProperties";
 import { useReservations, useAllReservations } from "@/hooks/useReservations";
-import { useBrackets, getActiveBracket } from "@/hooks/useBrackets";
+import { useBrackets, getActiveBracket, resolveBracketsForProperty } from "@/hooks/useBrackets";
 import { useMyOwner, useMyCharges, useMyMaintenanceTickets, useMyOwnerPayments } from "@/hooks/useOwnerPortal";
 
 import { PortalHeader, type ViewMode } from "./sections/PortalHeader";
@@ -26,7 +26,7 @@ export function GuestDashboard() {
   const [viewMode, setViewMode] = useState<ViewMode>("month");
 
   const { data: properties = [], isLoading: propsLoading } = useProperties();
-  const { data: brackets = [] } = useBrackets();
+  const { data: allBrackets = [] } = useBrackets();
   const { data: owner } = useMyOwner();
 
   const [devPropertyId, setDevPropertyId] = useState<string>("");
@@ -41,6 +41,7 @@ export function GuestDashboard() {
   }, [properties, devPropertyId]);
 
   const propId = myProperty?.id ?? "";
+  const brackets = useMemo(() => resolveBracketsForProperty(allBrackets, propId), [allBrackets, propId]);
 
   const { data: monthReservations = [] } = useReservations(propId, month, year);
   const { data: allReservations = [] } = useAllReservations(propId);

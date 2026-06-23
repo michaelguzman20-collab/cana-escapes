@@ -21,7 +21,7 @@ import {
   useSharedReservations,
   useSharedBrackets,
 } from "@/hooks/useSharedProperty";
-import { getActiveBracket } from "@/hooks/useBrackets";
+import { getActiveBracket, resolveBracketsForProperty } from "@/hooks/useBrackets";
 
 const MONTHS_ES = [
   "Enero","Febrero","Marzo","Abril","Mayo","Junio",
@@ -93,7 +93,7 @@ export function ShareView() {
   const [year, setYear]   = useState(now.getFullYear());
 
   const { data: property, isLoading: propLoading } = useSharedProperty(token ?? "");
-  const { data: brackets = [] } = useSharedBrackets();
+  const { data: allBrackets = [] } = useSharedBrackets();
   const { data: reservations = [], isLoading: resLoading } = useSharedReservations(
     property?.id ?? "",
     month,
@@ -120,9 +120,10 @@ export function ShareView() {
     const extras   = active.filter((r) => r.currency === "USD").reduce((s, r) => s + r.extra_usd, 0);
     const nights   = active.reduce((s, r) => s + r.nights, 0);
     const daysInMonth = new Date(year, month, 0).getDate();
+    const brackets = resolveBracketsForProperty(allBrackets, property?.id);
     const bracket  = getActiveBracket(brackets, grossUSD);
     return { grossUSD, netUSD, ownerUSD, ownerRDS, platComm, cardFees, extras, nights, daysInMonth, bracket, count: active.length };
-  }, [reservations, brackets, month, year]);
+  }, [reservations, allBrackets, property, month, year]);
 
   // Loading
   if (propLoading) {

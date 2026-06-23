@@ -3,7 +3,10 @@ import { LangProvider } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { Hero } from "@/components/cana/Hero";
+import { MarketGrowth } from "@/components/cana/MarketGrowth";
+import { OwnerChallenge } from "@/components/cana/OwnerChallenge";
 import { OwnerValueProp } from "@/components/cana/OwnerValueProp";
+import { TechEcosystem } from "@/components/cana/TechEcosystem";
 import { EarningsCalculator } from "@/components/cana/EarningsCalculator";
 import { ContactSection } from "@/components/cana/ContactSection";
 import { PlatformsStrip } from "@/components/cana/PlatformsStrip";
@@ -70,7 +73,10 @@ export function PropietariosPage() {
       <div ref={ref} className="min-h-screen bg-white">
         <LandingNavbar />
         <Hero />
+        <MarketGrowth />
+        <OwnerChallenge />
         <OwnerValueProp />
+        <TechEcosystem />
         <EarningsCalculator />
         <ContactSection defaultTab="owner" />
         <PlatformsStrip />

@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { SplashScreen } from "@/components/cana/SplashScreen";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { GuestLayout } from "@/components/layout/GuestLayout";
@@ -14,6 +16,7 @@ import { AdminPropietarios } from "@/pages/admin/AdminPropietarios";
 import { AdminCargos } from "@/pages/admin/AdminCargos";
 import { AdminCanaEscapes } from "@/pages/admin/AdminCanaEscapes";
 import { AdminContabilidad } from "@/pages/admin/AdminContabilidad";
+import { AdminCalculadora } from "@/pages/admin/AdminCalculadora";
 import { AdminMantenimiento } from "@/pages/admin/AdminMantenimiento";
 import { AdminPagosPropietarios } from "@/pages/admin/AdminPagosPropietarios";
 import { AdminWhatsapp } from "@/pages/admin/AdminWhatsapp";
@@ -77,8 +80,16 @@ VITE_SUPABASE_ANON_KEY=eyJ...`}
 export default function App() {
   if (!supabaseConfigured) return <SetupScreen />;
 
+  // Intro splash only on a fresh load of the public landing page ("/").
+  // App mounts once, so in-app route changes never re-trigger it, and
+  // admin/login loads skip it entirely.
+  const [showSplash, setShowSplash] = useState(
+    () => typeof window !== "undefined" && window.location.pathname === "/"
+  );
+
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
       <AuthProvider>
         <Routes>
           {/* Public */}
@@ -99,6 +110,7 @@ export default function App() {
               <Route path="/admin/cargos"        element={<AdminCargos />} />
               <Route path="/admin/pagos-propietarios" element={<AdminPagosPropietarios />} />
               <Route path="/admin/cana-escapes" element={<AdminCanaEscapes />} />
+              <Route path="/admin/calculadora" element={<AdminCalculadora />} />
               <Route path="/admin/contabilidad" element={<AdminContabilidad />} />
               <Route path="/admin/whatsapp" element={<AdminWhatsapp />} />
               <Route path="/admin/configuracion" element={<AdminConfiguracion />} />

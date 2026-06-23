@@ -108,16 +108,16 @@ export function Logo({ className, size = "md", variant = "dark", compact = false
         <path d="M 40 54 A 22 22 0 0 1 84 54 Z" fill={sunColor}/>
 
         {/* ── Líneas horizonte ─────────────────────────────────────────────── */}
-        <line x1="4"  y1="54" x2="118" y2="54"
+        <line x1="4"  y1="54" x2="108" y2="54"
           stroke={lineStrong} strokeWidth="1.8" strokeLinecap="round"/>
-        <line x1="20" y1="60" x2="104" y2="60"
+        <line x1="20" y1="60" x2="100" y2="60"
           stroke={lineMid}   strokeWidth="1.2" strokeLinecap="round"/>
-        <line x1="34" y1="66" x2="90"  y2="66"
+        <line x1="34" y1="66" x2="88"  y2="66"
           stroke={lineMid}   strokeWidth="0.9" strokeLinecap="round" opacity="0.6"/>
 
         {/* ── Coordenada oeste: 68° W ──────────────────────────────────────── */}
         <text
-          x="121" y="57"
+          x="112" y="57"
           fontFamily="Georgia, 'Times New Roman', serif"
           fontSize="8.5"
           fill={coordColor}
@@ -127,11 +127,11 @@ export function Logo({ className, size = "md", variant = "dark", compact = false
           68°
         </text>
         <text
-          x="138" y="57"
+          x="129" y="57"
           fontFamily="Georgia, 'Times New Roman', serif"
           fontSize="8.5"
           fill={lineMid}
-          textAnchor="end"
+          textAnchor="start"
           fontWeight="bold"
         >
           W

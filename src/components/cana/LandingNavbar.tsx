@@ -76,6 +76,7 @@ export function LandingNavbar() {
 
           {/* Desktop nav */}
           <div className="hidden lg:flex items-center gap-1">
+            {/* Guest-facing links: Reservar · Experiencias · Contacto */}
             {NAV_LINKS.map((link) => (
               <button
                 key={link.key}
@@ -86,14 +87,18 @@ export function LandingNavbar() {
                 <span className="absolute left-3 right-3 -bottom-0.5 h-0.5 rounded-full bg-[#F0A030] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
               </button>
             ))}
+
+            {/* Divider separating guest links from the business sub-pages */}
+            <span className="mx-2 h-5 w-px bg-white/15" aria-hidden="true" />
+
+            {/* Business sub-pages: Propietarios · Servicios — visually distinct (amber outline pills) */}
             {ROUTE_LINKS.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className="group relative px-3 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors"
+                className="ml-1 px-3.5 py-1.5 text-sm font-semibold text-[#F0A030] border border-[#F0A030]/40 rounded-full hover:bg-[#F0A030] hover:text-[#0F2B4C] transition-colors"
               >
                 {t(link.key)}
-                <span className="absolute left-3 right-3 -bottom-0.5 h-0.5 rounded-full bg-[#F0A030] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
               </Link>
             ))}
           </div>
@@ -155,6 +160,7 @@ export function LandingNavbar() {
         }`}
       >
         <div className="flex flex-col px-6 py-8 gap-2">
+          {/* Guest-facing links */}
           {NAV_LINKS.map((link) => (
             <button
               key={link.key}
@@ -164,12 +170,19 @@ export function LandingNavbar() {
               {t(link.key)}
             </button>
           ))}
+
+          {/* Divider + label separating the business sub-pages */}
+          <div className="mt-4 mb-1 px-4">
+            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#F0A030]/80">
+              {lang === "es" ? "Para tu propiedad" : "For your property"}
+            </span>
+          </div>
           {ROUTE_LINKS.map((link) => (
             <Link
               key={link.to}
               to={link.to}
               onClick={() => setMobileOpen(false)}
-              className="text-left px-4 py-3 text-lg font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
+              className="text-left px-4 py-3 text-lg font-semibold text-[#F0A030] border border-[#F0A030]/30 hover:bg-[#F0A030]/10 rounded-xl transition-colors"
             >
               {t(link.key)}
             </Link>

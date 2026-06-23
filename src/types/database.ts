@@ -251,6 +251,7 @@ export interface Database {
           ce_pct: number;
           description: string | null;
           sort_order: number;
+          property_id: string | null;
         };
         Insert: {
           id?: string;
@@ -260,6 +261,7 @@ export interface Database {
           ce_pct: number;
           description?: string | null;
           sort_order?: number;
+          property_id?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["brackets"]["Insert"]>;
         Relationships: [];

@@ -43,7 +43,7 @@ import {
 import { useProperties } from "@/hooks/useProperties";
 import { useReservations, useCreateReservation, useUpdateReservation, useDeleteReservation, useAllReservations } from "@/hooks/useReservations";
 import { useProperty } from "@/contexts/PropertyContext";
-import { useBrackets, getActiveBracket } from "@/hooks/useBrackets";
+import { useBrackets, getActiveBracket, resolveBracketsForProperty } from "@/hooks/useBrackets";
 import { usePlatformConfigs } from "@/hooks/usePlatformConfigs";
 import { useMaintenanceTickets } from "@/hooks/useMaintenance";
 import { ReservationFormDialog } from "./ReservationFormDialog";
@@ -708,7 +708,8 @@ export function AdminDashboard() {
 
   const { data: properties = [], isLoading: propsLoading } = useProperties();
   const { data: platforms  = [] } = usePlatformConfigs();
-  const { data: brackets   = [] } = useBrackets();
+  const { data: allBrackets = [] } = useBrackets();
+  const brackets = useMemo(() => resolveBracketsForProperty(allBrackets, propId), [allBrackets, propId]);
   const { data: maintenanceTickets = [] } = useMaintenanceTickets();
   const { data: allGlobalRes = [] } = useAllReservations(propId);
 

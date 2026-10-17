@@ -24,6 +24,19 @@ const APPS = [
       en: ["Automatic edge detection", "Multiple pages in one PDF", "Filters for sharper text", "Share instantly"],
     },
   },
+  {
+    slug: "cana-flota",
+    name: "Cana Flota",
+    icon: "/apps/cana-flota.png",
+    desc: {
+      es: "Ubicación en tiempo real del equipo de transporte. El chofer inicia su turno y la oficina ve en el mapa dónde está, por dónde se mueve, su batería y el tráfico de la zona. Con un toque le envías un timbre para que te escriba por WhatsApp.",
+      en: "Real-time location for the transport team. The driver starts a shift and the office sees on the map where they are, their route, battery level and local traffic. One tap sends a ping asking them to message you on WhatsApp.",
+    },
+    features: {
+      es: ["Ubicación en vivo en segundo plano", "Recorrido y nivel de batería", "Tráfico de Google Maps", "Timbre para escribir por WhatsApp"],
+      en: ["Live background location", "Route history and battery level", "Google Maps traffic", "Ping to reply on WhatsApp"],
+    },
+  },
 ];
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
@@ -256,7 +269,7 @@ export function AppsPage() {
   useSeo({
     title: "Apps para Android — Cana Escapes",
     description:
-      "Descarga gratis las apps de Cana Escapes para Android: Cana Scanner convierte tu cámara en un escáner de documentos a PDF.",
+      "Descarga gratis las apps de Cana Escapes para Android: Cana Scanner convierte tu cámara en un escáner de documentos a PDF y Cana Flota muestra la ubicación del equipo de transporte en tiempo real.",
     path: "/apps",
   });
 

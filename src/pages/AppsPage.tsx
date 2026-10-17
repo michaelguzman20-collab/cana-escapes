@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { Download, Smartphone, ChevronDown, ShieldCheck, Sparkles, CheckCircle2 } from "lucide-react";
+import { Download, Smartphone, ChevronDown, ShieldCheck, Sparkles, CheckCircle2, RefreshCw } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
-import { supabase } from "@/lib/supabase";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { LandingFooter } from "@/components/cana/LandingFooter";
 import type { Database } from "@/types/database";
@@ -26,6 +25,31 @@ const APPS = [
     },
   },
 ];
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+
+// Las versiones son públicas: se leen con la llave anónima directamente, sin pasar por la
+// sesión del cliente de Supabase. Una sesión vieja guardada en el teléfono (p. ej. de /admin)
+// puede dejar colgado el refresco del token y la página se quedaba cargando para siempre.
+async function fetchReleases(): Promise<Release[]> {
+  const ctrl = new AbortController();
+  const timer = window.setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/app_releases?select=*&order=version_code.desc`,
+      {
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+        cache: "no-store",
+        signal: ctrl.signal,
+      }
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()) as Release[];
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
 
 function formatDate(iso: string, lang: string) {
   return new Date(iso).toLocaleDateString(lang === "es" ? "es-DO" : "en-US", {
@@ -147,17 +171,20 @@ function AppsContent() {
   const { t } = useLang();
   const [releases, setReleases] = useState<Release[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+
+  function load() {
+    setLoading(true);
+    setFailed(false);
+    fetchReleases()
+      .then(setReleases)
+      .catch(() => setFailed(true))
+      .finally(() => setLoading(false));
+  }
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    supabase
-      .from("app_releases")
-      .select("*")
-      .order("version_code", { ascending: false })
-      .then(({ data }) => {
-        setReleases(data ?? []);
-        setLoading(false);
-      });
+    load();
   }, []);
 
   return (
@@ -179,6 +206,17 @@ function AppsContent() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 space-y-8">
           {loading ? (
             <div className="h-72 rounded-3xl bg-white animate-pulse" />
+          ) : failed ? (
+            <div className="rounded-3xl bg-white border border-[#0F2B4C]/10 p-8 text-center">
+              <p className="text-[#0F2B4C] font-semibold">{t("apps_load_error")}</p>
+              <button
+                onClick={load}
+                className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-xl transition-colors"
+              >
+                <RefreshCw size={16} />
+                {t("apps_retry")}
+              </button>
+            </div>
           ) : (
             APPS.map((app) => (
               <AppCard key={app.slug} app={app} releases={releases.filter((r) => r.app_slug === app.slug)} />

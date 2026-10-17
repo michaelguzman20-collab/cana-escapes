@@ -42,6 +42,8 @@ export const translations: Record<string, Record<string, string>> = {
     apps_install_3: 'Si Android lo pide, permite "Instalar apps de orígenes desconocidos" para tu navegador.',
     apps_install_4: 'Toca "Instalar". Las actualizaciones se instalan igual, sin perder tus datos.',
     apps_install_note: 'Todas nuestras apps están firmadas por Cana Escapes. Pronto también estarán en Google Play.',
+    apps_load_error: 'No se pudieron cargar las apps. Revisa tu conexión.',
+    apps_retry: 'Reintentar',
     wa_float_label: 'Escríbenos por WhatsApp',
 
     ghero_badge: 'Bávaro · Punta Cana · Rep. Dominicana',
@@ -326,6 +328,8 @@ export const translations: Record<string, Record<string, string>> = {
     apps_install_3: 'If Android asks, allow "Install unknown apps" for your browser.',
     apps_install_4: 'Tap "Install". Updates install the same way, keeping your data.',
     apps_install_note: 'All our apps are signed by Cana Escapes. Coming to Google Play soon.',
+    apps_load_error: "Couldn't load the apps. Check your connection.",
+    apps_retry: 'Try again',
     wa_float_label: 'Message us on WhatsApp',
 
     ghero_badge: 'Bávaro · Punta Cana · Dominican Republic',

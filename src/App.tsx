@@ -21,6 +21,7 @@ import { AdminMantenimiento } from "@/pages/admin/AdminMantenimiento";
 import { AdminPagosPropietarios } from "@/pages/admin/AdminPagosPropietarios";
 import { AdminWhatsapp } from "@/pages/admin/AdminWhatsapp";
 import { AdminTrack } from "@/pages/admin/AdminTrack";
+import { TrackTeamPage } from "@/pages/TrackTeamPage";
 import { GuestDashboard } from "@/pages/guest/GuestDashboard";
 import { ShareView } from "@/pages/share/ShareView";
 import { UpdatePassword } from "@/pages/UpdatePassword";
@@ -118,6 +119,11 @@ export default function App() {
               <Route path="/admin/track" element={<AdminTrack />} />
               <Route path="/admin/configuracion" element={<AdminConfiguracion />} />
             </Route>
+          </Route>
+
+          {/* Cana Track: administradores de equipo */}
+          <Route element={<RequireAuth role="track_admin" />}>
+            <Route path="/track" element={<TrackTeamPage />} />
           </Route>
 
           {/* Guest routes */}

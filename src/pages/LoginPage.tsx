@@ -14,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
+import { homeForRole } from "@/lib/roles";
 
 export function LoginPage() {
   const { signIn, role, loading: authLoading, profileReady } = useAuth();
@@ -42,7 +43,7 @@ export function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && profileReady && role) {
-      navigate(role === "admin" ? "/admin/dashboard" : "/guest/dashboard", {
+      navigate(homeForRole(role), {
         replace: true,
       });
     }

@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type UserRole = "admin" | "guest";
+export type UserRole = "admin" | "guest" | "driver" | "track_admin";
 
 export interface Database {
   public: {

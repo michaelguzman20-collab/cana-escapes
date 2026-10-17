@@ -24,11 +24,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { name: rawName, phone: rawPhone, vehicle: rawVehicle, password } = await req.json();
+    const body = await req.json();
+    const { name: rawName, phone: rawPhone, vehicle: rawVehicle, password } = body;
     const name = String(rawName ?? "").trim().slice(0, 60);
     let phone = String(rawPhone ?? "").replace(/\D/g, "");
     if (phone.length === 10) phone = `1${phone}`; // número dominicano sin el 1
     const vehicle = String(rawVehicle ?? "").trim().slice(0, 60) || null;
+    const vehicleType = String(body.vehicle_type ?? "carro").trim().slice(0, 20) || "carro";
 
     if (!name) return json({ error: "Escribe tu nombre." }, 400);
     if (phone.length < 10 || phone.length > 15) return json({ error: "Escribe un WhatsApp válido." }, 400);
@@ -63,7 +65,7 @@ Deno.serve(async (req) => {
     if (existing) {
       const { error } = await admin
         .from("fleet_drivers")
-        .update({ user_id: userId, name, vehicle })
+        .update({ user_id: userId, name, vehicle, vehicle_type: vehicleType })
         .eq("id", existing.id);
       if (error) throw error;
       // La cuenta interna anterior ya no se usa (nunca se borran cuentas con correo real)
@@ -76,7 +78,7 @@ Deno.serve(async (req) => {
     } else {
       const { error } = await admin
         .from("fleet_drivers")
-        .insert({ user_id: userId, name, phone, vehicle });
+        .insert({ user_id: userId, name, phone, vehicle, vehicle_type: vehicleType });
       if (error) throw error;
     }
 

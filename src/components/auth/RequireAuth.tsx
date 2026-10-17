@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { homeForRole } from "@/lib/roles";
 import type { UserRole } from "@/types/database";
 
 interface RequireAuthProps {
@@ -25,7 +26,7 @@ export function RequireAuth({ role }: RequireAuthProps) {
   if (!session) return <Navigate to="/login" replace />;
 
   if (role && userRole !== role) {
-    return <Navigate to={userRole === "admin" ? "/admin/dashboard" : "/guest/dashboard"} replace />;
+    return <Navigate to={homeForRole(userRole)} replace />;
   }
 
   return <Outlet />;

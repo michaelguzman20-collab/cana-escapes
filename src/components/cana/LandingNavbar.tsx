@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Menu, X, Globe, LogIn, Home } from "lucide-react";
+import { Menu, X, Globe, LogIn, Home, Smartphone } from "lucide-react";
 import { useLang } from "@/lib/LangContext";
 
 // Guest-focused home sections (anchors live on the "/" route)
@@ -11,11 +11,14 @@ const NAV_LINKS = [
 ];
 
 // Sub-page links, rendered with the same style right after the anchors:
-// Reservar · Experiencias · Contacto · Propietarios · Servicios
+// Reservar · Experiencias · Contacto · Propietarios · Servicios · Apps
 const ROUTE_LINKS = [
   { key: "nav_owners", to: "/propietarios" },
   { key: "nav_services", to: "/servicios" },
 ];
+
+// Downloadable Android apps (canaescapes.com/apps) — shown right after Servicios
+const APPS_LINK = { key: "nav_apps", to: "/apps" };
 
 export function LandingNavbar() {
   const { lang, setLang, t } = useLang();
@@ -101,6 +104,13 @@ export function LandingNavbar() {
                 {t(link.key)}
               </Link>
             ))}
+            <Link
+              to={APPS_LINK.to}
+              className="ml-1 flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-semibold text-[#F0A030] border border-[#F0A030]/40 rounded-full hover:bg-[#F0A030] hover:text-[#0F2B4C] transition-colors"
+            >
+              <Smartphone size={14} />
+              {t(APPS_LINK.key)}
+            </Link>
           </div>
 
           {/* Desktop right */}
@@ -124,10 +134,13 @@ export function LandingNavbar() {
             {!isHome && (
               <Link
                 to="/"
-                className="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-lg transition-colors shadow-lg shadow-[#F0A030]/20"
+                aria-label={t("nav_back_home")}
+                title={t("nav_back_home")}
+                className="flex items-center gap-2 px-3 xl:px-5 py-2 text-sm font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-lg transition-colors shadow-lg shadow-[#F0A030]/20"
               >
                 <Home size={14} />
-                {t("nav_back_home")}
+                {/* Icon-only between lg and xl so the nav fits with the Apps pill */}
+                <span className="hidden xl:inline">{t("nav_back_home")}</span>
               </Link>
             )}
           </div>
@@ -187,6 +200,14 @@ export function LandingNavbar() {
               {t(link.key)}
             </Link>
           ))}
+          <Link
+            to={APPS_LINK.to}
+            onClick={() => setMobileOpen(false)}
+            className="flex items-center gap-2 text-left px-4 py-3 text-lg font-semibold text-[#F0A030] border border-[#F0A030]/30 hover:bg-[#F0A030]/10 rounded-xl transition-colors"
+          >
+            <Smartphone size={18} />
+            {t(APPS_LINK.key)}
+          </Link>
           <div className="border-t border-white/10 my-4" />
           <button
             onClick={() => { setLang(lang === "es" ? "en" : "es"); }}

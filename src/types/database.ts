@@ -41,6 +41,42 @@ export interface Database {
         };
         Relationships: [];
       };
+      app_releases: {
+        Row: {
+          id: string;
+          app_slug: string;
+          version_name: string;
+          version_code: number;
+          release_notes: string | null;
+          apk_url: string;
+          apk_size: number | null;
+          apk_sha256: string | null;
+          published_at: string;
+        };
+        Insert: {
+          id?: string;
+          app_slug: string;
+          version_name: string;
+          version_code: number;
+          release_notes?: string | null;
+          apk_url: string;
+          apk_size?: number | null;
+          apk_sha256?: string | null;
+          published_at?: string;
+        };
+        Update: {
+          id?: string;
+          app_slug?: string;
+          version_name?: string;
+          version_code?: number;
+          release_notes?: string | null;
+          apk_url?: string;
+          apk_size?: number | null;
+          apk_sha256?: string | null;
+          published_at?: string;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;

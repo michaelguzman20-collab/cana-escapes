@@ -28,6 +28,7 @@ import { supabaseConfigured } from "@/lib/supabase";
 import { HomePage } from "@/pages/HomePage";
 import { PropietariosPage } from "@/pages/PropietariosPage";
 import { ServiciosPage } from "@/pages/ServiciosPage";
+import { AppsPage } from "@/pages/AppsPage";
 import { Logo } from "@/components/layout/Logo";
 
 function SetupScreen() {
@@ -140,6 +141,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/propietarios" element={<PropietariosPage />} />
           <Route path="/servicios" element={<ServiciosPage />} />
+          <Route path="/apps" element={<AppsPage />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />

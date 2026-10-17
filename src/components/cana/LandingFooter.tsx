@@ -15,6 +15,7 @@ export function LandingFooter() {
     { label: t("nav_book_short"), href: "#reservar" },
     { label: t("nav_experiences"), href: "#experiencias" },
     { label: t("nav_services"), href: "/servicios" },
+    { label: t("nav_apps"), href: "/apps" },
     { label: t("nav_contact"), href: "#contacto" },
     { label: t("nav_owner_btn"), href: "/propietarios" },
   ];

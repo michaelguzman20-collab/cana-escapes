@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { LayoutDashboard, CalendarDays, CalendarRange, Settings, LogOut, User, Users, Globe, UserCheck, Receipt, TrendingUp, Landmark, Wrench, Banknote, Bell, CheckCheck, KeyRound, MessageCircle, Calculator } from "lucide-react";
+import { LayoutDashboard, CalendarDays, CalendarRange, Settings, LogOut, User, Users, Globe, UserCheck, Receipt, TrendingUp, Landmark, Wrench, Banknote, Bell, CheckCheck, KeyRound, MessageCircle, Calculator, MapPin } from "lucide-react";
 import { Logo } from "./Logo";
 import { PropertySwitcher } from "./PropertySwitcher";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ const navItems = [
   { to: "/admin/calculadora",   icon: Calculator,      label: "Calculadora"     },
   { to: "/admin/contabilidad",  icon: Landmark,        label: "Financiero"      },
   { to: "/admin/whatsapp",      icon: MessageCircle,   label: "WhatsApp Bot"    },
+  { to: "/admin/track",         icon: MapPin,          label: "Cana Track"      },
   { to: "/admin/configuracion", icon: Settings,        label: "Configuración"   },
 ];
 

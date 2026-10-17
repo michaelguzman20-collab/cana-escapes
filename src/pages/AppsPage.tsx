@@ -25,16 +25,16 @@ const APPS = [
     },
   },
   {
-    slug: "cana-flota",
-    name: "Cana Flota",
-    icon: "/apps/cana-flota.png",
+    slug: "cana-track",
+    name: "Cana Track",
+    icon: "/apps/cana-track.png",
     desc: {
-      es: "Ubicación en tiempo real del equipo de transporte. El chofer inicia su turno y la oficina ve en el mapa dónde está, por dónde se mueve, su batería y el tráfico de la zona. Con un toque le envías un timbre para que te escriba por WhatsApp.",
-      en: "Real-time location for the transport team. The driver starts a shift and the office sees on the map where they are, their route, battery level and local traffic. One tap sends a ping asking them to message you on WhatsApp.",
+      es: "Comparte tu ubicación en tiempo real con tu equipo. Ideal para transporte, mensajería en moto y negocios con personal en la calle. Entras solo con tu nombre y WhatsApp.",
+      en: "Share your real-time location with your team. Great for transport, motorbike delivery and businesses with staff on the move. Join with just your name and WhatsApp.",
     },
     features: {
-      es: ["Ubicación en vivo en segundo plano", "Recorrido y nivel de batería", "Tráfico de Google Maps", "Timbre para escribir por WhatsApp"],
-      en: ["Live background location", "Route history and battery level", "Google Maps traffic", "Ping to reply on WhatsApp"],
+      es: ["Entrada rápida con nombre y WhatsApp", "Sigue compartiendo en segundo plano", "Un toque para compartir o dejar de compartir", "Aviso para escribir por WhatsApp"],
+      en: ["Quick join with name and WhatsApp", "Keeps sharing in the background", "One tap to start or stop sharing", "Ping to reply on WhatsApp"],
     },
   },
 ];
@@ -269,7 +269,7 @@ export function AppsPage() {
   useSeo({
     title: "Apps para Android — Cana Escapes",
     description:
-      "Descarga gratis las apps de Cana Escapes para Android: Cana Scanner convierte tu cámara en un escáner de documentos a PDF y Cana Flota muestra la ubicación del equipo de transporte en tiempo real.",
+      "Descarga gratis las apps de Cana Escapes para Android: Cana Scanner convierte tu cámara en un escáner de documentos a PDF y Cana Track comparte la ubicación de tu equipo en tiempo real.",
     path: "/apps",
   });
 

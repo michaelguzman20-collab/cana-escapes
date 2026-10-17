@@ -20,6 +20,7 @@ import { AdminCalculadora } from "@/pages/admin/AdminCalculadora";
 import { AdminMantenimiento } from "@/pages/admin/AdminMantenimiento";
 import { AdminPagosPropietarios } from "@/pages/admin/AdminPagosPropietarios";
 import { AdminWhatsapp } from "@/pages/admin/AdminWhatsapp";
+import { AdminTrack } from "@/pages/admin/AdminTrack";
 import { GuestDashboard } from "@/pages/guest/GuestDashboard";
 import { ShareView } from "@/pages/share/ShareView";
 import { UpdatePassword } from "@/pages/UpdatePassword";
@@ -114,6 +115,7 @@ export default function App() {
               <Route path="/admin/calculadora" element={<AdminCalculadora />} />
               <Route path="/admin/contabilidad" element={<AdminContabilidad />} />
               <Route path="/admin/whatsapp" element={<AdminWhatsapp />} />
+              <Route path="/admin/track" element={<AdminTrack />} />
               <Route path="/admin/configuracion" element={<AdminConfiguracion />} />
             </Route>
           </Route>

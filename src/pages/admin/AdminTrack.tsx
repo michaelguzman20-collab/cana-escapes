@@ -24,7 +24,7 @@ const TRACK_HOURS = 3;
 
 type Driver = {
   id: string; name: string; phone: string | null; vehicle: string | null;
-  vehicle_type: string; admin_id: string | null; active: boolean;
+  vehicle_type: string; admin_id: string | null; active: boolean; nickname: string | null;
 };
 type TeamAdmin = { id: string; user_id: string | null; name: string; email: string | null; phone: string | null; active: boolean };
 type Position = {
@@ -55,6 +55,15 @@ const VEHICLES: Record<string, { emoji: string; label: string }> = {
   a_pie: { emoji: "🚶", label: "A pie" },
 };
 const emojiOf = (t: string | null | undefined) => VEHICLES[t ?? ""]?.emoji ?? "📍";
+// "Juan Pérez (El Flaco)": el apodo lo pone el administrador
+const nameOf = (d: Pick<Driver, "name" | "nickname">) => (d.nickname ? `${d.name} (${d.nickname})` : d.name);
+
+// Distancia aproximada en metros (para no pedir el nombre del sector en cada paso)
+function meters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const dy = (a.lat - b.lat) * 111_320;
+  const dx = (a.lng - b.lng) * 111_320 * Math.cos((a.lat * Math.PI) / 180);
+  return Math.sqrt(dx * dx + dy * dy);
+}
 
 function statusOf(p?: Position): Status {
   if (!p || !p.on_duty) return "off";
@@ -135,7 +144,7 @@ export function AdminTrack({ mode = "super" }: { mode?: "super" | "team" }) {
 
   const load = useCallback(async () => {
     const [d, p] = await Promise.all([
-      supabase.from("fleet_drivers").select("id,name,phone,vehicle,vehicle_type,admin_id,active").order("name"),
+      supabase.from("fleet_drivers").select("id,name,nickname,phone,vehicle,vehicle_type,admin_id,active").order("name"),
       supabase.from("fleet_positions").select("*"),
     ]);
     if (d.data) setDrivers(d.data as Driver[]);
@@ -240,6 +249,13 @@ export function AdminTrack({ mode = "super" }: { mode?: "super" | "team" }) {
     load();
   }
 
+  async function saveNickname(d: Driver, nickname: string) {
+    const value = nickname.trim() || null;
+    setDrivers((prev) => prev.map((x) => (x.id === d.id ? { ...x, nickname: value } : x)));
+    const { error } = await supabase.from("fleet_drivers").update({ nickname: value }).eq("id", d.id);
+    if (error) alert(error.message);
+  }
+
   async function assign(driverId: string, adminId: string | null) {
     setDrivers((prev) => prev.map((d) => (d.id === driverId ? { ...d, admin_id: adminId } : d)));
     const { error } = await supabase.from("fleet_drivers").update({ admin_id: adminId }).eq("id", driverId);
@@ -342,7 +358,7 @@ export function AdminTrack({ mode = "super" }: { mode?: "super" | "team" }) {
               <CardContent className="p-5">
                 <h2 className="font-semibold flex items-center gap-2 mb-4" style={{ color: NAVY }}>
                   <History size={18} style={{ color: AMBER }} />
-                  Historial {sel ? `de ${sel.name}` : "de todos"}
+                  Historial {sel ? `de ${nameOf(sel)}` : "de todos"}
                 </h2>
                 {sessions.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Todavía no hay sesiones.</p>
@@ -365,7 +381,7 @@ export function AdminTrack({ mode = "super" }: { mode?: "super" | "team" }) {
                           const d = drivers.find((x) => x.id === s.driver_id);
                           return (
                             <tr key={s.id} className="border-b last:border-0">
-                              {!sel && <td className="py-2 pr-3 font-medium whitespace-nowrap">{d ? `${emojiOf(d.vehicle_type)} ${d.name}` : "—"}</td>}
+                              {!sel && <td className="py-2 pr-3 font-medium whitespace-nowrap">{d ? `${emojiOf(d.vehicle_type)} ${nameOf(d)}` : "—"}</td>}
                               <td className="py-2 pr-3 whitespace-nowrap">{fmt(s.started_at)}</td>
                               <td className="py-2 pr-3 whitespace-nowrap">
                                 {s.ended_at ? fmt(s.ended_at) : lost ? (
@@ -395,15 +411,18 @@ export function AdminTrack({ mode = "super" }: { mode?: "super" | "team" }) {
                     <div className="flex items-start gap-3">
                       <span className="text-3xl leading-none">{emojiOf(sel.vehicle_type)}</span>
                       <div>
-                        <h2 className="text-xl font-serif font-bold" style={{ color: NAVY }}>{sel.name}</h2>
+                        <h2 className="text-xl font-serif font-bold" style={{ color: NAVY }}>{nameOf(sel)}</h2>
                         <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-3 mt-0.5">
                           <span>{VEHICLES[sel.vehicle_type]?.label}{sel.vehicle ? ` · ${sel.vehicle}` : ""}</span>
                           {sel.phone && <span className="flex items-center gap-1"><Phone size={12} />{sel.phone}</span>}
                         </p>
                         {isSuper && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Equipo: {admins.find((a) => a.id === sel.admin_id)?.name ?? "sin asignar"}
-                          </p>
+                          <>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Equipo: {admins.find((a) => a.id === sel.admin_id)?.name ?? "sin asignar"}
+                            </p>
+                            <NicknameField key={sel.id} driver={sel} onSave={saveNickname} />
+                          </>
                         )}
                       </div>
                     </div>
@@ -453,7 +472,7 @@ export function AdminTrack({ mode = "super" }: { mode?: "super" | "team" }) {
                     ) : <span />}
                     {isSuper && (
                       <button
-                        onClick={() => remove("driver", sel.id, sel.name)}
+                        onClick={() => remove("driver", sel.id, nameOf(sel))}
                         className="text-xs flex items-center gap-1 text-red-600 hover:text-red-800"
                       >
                         <Trash2 size={12} /> Borrar usuario
@@ -495,7 +514,7 @@ export function AdminTrack({ mode = "super" }: { mode?: "super" | "team" }) {
                         />
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate" style={{ color: NAVY }}>{d.name}</p>
+                        <p className="font-medium text-sm truncate" style={{ color: NAVY }}>{nameOf(d)}</p>
                         <p className="text-xs text-muted-foreground truncate">
                           {d.active ? (p ? `${STATUS[st].label} · ${ago(p.updated_at)}` : "Sin ubicación") : "Acceso desactivado"}
                         </p>
@@ -528,6 +547,24 @@ function Stat({ label, value, color }: { label: string; value: string; color?: s
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="font-semibold" style={{ color: color ?? NAVY }}>{value}</p>
     </div>
+  );
+}
+
+// Apodo editable por el administrador principal (se guarda al salir del campo o con Enter)
+function NicknameField({ driver, onSave }: { driver: Driver; onSave: (d: Driver, nick: string) => void }) {
+  const [value, setValue] = useState(driver.nickname ?? "");
+  const save = () => {
+    if ((driver.nickname ?? "") !== value.trim()) onSave(driver, value);
+  };
+  return (
+    <input
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={save}
+      onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+      placeholder="+ Apodo (opcional)"
+      className="mt-1.5 w-44 text-xs border rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#F0A030]"
+    />
   );
 }
 
@@ -634,7 +671,7 @@ function TeamsBoard({
                         <GripVertical size={14} className="text-gray-300 shrink-0" />
                         <span className="text-xl leading-none">{emojiOf(d.vehicle_type)}</span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate" style={{ color: NAVY }}>{d.name}</p>
+                          <p className="text-sm font-medium truncate" style={{ color: NAVY }}>{nameOf(d)}</p>
                           <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
                             <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: STATUS[st].color }} />
                             {STATUS[st].label}{d.phone ? ` · ${d.phone}` : ""}
@@ -654,7 +691,7 @@ function TeamsBoard({
                           ))}
                         </select>
                         <Switch checked={d.active} onCheckedChange={(v) => onDriverActive(d, v)} title="Acceso" />
-                        <button onClick={() => onRemove("driver", d.id, d.name)} className="text-muted-foreground hover:text-red-600" title="Borrar usuario">
+                        <button onClick={() => onRemove("driver", d.id, nameOf(d))} className="text-muted-foreground hover:text-red-600" title="Borrar usuario">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -694,6 +731,7 @@ function TrackMap({
   const markers = useRef<Record<string, any>>({});
   const line = useRef<any>(null);
   const fitted = useRef(false);
+  const lastGeo = useRef<{ id: string; lat: number; lng: number } | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(MAPS_KEY ? null : "Falta la llave de Google Maps");
 
@@ -733,14 +771,14 @@ function TrackMap({
       };
       let m = markers.current[d.id];
       if (!m) {
-        m = new google.maps.Marker({ map: map.current, title: d.name });
+        m = new google.maps.Marker({ map: map.current, title: nameOf(d) });
         m.addListener("click", () => onSelect(d.id));
         markers.current[d.id] = m;
       }
       m.setPosition({ lat: p.lat, lng: p.lng });
       m.setIcon(icon);
       m.setLabel({ text: emojiOf(d.vehicle_type), fontSize: selected === d.id ? "18px" : "15px" });
-      m.setTitle(`${d.name} · ${STATUS[st].label}`);
+      m.setTitle(`${nameOf(d)} · ${STATUS[st].label}`);
     }
     for (const id of Object.keys(markers.current)) {
       if (!seen.has(id)) {
@@ -760,10 +798,13 @@ function TrackMap({
   // Recorrido y sector del usuario elegido
   const selPos = selected ? positions[selected] : undefined;
   useEffect(() => {
-    onArea(null);
     if (!ready) return;
     line.current?.setMap(null);
-    if (!selected) return;
+    if (!selected) {
+      onArea(null);
+      lastGeo.current = null;
+      return;
+    }
     const p = positions[selected];
     if (p) map.current.panTo({ lat: p.lat, lng: p.lng });
     const since = new Date(Date.now() - TRACK_HOURS * 3600 * 1000).toISOString();
@@ -781,7 +822,11 @@ function TrackMap({
           strokeColor: NAVY, strokeOpacity: 0.85, strokeWeight: 4,
         });
       });
-    if (p) {
+    // El nombre del sector se pide solo al elegir a alguien o si se movió más de 300 m (ahorra consultas)
+    const prev = lastGeo.current;
+    if (p && (!prev || prev.id !== selected || meters(prev, p) > 300)) {
+      if (!prev || prev.id !== selected) onArea(null);
+      lastGeo.current = { id: selected, lat: p.lat, lng: p.lng };
       new g.current.maps.Geocoder().geocode({ location: { lat: p.lat, lng: p.lng } }, (res: any[] | null, status: string) => {
         if (status === "OK" && res?.[0]) onArea(res[0].formatted_address);
       });

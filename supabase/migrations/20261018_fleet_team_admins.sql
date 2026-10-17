@@ -91,3 +91,6 @@ GRANT EXECUTE ON FUNCTION public.fleet_my_office() TO authenticated;
 
 ALTER PUBLICATION supabase_realtime ADD TABLE public.fleet_drivers;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.fleet_admins;
+
+-- Apodo que pone el administrador (se muestra como "Nombre (apodo)")
+ALTER TABLE public.fleet_drivers ADD COLUMN IF NOT EXISTS nickname text;

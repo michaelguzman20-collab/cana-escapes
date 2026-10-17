@@ -33,8 +33,8 @@ const APPS = [
       en: "Share your real-time location with your team. Great for transport, motorbike delivery and businesses with staff on the move. Join with just your name and WhatsApp.",
     },
     features: {
-      es: ["Entrada rápida con nombre y WhatsApp", "Sigue compartiendo en segundo plano", "Un toque para compartir o dejar de compartir", "Aviso para escribir por WhatsApp"],
-      en: ["Quick join with name and WhatsApp", "Keeps sharing in the background", "One tap to start or stop sharing", "Ping to reply on WhatsApp"],
+      es: ["Entrada rápida con nombre y WhatsApp", "Elige tu vehículo: moto, carro, minivan…", "Un toque para compartir o dejar de compartir", "Aviso para escribir por WhatsApp"],
+      en: ["Quick join with name and WhatsApp", "Pick your vehicle: motorbike, car, minivan…", "One tap to start or stop sharing", "Ping to reply on WhatsApp"],
     },
   },
 ];

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Download, Smartphone, ChevronDown, ShieldCheck, Sparkles, CheckCircle2, RefreshCw, BookOpen } from "lucide-react";
+import { Download, Smartphone, ChevronDown, ShieldCheck, Sparkles, CheckCircle2, RefreshCw, BookOpen, UserX } from "lucide-react";
 import { APP_GUIDES } from "@/content/appGuides";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
@@ -155,6 +155,25 @@ function AppCard({ app, releases }: { app: (typeof APPS)[number]; releases: Rele
             <Smartphone size={14} />
             {t("apps_android_only")}
           </span>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+          <Link
+            to={`/apps/${app.slug}/privacidad`}
+            className="inline-flex items-center gap-1.5 text-[#0F2B4C]/60 hover:text-[#b8761a]"
+          >
+            <ShieldCheck size={15} />
+            {l === "es" ? "Política de privacidad" : "Privacy policy"}
+          </Link>
+          {app.slug === "cana-track" && (
+            <Link
+              to="/apps/cana-track/borrar-cuenta"
+              className="inline-flex items-center gap-1.5 text-[#0F2B4C]/60 hover:text-[#b8761a]"
+            >
+              <UserX size={15} />
+              {l === "es" ? "Borrar mi cuenta" : "Delete my account"}
+            </Link>
+          )}
         </div>
       </div>
 

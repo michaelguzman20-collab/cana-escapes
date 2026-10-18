@@ -32,6 +32,8 @@ import { PropietariosPage } from "@/pages/PropietariosPage";
 import { ServiciosPage } from "@/pages/ServiciosPage";
 import { AppsPage } from "@/pages/AppsPage";
 import { AppGuidePage } from "@/pages/AppGuidePage";
+import { AppPrivacyPage } from "@/pages/AppPrivacyPage";
+import { TrackDeleteAccountPage } from "@/pages/TrackDeleteAccountPage";
 import { Logo } from "@/components/layout/Logo";
 
 function SetupScreen() {
@@ -152,6 +154,8 @@ export default function App() {
           <Route path="/servicios" element={<ServiciosPage />} />
           <Route path="/apps" element={<AppsPage />} />
           <Route path="/apps/:slug/guia" element={<AppGuidePage />} />
+          <Route path="/apps/:slug/privacidad" element={<AppPrivacyPage />} />
+          <Route path="/apps/cana-track/borrar-cuenta" element={<TrackDeleteAccountPage />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />

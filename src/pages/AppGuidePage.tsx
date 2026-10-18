@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { ArrowLeft, BookOpen, CheckCircle2, Download, Lightbulb, Smartphone, AlertTriangle } from "lucide-react";
+import { ArrowLeft, BookOpen, Download, ShieldCheck, Smartphone, UserX } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { LandingFooter } from "@/components/cana/LandingFooter";
-import { APP_GUIDES, guidePdfUrl, type AppGuide, type GuideBlock } from "@/content/appGuides";
+import { APP_GUIDES, guidePdfUrl, type AppGuide } from "@/content/appGuides";
+import { GuideBlockView as Block } from "@/components/cana/GuideBlockView";
 
 type Lang = "es" | "en";
 
@@ -17,6 +18,8 @@ const UI = {
     back: "Todas las apps",
     toc: "En esta guía",
     printUrl: "Guía en línea y descarga de la app:",
+    privacy: "Política de privacidad",
+    deleteAccount: "Borrar mi cuenta",
   },
   en: {
     badge: "User guide",
@@ -25,65 +28,10 @@ const UI = {
     back: "All apps",
     toc: "In this guide",
     printUrl: "Online guide and app download:",
+    privacy: "Privacy policy",
+    deleteAccount: "Delete my account",
   },
 };
-
-function Block({ block, l }: { block: GuideBlock; l: Lang }) {
-  switch (block.type) {
-    case "p":
-      return <p className="text-[#0F2B4C]/75 leading-relaxed">{block.text[l]}</p>;
-    case "steps":
-      return (
-        <ol className="space-y-3">
-          {block.items[l].map((item, i) => (
-            <li key={i} className="flex gap-3 text-[#0F2B4C]/80 leading-relaxed break-inside-avoid">
-              <span className="flex-shrink-0 w-7 h-7 rounded-full bg-[#0F2B4C] text-[#F0A030] text-sm font-bold flex items-center justify-center">
-                {i + 1}
-              </span>
-              <span className="pt-0.5">{item}</span>
-            </li>
-          ))}
-        </ol>
-      );
-    case "list":
-      return (
-        <ul className="space-y-2.5">
-          {block.items[l].map((item, i) => (
-            <li key={i} className="flex gap-2.5 text-[#0F2B4C]/80 leading-relaxed break-inside-avoid">
-              <CheckCircle2 size={17} className="text-[#F0A030] flex-shrink-0 mt-1" />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-      );
-    case "tip":
-    case "warn": {
-      const warn = block.type === "warn";
-      const Icon = warn ? AlertTriangle : Lightbulb;
-      return (
-        <div
-          className={`flex gap-3 rounded-2xl p-4 text-sm leading-relaxed break-inside-avoid ${
-            warn ? "bg-[#FDECEC] text-[#8a2626]" : "bg-[#F0A030]/15 text-[#6b4510]"
-          }`}
-        >
-          <Icon size={18} className="flex-shrink-0 mt-0.5" />
-          <span>{block.text[l]}</span>
-        </div>
-      );
-    }
-    case "faq":
-      return (
-        <dl className="divide-y divide-[#0F2B4C]/10">
-          {block.items.map((item, i) => (
-            <div key={i} className="py-3.5 first:pt-0 last:pb-0 break-inside-avoid">
-              <dt className="font-semibold text-[#0F2B4C]">{item.q[l]}</dt>
-              <dd className="mt-1 text-[#0F2B4C]/70 leading-relaxed">{item.a[l]}</dd>
-            </div>
-          ))}
-        </dl>
-      );
-  }
-}
 
 function GuideContent({ guide }: { guide: AppGuide }) {
   const { lang, setLang } = useLang();
@@ -207,6 +155,24 @@ function GuideContent({ guide }: { guide: AppGuide }) {
             </div>
           ))}
 
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm print:hidden">
+            <Link
+              to={`/apps/${guide.slug}/privacidad`}
+              className="inline-flex items-center gap-1.5 text-[#0F2B4C]/60 hover:text-[#b8761a]"
+            >
+              <ShieldCheck size={15} />
+              {ui.privacy}
+            </Link>
+            {guide.slug === "cana-track" && (
+              <Link
+                to="/apps/cana-track/borrar-cuenta"
+                className="inline-flex items-center gap-1.5 text-[#0F2B4C]/60 hover:text-[#b8761a]"
+              >
+                <UserX size={15} />
+                {ui.deleteAccount}
+              </Link>
+            )}
+          </div>
         </div>
       </main>
 

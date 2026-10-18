@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, processLock } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -16,5 +16,14 @@ const useServiceRole = import.meta.env.DEV &&
 
 export const supabase = createClient<Database>(
   supabaseUrl ?? "https://placeholder.supabase.co",
-  useServiceRole ? serviceRoleKey! : (supabaseAnonKey ?? "placeholder")
+  useServiceRole ? serviceRoleKey! : (supabaseAnonKey ?? "placeholder"),
+  {
+    auth: {
+      // Por defecto Supabase usa un candado del navegador compartido entre pestañas para renovar
+      // la sesión. Tras un rato sin usar la página (pestaña dormida u otra pestaña abierta) ese
+      // candado podía quedarse trabado para siempre: la página no cargaba ni al actualizar y había
+      // que borrar los datos del sitio. processLock es por pestaña y con tiempo máximo de espera.
+      lock: processLock,
+    },
+  }
 );

@@ -31,6 +31,7 @@ import { HomePage } from "@/pages/HomePage";
 import { PropietariosPage } from "@/pages/PropietariosPage";
 import { ServiciosPage } from "@/pages/ServiciosPage";
 import { AppsPage } from "@/pages/AppsPage";
+import { AppGuidePage } from "@/pages/AppGuidePage";
 import { Logo } from "@/components/layout/Logo";
 
 function SetupScreen() {
@@ -150,6 +151,7 @@ export default function App() {
           <Route path="/propietarios" element={<PropietariosPage />} />
           <Route path="/servicios" element={<ServiciosPage />} />
           <Route path="/apps" element={<AppsPage />} />
+          <Route path="/apps/:slug/guia" element={<AppGuidePage />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />

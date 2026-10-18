@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { Download, Smartphone, ChevronDown, ShieldCheck, Sparkles, CheckCircle2, RefreshCw } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Download, Smartphone, ChevronDown, ShieldCheck, Sparkles, CheckCircle2, RefreshCw, BookOpen } from "lucide-react";
+import { APP_GUIDES } from "@/content/appGuides";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
@@ -85,7 +87,7 @@ function AppCard({ app, releases }: { app: (typeof APPS)[number]; releases: Rele
   const older = releases.slice(1);
 
   return (
-    <article className="bg-white rounded-3xl border border-[#0F2B4C]/10 shadow-xl shadow-[#0F2B4C]/5 overflow-hidden">
+    <article id={app.slug} className="scroll-mt-24 bg-white rounded-3xl border border-[#0F2B4C]/10 shadow-xl shadow-[#0F2B4C]/5 overflow-hidden">
       <div className="p-6 sm:p-8">
         <div className="flex items-start gap-5">
           <img src={app.icon} alt="" className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl shadow-md flex-shrink-0" />
@@ -139,6 +141,15 @@ function AppCard({ app, releases }: { app: (typeof APPS)[number]; releases: Rele
             </a>
           ) : (
             <p className="text-sm text-[#0F2B4C]/60">{t("apps_no_release")}</p>
+          )}
+          {APP_GUIDES[app.slug] && (
+            <Link
+              to={`/apps/${app.slug}/guia`}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 font-semibold text-[#0F2B4C] border border-[#0F2B4C]/20 hover:bg-[#0F2B4C]/5 rounded-xl transition-colors"
+            >
+              <BookOpen size={18} />
+              {t("apps_guide")}
+            </Link>
           )}
           <span className="inline-flex items-center gap-1.5 text-xs text-[#0F2B4C]/50">
             <Smartphone size={14} />

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  MapPin, BellRing, MessageCircle, Battery, BatteryCharging, BatteryLow, Navigation,
+  MapPin, BellRing, MessageCircle, Navigation,
   History, Phone, Save, ExternalLink, CheckCircle2, RefreshCw, Trash2, Users, Map as MapIcon,
   GripVertical, ShieldCheck,
 } from "lucide-react";
@@ -57,6 +57,21 @@ const VEHICLES: Record<string, { emoji: string; label: string }> = {
 const emojiOf = (t: string | null | undefined) => VEHICLES[t ?? ""]?.emoji ?? "📍";
 // "Juan Pérez (El Flaco)": el apodo lo pone el administrador
 const nameOf = (d: Pick<Driver, "name" | "nickname">) => (d.nickname ? `${d.name} (${d.nickname})` : d.name);
+
+// Quita saltos imposibles del GPS (más de 150 km/h entre dos puntos) para que el recorrido no salga en zigzag
+function cleanTrack(rows: { lat: number; lng: number; recorded_at: string }[]) {
+  const out: { lat: number; lng: number; t: number }[] = [];
+  for (const r of rows) {
+    const p = { lat: r.lat, lng: r.lng, t: new Date(r.recorded_at).getTime() };
+    const prev = out[out.length - 1];
+    if (prev) {
+      const secs = Math.max(1, (p.t - prev.t) / 1000);
+      if (meters(prev, p) / secs > 42) continue; // 42 m/s ≈ 150 km/h
+    }
+    out.push(p);
+  }
+  return out.map(({ lat, lng }) => ({ lat, lng }));
+}
 
 // Distancia aproximada en metros (para no pedir el nombre del sector en cada paso)
 function meters(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
@@ -343,7 +358,7 @@ export function AdminTrack({ mode = "super" }: { mode?: "super" | "team" }) {
         />
       ) : (
         <div className="grid lg:grid-cols-[1fr_380px] gap-6">
-          <div className="space-y-6">
+          <div className="space-y-6 min-w-0">
             <TrackMap
               drivers={drivers}
               positions={positions}
@@ -403,7 +418,7 @@ export function AdminTrack({ mode = "super" }: { mode?: "super" | "team" }) {
             </Card>
           </div>
 
-          <div className="space-y-4 order-first lg:order-none">
+          <div className="space-y-4 order-first lg:order-none min-w-0">
             {sel && (
               <Card className="border-2" style={{ borderColor: AMBER }}>
                 <CardContent className="p-5 space-y-4">
@@ -437,7 +452,10 @@ export function AdminTrack({ mode = "super" }: { mode?: "super" | "team" }) {
                       <div className="grid grid-cols-2 gap-3 text-sm">
                         <Stat label="Estado" value={STATUS[statusOf(selPos)].label} color={STATUS[statusOf(selPos)].color} />
                         <Stat label="Velocidad" value={selPos.speed != null ? `${Math.round(selPos.speed * 3.6)} km/h` : "—"} />
-                        <Stat label="Batería" value={`${pct(selPos.battery)}${selPos.charging ? " ⚡" : ""}`} color={selPos.battery != null && selPos.battery < 0.2 ? "#C0392B" : undefined} />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Batería</p>
+                          <BatteryBar level={selPos.battery} charging={selPos.charging} />
+                        </div>
                         <Stat label="Último envío" value={ago(selPos.updated_at)} />
                       </div>
                     </>
@@ -495,7 +513,6 @@ export function AdminTrack({ mode = "super" }: { mode?: "super" | "team" }) {
                 {visibleDrivers.map((d) => {
                   const p = positions[d.id];
                   const st = statusOf(p);
-                  const BatIcon = p?.charging ? BatteryCharging : p?.battery != null && p.battery < 0.2 ? BatteryLow : Battery;
                   return (
                     <div
                       key={d.id}
@@ -519,11 +536,7 @@ export function AdminTrack({ mode = "super" }: { mode?: "super" | "team" }) {
                           {d.active ? (p ? `${STATUS[st].label} · ${ago(p.updated_at)}` : "Sin ubicación") : "Acceso desactivado"}
                         </p>
                       </div>
-                      {p?.battery != null && (
-                        <span className={cn("text-xs flex items-center gap-1", p.battery < 0.2 ? "text-red-600" : "text-muted-foreground")}>
-                          <BatIcon size={14} /> {pct(p.battery)}
-                        </span>
-                      )}
+                      {p?.battery != null && <BatteryBar level={p.battery} charging={p.charging} small />}
                       {isSuper && (
                         <div onClick={(e) => e.stopPropagation()} title={d.active ? "Desactivar acceso" : "Activar acceso"}>
                           <Switch checked={d.active} onCheckedChange={(v) => setDriverActive(d, v)} />
@@ -538,6 +551,28 @@ export function AdminTrack({ mode = "super" }: { mode?: "super" | "team" }) {
         </div>
       )}
     </div>
+  );
+}
+
+// Batería dibujada que se llena según la carga (verde, ámbar < 40 %, roja < 20 %), con ⚡ si carga
+function BatteryBar({ level, charging, small }: { level: number | null; charging: boolean | null; small?: boolean }) {
+  if (level == null) return <span className="text-sm text-muted-foreground">—</span>;
+  const p = Math.max(0, Math.min(1, level));
+  const color = p < 0.2 ? "#C0392B" : p < 0.4 ? AMBER : "#1E9E5A";
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 font-semibold", small ? "text-xs" : "text-sm")} style={{ color: p < 0.2 ? "#C0392B" : NAVY }}>
+      <span className="inline-flex items-center" title={`Batería ${Math.round(p * 100)}%${charging ? " (cargando)" : ""}`}>
+        <span
+          className={cn("relative rounded-[3px] border-2 p-[1.5px]", small ? "w-7 h-3.5" : "w-9 h-[18px]")}
+          style={{ borderColor: NAVY }}
+        >
+          <span className="block h-full rounded-[1px]" style={{ width: `${Math.max(p * 100, 6)}%`, backgroundColor: color }} />
+          {charging && <span className="absolute inset-0 flex items-center justify-center text-[9px] leading-none">⚡</span>}
+        </span>
+        <span className={cn("rounded-r-sm", small ? "w-[2px] h-1.5" : "w-[3px] h-2")} style={{ backgroundColor: NAVY }} />
+      </span>
+      {Math.round(p * 100)}%
+    </span>
   );
 }
 
@@ -807,18 +842,29 @@ function TrackMap({
     }
     const p = positions[selected];
     if (p) map.current.panTo({ lat: p.lat, lng: p.lng });
-    const since = new Date(Date.now() - TRACK_HOURS * 3600 * 1000).toISOString();
+    // Dibuja solo el viaje actual (desde que tocó «Compartir»), máximo las últimas horas
+    const maxSince = Date.now() - TRACK_HOURS * 3600 * 1000;
     supabase
-      .from("fleet_track")
-      .select("lat,lng")
+      .from("fleet_sessions")
+      .select("started_at")
       .eq("driver_id", selected)
-      .gte("recorded_at", since)
-      .order("recorded_at")
-      .limit(5000)
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data: sess }) => {
+        const start = sess ? new Date((sess as { started_at: string }).started_at).getTime() : maxSince;
+        return supabase
+          .from("fleet_track")
+          .select("lat,lng,recorded_at")
+          .eq("driver_id", selected)
+          .gte("recorded_at", new Date(Math.max(start, maxSince)).toISOString())
+          .order("recorded_at")
+          .limit(5000);
+      })
       .then(({ data }) => {
         line.current?.setMap(null);
         line.current = new g.current.maps.Polyline({
-          map: map.current, path: (data ?? []).map((r: any) => ({ lat: r.lat, lng: r.lng })),
+          map: map.current, path: cleanTrack((data ?? []) as any),
           strokeColor: NAVY, strokeOpacity: 0.85, strokeWeight: 4,
         });
       });
@@ -828,7 +874,14 @@ function TrackMap({
       if (!prev || prev.id !== selected) onArea(null);
       lastGeo.current = { id: selected, lat: p.lat, lng: p.lng };
       new g.current.maps.Geocoder().geocode({ location: { lat: p.lat, lng: p.lng } }, (res: any[] | null, status: string) => {
-        if (status === "OK" && res?.[0]) onArea(res[0].formatted_address);
+        if (status !== "OK" || !res?.length) return;
+        // Prefiere una dirección con calle (no un "plus code" como MHMJ+V79) y quita el país
+        const best = res.find((r: any) => !r.types?.includes("plus_code")) ?? res[0];
+        onArea(
+          String(best.formatted_address)
+            .replace(/^[A-Z0-9]{4,}\+[A-Z0-9]{2,},?\s*/, "")
+            .replace(/,?\s*Rep(ú|u)blica Dominicana$/i, "")
+        );
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

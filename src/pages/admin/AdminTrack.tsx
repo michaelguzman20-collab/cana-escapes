@@ -790,6 +790,13 @@ function TrackMap({
     trafficLayer.current.setMap(traffic ? map.current : null);
   }, [ready, traffic]);
 
+  // Satélite con nombres de calles. Cambiar la vista no cuenta como otra carga de mapa en Google (no cuesta más)
+  const [satellite, setSatellite] = useState(false);
+  useEffect(() => {
+    if (!ready) return;
+    map.current.setMapTypeId(satellite ? "hybrid" : "roadmap");
+  }, [ready, satellite]);
+
   // Marcadores con el icono del vehículo
   useEffect(() => {
     if (!ready) return;
@@ -899,15 +906,26 @@ function TrackMap({
           </p>
         </div>
       ) : (
-        <button
-          onClick={() => onTraffic(!traffic)}
-          className={cn(
-            "absolute top-3 left-3 px-3 py-1.5 rounded-full text-sm font-semibold shadow",
-            traffic ? "bg-[#0F2B4C] text-white" : "bg-white text-[#0F2B4C]"
-          )}
-        >
-          🚦 Tráfico
-        </button>
+        <div className="absolute top-3 left-3 flex gap-2">
+          <button
+            onClick={() => onTraffic(!traffic)}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-sm font-semibold shadow",
+              traffic ? "bg-[#0F2B4C] text-white" : "bg-white text-[#0F2B4C]"
+            )}
+          >
+            🚦 Tráfico
+          </button>
+          <button
+            onClick={() => setSatellite((v) => !v)}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-sm font-semibold shadow",
+              satellite ? "bg-[#0F2B4C] text-white" : "bg-white text-[#0F2B4C]"
+            )}
+          >
+            🛰️ Satélite
+          </button>
+        </div>
       )}
     </div>
   );

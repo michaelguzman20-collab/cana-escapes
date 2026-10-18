@@ -127,11 +127,20 @@ function loadGoogleMaps(): Promise<any> {
   if (!MAPS_KEY) return Promise.reject(new Error("sin llave"));
   if ((window as any).google?.maps) return Promise.resolve((window as any).google);
   mapsPromise ??= new Promise((resolve, reject) => {
+    // Carga asíncrona recomendada por Google: avisa por "callback" cuando el mapa está listo
+    (window as any).__canaTrackMapsReady = async () => {
+      const google = (window as any).google;
+      // Con loading=async cada parte (mapa, marcadores, direcciones) se carga aparte
+      await Promise.all(["maps", "marker", "geocoding"].map((lib) => google.maps.importLibrary(lib)));
+      resolve(google);
+    };
     const s = document.createElement("script");
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&language=es&region=DO`;
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&language=es&region=DO&loading=async&callback=__canaTrackMapsReady`;
     s.async = true;
-    s.onload = () => resolve((window as any).google);
-    s.onerror = () => reject(new Error("No se pudo cargar Google Maps"));
+    s.onerror = () => {
+      mapsPromise = null;
+      reject(new Error("No se pudo cargar Google Maps"));
+    };
     document.head.appendChild(s);
   });
   return mapsPromise;

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, lazy, Suspense, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
   ResponsiveContainer, ComposedChart, AreaChart, BarChart, Area, Line, Bar, XAxis, YAxis,
@@ -16,7 +16,7 @@ import { LandingFooter } from "@/components/cana/LandingFooter";
 import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
 import {
   fetchCanaDna, monthlySeries, trailingSummary, seasonalProfile, seasonalityScore, projectNext12,
-  canaScore, netIncome, latestIndicator, fmtUsd, fmtCompactUsd, MONTHS, MONTHS_LONG, BEDROOMS, SCORE_WEIGHTS,
+  canaScore, netIncome, latestIndicator, MONTHS, MONTHS_LONG, BEDROOMS, SCORE_WEIGHTS,
   TOP_PERFORMER, type CanaDnaData, type MarketZone, type MonthPoint,
 } from "@/lib/canaDna";
 
@@ -43,6 +43,9 @@ const TX = {
     nextUpdate: "Próxima",
     estimateNote: "Las cifras por zona son estimados de referencia de Cana Escapes.",
     pick: "Elige una zona",
+    currency: "Moneda",
+    rateNote: (rate: string, date: string) => `Tasa BCRD: ${rate} por US$1 · ${date}`,
+    rateShort: (rate: string) => `BCRD ${rate}`,
     pickHint: "Toca una zona para ver sus datos",
     all: "Todo el mercado",
     tabs: { overview: "Resumen", week: "Esta semana", perf: "Rendimiento", map: "Mapa", trends: "Mes a mes", season: "Temporadas", forecast: "Proyección", calc: "Calculadora", market: "Mercado" },
@@ -126,6 +129,9 @@ const TX = {
     nextUpdate: "Next",
     estimateNote: "Area figures are Cana Escapes reference estimates.",
     pick: "Pick an area",
+    currency: "Currency",
+    rateNote: (rate: string, date: string) => `BCRD rate: ${rate} per US$1 · ${date}`,
+    rateShort: (rate: string) => `BCRD ${rate}`,
     pickHint: "Tap an area to see its data",
     all: "Whole market",
     tabs: { overview: "Overview", week: "This week", perf: "Performance", map: "Map", trends: "Month by month", season: "Seasons", forecast: "Forecast", calc: "Calculator", market: "Market" },
@@ -228,6 +234,46 @@ const fmtDate = (iso: string, l: "es" | "en") =>
   new Date(iso).toLocaleDateString(l === "en" ? "en-US" : "es-DO", { day: "numeric", month: "long", year: "numeric" });
 const tenths = (occ: number) => Math.round(occ / 10);
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+// ── Moneda: todos los montos se guardan en US$ y se muestran en US$ o RD$ ────
+type Currency = "usd" | "dop";
+interface Money {
+  cur: Currency;
+  rate: number; // RD$ por US$1 (Banco Central)
+  fmt: (usd: number) => string;
+  compact: (usd: number) => string;
+}
+const CURRENCY_KEY = "cdna_currency";
+const formatUsd = (n: number) => `US$${Math.round(n).toLocaleString("en-US")}`;
+const formatDop = (n: number) => `RD$${Math.round(n).toLocaleString("en-US")}`;
+
+function makeMoney(cur: Currency, rate: number): Money {
+  const prefix = cur === "usd" ? "US$" : "RD$";
+  const conv = (usd: number) => (cur === "usd" ? usd : usd * rate);
+  return {
+    cur,
+    rate,
+    fmt: (usd) => `${prefix}${Math.round(conv(usd)).toLocaleString("en-US")}`,
+    compact: (usd) => {
+      const n = conv(usd);
+      const a = Math.abs(n);
+      if (a >= 1e6) return `${prefix}${(n / 1e6).toFixed(1)}M`;
+      if (a >= 1000) return `${prefix}${(n / 1000).toFixed(a >= 1e5 ? 0 : 1)}K`;
+      return `${prefix}${Math.round(n)}`;
+    },
+  };
+}
+
+const MoneyCtx = createContext<Money>(makeMoney("usd", FALLBACK_USD_DOP));
+const useMoney = () => useContext(MoneyCtx);
+
+function readCurrency(): Currency {
+  try {
+    return window.localStorage.getItem(CURRENCY_KEY) === "dop" ? "dop" : "usd";
+  } catch {
+    return "usd";
+  }
+}
 
 // ── Piezas ───────────────────────────────────────────────────────────────────
 
@@ -354,6 +400,18 @@ function CanaDnaContent() {
   const [touched, setTouched] = useState(false);
   const [metric, setMetric] = useState<MetricKey>("score");
   const [trendKey, setTrendKey] = useState<SeriesKey>("occupancy");
+  const [currency, setCurrencyState] = useState<Currency>(readCurrency);
+  const usdInd = data ? latestIndicator(data, "usd_dop") : null;
+  const rate = usdInd?.value ?? FALLBACK_USD_DOP;
+  const money = useMemo(() => makeMoney(currency, rate), [currency, rate]);
+  function setCurrency(c: Currency) {
+    setCurrencyState(c);
+    try {
+      window.localStorage.setItem(CURRENCY_KEY, c);
+    } catch {
+      /* sin almacenamiento: la elección vale solo para esta visita */
+    }
+  }
 
   function load() {
     setFailed(false);
@@ -382,7 +440,7 @@ function CanaDnaContent() {
   const profile = useMemo(() => seasonalProfile(series), [series]);
   const forecast = useMemo(() => projectNext12(series), [series]);
   const mapValues = useMemo(() => Object.fromEntries(zoneStats.map((s) => [s.zone.slug, metricValue(s, metric)])), [zoneStats, metric]);
-  const mapFormat = useMemo(() => (v: number) => formatMetric(metric, v), [metric]);
+  const mapFormat = useMemo(() => (v: number) => formatMetric(metric, v, money), [metric, money]);
 
   if (failed) {
     return (
@@ -421,6 +479,7 @@ function CanaDnaContent() {
   const kwhInd = latestIndicator(data, "kwh_cepm");
 
   return (
+    <MoneyCtx.Provider value={money}>
     <Shell tx={tx} l={l} lastRun={lastRun}>
       {/* ── Selector de zona ── */}
       <ZonePicker
@@ -430,6 +489,10 @@ function CanaDnaContent() {
         selected={zone}
         onSelect={pickZone}
         pulse={!touched}
+        currency={currency}
+        onCurrency={setCurrency}
+        rateLabel={tx.rateNote(`RD$${rate.toFixed(2)}`, (l === "es" ? usdInd?.period_label_es : usdInd?.period_label_en) ?? "")}
+        rateShort={tx.rateShort(`RD$${rate.toFixed(2)}`)}
       />
 
       {/* ── Resumen ── */}
@@ -437,7 +500,7 @@ function CanaDnaContent() {
         <SectionTitle id="overview" icon={<Dna size={26} />} title={`${tx.tabs.overview}: ${zoneLabel}`} />
         {cur && (
           <p className="mb-4 rounded-2xl bg-amber-50 border border-[#F0A030]/30 px-5 py-3.5 text-[#0F2B4C] leading-relaxed">
-            💡 {tx.simple(zoneLabel, tenths(cur.occupancy), fmtUsd(cur.adr), fmtUsd(cur.revenue))}
+            💡 {tx.simple(zoneLabel, tenths(cur.occupancy), money.fmt(cur.adr), money.fmt(cur.revenue))}
           </p>
         )}
         <div className="grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-4">
@@ -474,13 +537,13 @@ function CanaDnaContent() {
             )}
           </Card>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Kpi label={tx.kRevenue} value={cur ? fmtUsd(cur.revenue) : "—"} sub={tx.kRevenueSub} help={tx.help.revenue} delta={<Delta value={summary.change.revenue} tx={tx} />} />
+            <Kpi label={tx.kRevenue} value={cur ? money.fmt(cur.revenue) : "—"} sub={tx.kRevenueSub} help={tx.help.revenue} delta={<Delta value={summary.change.revenue} tx={tx} />} />
             <Kpi
               label={tx.kOcc} value={cur ? pct(cur.occupancy) : "—"} sub={cur ? `${tenths(cur.occupancy)} / 10 ${tx.nights}` : tx.kOccSub}
               help={tx.help.occ} delta={<Delta value={summary.change.occupancy} unit="pts" tx={tx} />} extra={cur && <NightDots occ={cur.occupancy} />}
             />
-            <Kpi label={tx.kAdr} value={cur ? fmtUsd(cur.adr) : "—"} sub={tx.kAdrSub} help={tx.help.adr} delta={<Delta value={summary.change.adr} tx={tx} />} />
-            <Kpi label={tx.kRevpar} value={cur ? fmtUsd(cur.revpar) : "—"} sub={tx.kRevparSub} help={tx.help.revpar} delta={<Delta value={summary.change.revpar} tx={tx} />} />
+            <Kpi label={tx.kAdr} value={cur ? money.fmt(cur.adr) : "—"} sub={tx.kAdrSub} help={tx.help.adr} delta={<Delta value={summary.change.adr} tx={tx} />} />
+            <Kpi label={tx.kRevpar} value={cur ? money.fmt(cur.revpar) : "—"} sub={tx.kRevparSub} help={tx.help.revpar} delta={<Delta value={summary.change.revpar} tx={tx} />} />
           </div>
         </div>
         <Card className="mt-4 p-5 flex flex-wrap items-center gap-x-8 gap-y-2">
@@ -531,7 +594,7 @@ function CanaDnaContent() {
                     >
                       <div className="flex items-center justify-between gap-2 text-sm">
                         <span className="font-medium text-[#0F2B4C]"><span className="text-[#0F2B4C]/35 mr-1.5 tabular-nums">{i + 1}</span>{s.zone.name}</span>
-                        <span className="font-bold text-[#0F2B4C] tabular-nums">{formatMetric(metric, v)}</span>
+                        <span className="font-bold text-[#0F2B4C] tabular-nums">{formatMetric(metric, v, money)}</span>
                       </div>
                       <div className="mt-1.5 h-1.5 rounded-full bg-[#F5F7FA] overflow-hidden">
                         <div className="h-full rounded-full bg-gradient-to-r from-[#F0A030] to-[#e5952a] transition-all duration-700" style={{ width: `${(v / max) * 100}%` }} />
@@ -604,6 +667,7 @@ function CanaDnaContent() {
         </div>
       </section>
     </Shell>
+    </MoneyCtx.Provider>
   );
 }
 
@@ -616,16 +680,17 @@ function metricValue(s: ZoneStat, m: MetricKey): number {
   return s.current ? s.current[m] : 0;
 }
 
-function formatMetric(m: MetricKey, v: number) {
+function formatMetric(m: MetricKey, v: number, money: Money) {
   if (m === "score") return String(Math.round(v));
   if (m === "occupancy") return pct(v);
-  if (m === "revenue") return fmtCompactUsd(v);
-  return fmtUsd(v);
+  if (m === "revenue") return money.compact(v);
+  return money.fmt(v);
 }
 
-function ZonePicker({ tx, zones, allScore, selected, onSelect, pulse }: {
+function ZonePicker({ tx, zones, allScore, selected, onSelect, pulse, currency, onCurrency, rateLabel, rateShort }: {
   tx: Tx; zones: { slug: string; name: string; score: number }[]; allScore: number;
   selected: string | null; onSelect: (s: string | null) => void; pulse: boolean;
+  currency: Currency; onCurrency: (c: Currency) => void; rateLabel: string; rateShort: string;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const scrollBy = (dx: number) => scroller.current?.scrollBy({ left: dx, behavior: "smooth" });
@@ -650,13 +715,33 @@ function ZonePicker({ tx, zones, allScore, selected, onSelect, pulse }: {
   return (
     <div className="sticky top-16 sm:top-20 z-30 rounded-3xl bg-white/95 backdrop-blur shadow-xl shadow-[#0F2B4C]/10 border border-[#0F2B4C]/10 px-3 sm:px-5 py-3 sm:py-4">
       <div className="flex items-center justify-between gap-3 mb-2.5">
-        <p className="flex items-center gap-2 text-sm font-bold text-[#0F2B4C]">
+        <p className="flex items-center gap-2 whitespace-nowrap text-sm font-bold text-[#0F2B4C]">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#F0A030]/15 text-[#b8761a]"><MapPin size={15} /></span>
           {tx.pick}
         </p>
-        <p className={`flex items-center gap-1.5 text-xs font-semibold text-[#b8761a] ${pulse ? "animate-pulse" : ""}`}>
-          <Hand size={14} /> <span className="hidden sm:inline">{tx.pickHint}</span><span className="sm:hidden">→</span>
-        </p>
+        <div className="flex items-center gap-3">
+          <p className={`hidden md:flex items-center gap-1.5 text-xs font-semibold text-[#b8761a] ${pulse ? "animate-pulse" : ""}`}>
+            <Hand size={14} /> {tx.pickHint}
+          </p>
+          {/* Moneda de toda la página + tasa del Banco Central que se usa para convertir */}
+          <div className="flex items-center gap-2">
+            <span className="hidden lg:inline text-[11px] text-[#0F2B4C]/45" title={rateLabel}>{rateLabel}</span>
+            <span className="lg:hidden text-[10px] text-[#0F2B4C]/45" title={rateLabel}>{rateShort}</span>
+            <span className="hidden sm:inline text-xs font-semibold text-[#0F2B4C]/60">{tx.currency}</span>
+            <div className="inline-flex rounded-xl bg-[#F5F7FA] border border-[#0F2B4C]/10 p-0.5 text-sm font-bold" role="group" aria-label={tx.currency}>
+              {(["usd", "dop"] as const).map((c) => (
+                <button
+                  key={c}
+                  onClick={() => onCurrency(c)}
+                  aria-pressed={currency === c}
+                  className={`px-3 py-1.5 rounded-lg transition-colors ${currency === c ? "bg-[#F0A030] text-[#0F2B4C] shadow" : "text-[#0F2B4C]/60 hover:text-[#0F2B4C]"}`}
+                >
+                  {c === "usd" ? "US$" : "RD$"}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
       <div className="relative">
         <button onClick={() => scrollBy(-260)} aria-label="←" className="hidden sm:flex absolute -left-2 top-1/2 -translate-y-1/2 z-10 h-9 w-9 items-center justify-center rounded-full bg-[#0F2B4C] text-white shadow-lg hover:bg-[#F0A030] hover:text-[#0F2B4C]">
@@ -738,6 +823,7 @@ function WeeklyBlock({ data, tx, l }: { data: CanaDnaData; tx: Tx; l: "es" | "en
 }
 
 function PerformanceBlock({ cur, tx, l }: { cur: NonNullable<ReturnType<typeof trailingSummary>["current"]>; tx: Tx; l: "es" | "en" }) {
+  const money = useMoney();
   const bySize = BEDROOMS.map((b) => {
     const occ = Math.min(95, cur.occupancy * b.occ);
     return { name: b[l], revenue: Math.round((occ / 100) * cur.adr * b.adr * 365) };
@@ -747,8 +833,8 @@ function PerformanceBlock({ cur, tx, l }: { cur: NonNullable<ReturnType<typeof t
   const topRev = (topOcc / 100) * topAdr * 365;
   const rows: [string, string, string][] = [
     [tx.kOcc, pct(cur.occupancy), pct(topOcc)],
-    [tx.kAdr, fmtUsd(cur.adr), fmtUsd(topAdr)],
-    [tx.kRevenue, fmtUsd(cur.revenue), fmtUsd(topRev)],
+    [tx.kAdr, money.fmt(cur.adr), money.fmt(topAdr)],
+    [tx.kRevenue, money.fmt(cur.revenue), money.fmt(topRev)],
   ];
   return (
     <div className="grid lg:grid-cols-2 gap-4">
@@ -759,9 +845,9 @@ function PerformanceBlock({ cur, tx, l }: { cur: NonNullable<ReturnType<typeof t
             <BarChart data={bySize} layout="vertical" margin={{ left: 0, right: 56 }}>
               <XAxis type="number" hide />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: NAVY }} width={110} />
-              <Tooltip formatter={(v) => fmtUsd(Number(v))} cursor={{ fill: "#F5F7FA" }} />
+              <Tooltip formatter={(v) => money.fmt(Number(v))} cursor={{ fill: "#F5F7FA" }} />
               <Bar dataKey="revenue" name={tx.kRevenue} radius={[0, 8, 8, 0]} animationDuration={900}
-                label={{ position: "right", fill: NAVY, fontSize: 12, fontWeight: 700, formatter: (v: unknown) => fmtCompactUsd(Number(v)) }}>
+                label={{ position: "right", fill: NAVY, fontSize: 12, fontWeight: 700, formatter: (v: unknown) => money.compact(Number(v)) }}>
                 {bySize.map((_, i) => <Cell key={i} fill={["#9DB7D8", "#5F86B6", "#3A6A9E", "#1d4470", NAVY][i]} />)}
               </Bar>
             </BarChart>
@@ -790,7 +876,7 @@ function PerformanceBlock({ cur, tx, l }: { cur: NonNullable<ReturnType<typeof t
           </tbody>
         </table>
         <div className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-emerald-800">
-          <span className="text-2xl font-bold tabular-nums">+{fmtUsd(topRev - cur.revenue)}</span> <span className="text-sm">{tx.more}</span>
+          <span className="text-2xl font-bold tabular-nums">+{money.fmt(topRev - cur.revenue)}</span> <span className="text-sm">{tx.more}</span>
         </div>
       </Card>
     </div>
@@ -800,10 +886,11 @@ function PerformanceBlock({ cur, tx, l }: { cur: NonNullable<ReturnType<typeof t
 function TrendsBlock({ series, revenueChange, tx, l, trendKey, setTrendKey }: {
   series: MonthPoint[]; revenueChange: number | null; tx: Tx; l: "es" | "en"; trendKey: SeriesKey; setTrendKey: (k: SeriesKey) => void;
 }) {
+  const money = useMoney();
   const last24 = series.slice(-24).map((p) => ({ ...p, label: `${MONTHS[l][p.month - 1]} ${String(p.year).slice(2)}` }));
   const vals = last24.map((p) => p[trendKey]);
   const avg = vals.reduce((s, v) => s + v, 0) / Math.max(1, vals.length);
-  const fmt = (v: number) => (trendKey === "occupancy" ? pct(v) : fmtUsd(v));
+  const fmt = (v: number) => (trendKey === "occupancy" ? pct(v) : money.fmt(v));
   const last12 = series.slice(-12);
   const prev12 = series.slice(-24, -12);
   const best = last12.length ? last12.reduce((a, b) => (b.revpar > a.revpar ? b : a)) : null;
@@ -830,7 +917,7 @@ function TrendsBlock({ series, revenueChange, tx, l, trendKey, setTrendKey }: {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke={NAVY} strokeOpacity={0.08} vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: NAVY }} interval={2} />
-              <YAxis tick={{ fontSize: 11, fill: NAVY }} tickFormatter={(v) => (trendKey === "occupancy" ? `${v}%` : fmtCompactUsd(v))} width={52} domain={trendKey === "occupancy" ? [0, 100] : ["auto", "auto"]} />
+              <YAxis tick={{ fontSize: 11, fill: NAVY }} tickFormatter={(v) => (trendKey === "occupancy" ? `${v}%` : money.compact(v))} width={52} domain={trendKey === "occupancy" ? [0, 100] : ["auto", "auto"]} />
               <Tooltip formatter={(v) => fmt(Number(v))} labelStyle={{ color: NAVY, fontWeight: 700 }} />
               <ReferenceLine y={avg} stroke={NAVY} strokeDasharray="6 4" strokeOpacity={0.5} label={{ value: `${tx.average} ${fmt(avg)}`, position: "insideTopLeft", fill: NAVY, fontSize: 11 }} />
               <Area key={trendKey} type="monotone" dataKey={trendKey} name={tx.series[trendKey]} stroke={c} strokeWidth={3} fill={`url(#trendFill-${trendKey})`} animationDuration={900} activeDot={{ r: 6 }} />
@@ -839,7 +926,7 @@ function TrendsBlock({ series, revenueChange, tx, l, trendKey, setTrendKey }: {
         </div>
         {best && worst && (
           <div className="mt-4 grid sm:grid-cols-3 gap-3 text-sm">
-            <p className="rounded-2xl bg-emerald-50 text-emerald-900 px-4 py-3">📈 {tx.insightBest(capitalize(MONTHS_LONG[l][best.month - 1]), tenths(best.occupancy), fmtUsd(best.adr))}</p>
+            <p className="rounded-2xl bg-emerald-50 text-emerald-900 px-4 py-3">📈 {tx.insightBest(capitalize(MONTHS_LONG[l][best.month - 1]), tenths(best.occupancy), money.fmt(best.adr))}</p>
             <p className="rounded-2xl bg-rose-50 text-rose-900 px-4 py-3">📉 {tx.insightWorst(capitalize(MONTHS_LONG[l][worst.month - 1]), tenths(worst.occupancy))}</p>
             {revenueChange != null && (
               <p className="rounded-2xl bg-[#F5F7FA] text-[#0F2B4C] px-4 py-3">{revenueChange >= 0 ? "🟢" : "🟠"} {tx.insightYoy(revenueChange >= 0, pct(Math.abs(revenueChange), 1))}</p>
@@ -855,8 +942,8 @@ function TrendsBlock({ series, revenueChange, tx, l, trendKey, setTrendKey }: {
             <ComposedChart data={yoy}>
               <CartesianGrid strokeDasharray="3 3" stroke={NAVY} strokeOpacity={0.08} vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: NAVY }} />
-              <YAxis tick={{ fontSize: 11, fill: NAVY }} tickFormatter={(v) => fmtCompactUsd(v)} width={52} />
-              <Tooltip formatter={(v) => fmtUsd(Number(v))} />
+              <YAxis tick={{ fontSize: 11, fill: NAVY }} tickFormatter={(v) => money.compact(v)} width={52} />
+              <Tooltip formatter={(v) => money.fmt(Number(v))} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Bar dataKey="prev" name={tx.lastYear} fill={SKY} fillOpacity={0.5} radius={[6, 6, 0, 0]} />
               <Line dataKey="cur" name={tx.thisYear} stroke={AMBER} strokeWidth={3} dot={{ r: 4, fill: AMBER }} />
@@ -869,6 +956,7 @@ function TrendsBlock({ series, revenueChange, tx, l, trendKey, setTrendKey }: {
 }
 
 function SeasonBlock({ profile, tx, l }: { profile: ReturnType<typeof seasonalProfile>; tx: Tx; l: "es" | "en" }) {
+  const money = useMoney();
   // Todo se compara por lo que gana la propiedad en el mes (la cifra grande de cada cuadro)
   const vals = profile.map(monthRevenue);
   const max = Math.max(...vals);
@@ -885,12 +973,12 @@ function SeasonBlock({ profile, tx, l }: { profile: ReturnType<typeof seasonalPr
         <Card className="p-5">
           <p className="text-sm text-[#0F2B4C]/60">{tx.best}</p>
           <p className="mt-1 text-2xl font-bold text-[#0F2B4C] capitalize">{MONTHS_LONG[l][best.month - 1]}</p>
-          <p className="text-xs text-[#0F2B4C]/50">≈ {fmtUsd(monthRevenue(best))} {tx.perMonthLabel} · {fmtUsd(best.adr)}{tx.perNightShort}</p>
+          <p className="text-xs text-[#0F2B4C]/50">≈ {money.fmt(monthRevenue(best))} {tx.perMonthLabel} · {money.fmt(best.adr)}{tx.perNightShort}</p>
         </Card>
         <Card className="p-5">
           <p className="text-sm text-[#0F2B4C]/60">{tx.worst}</p>
           <p className="mt-1 text-2xl font-bold text-[#0F2B4C] capitalize">{MONTHS_LONG[l][worst.month - 1]}</p>
-          <p className="text-xs text-[#0F2B4C]/50">≈ {fmtUsd(monthRevenue(worst))} {tx.perMonthLabel} · {fmtUsd(worst.adr)}{tx.perNightShort}</p>
+          <p className="text-xs text-[#0F2B4C]/50">≈ {money.fmt(monthRevenue(worst))} {tx.perMonthLabel} · {money.fmt(worst.adr)}{tx.perNightShort}</p>
         </Card>
         <Card className="p-5">
           <p className="text-sm text-[#0F2B4C]/60">{tx.seasonScore}</p>
@@ -914,8 +1002,8 @@ function SeasonBlock({ profile, tx, l }: { profile: ReturnType<typeof seasonalPr
                   <p className="text-xs font-bold uppercase tracking-wider">{MONTHS[l][p.month - 1]}</p>
                   <span className="text-sm" title={`${info.temp}°C`}>{info.icon} <span className="text-[11px] opacity-75">{info.temp}°</span></span>
                 </div>
-                <p className="mt-1 text-xl font-bold tabular-nums">{fmtUsd(monthRevenue(p))}<span className="text-[11px] font-medium opacity-75"> {tx.perMonthLabel}</span></p>
-                <p className="text-[11px] opacity-80">{fmtUsd(p.adr)}{tx.perNightShort} · {tenths(p.occupancy)}/10 {tx.nights}</p>
+                <p className="mt-1 text-xl font-bold tabular-nums">{money.fmt(monthRevenue(p))}<span className="text-[11px] font-medium opacity-75"> {tx.perMonthLabel}</span></p>
+                <p className="text-[11px] opacity-80">{money.fmt(p.adr)}{tx.perNightShort} · {tenths(p.occupancy)}/10 {tx.nights}</p>
                 <p className="mt-2 text-[11px] leading-snug opacity-90 min-h-[2.5em]">{info[l]}</p>
                 <span className={`mt-2 self-start px-2 py-0.5 rounded-full text-[10px] font-bold ${adviceStyle[a]}`}>{tx.advice[a]}</span>
               </div>
@@ -935,6 +1023,7 @@ function SeasonBlock({ profile, tx, l }: { profile: ReturnType<typeof seasonalPr
 const monthRevenue = (p: { month: number; revpar: number }) => p.revpar * new Date(2026, p.month, 0).getDate();
 
 function ForecastBlock({ forecast, tx, l }: { forecast: ReturnType<typeof projectNext12>; tx: Tx; l: "es" | "en" }) {
+  const money = useMoney();
   if (!forecast.length) return null;
   let acc = 0;
   const rows = forecast.map((p) => {
@@ -957,8 +1046,8 @@ function ForecastBlock({ forecast, tx, l }: { forecast: ReturnType<typeof projec
         {(["conservative", "base", "optimistic"] as const).map((k) => (
           <div key={k} className={`rounded-3xl p-5 ${k === "base" ? "bg-gradient-to-br from-[#0F2B4C] to-[#1d4470] text-white shadow-xl" : "bg-white border border-[#0F2B4C]/10 text-[#0F2B4C]"}`}>
             <p className={`text-xs font-semibold uppercase tracking-wider ${k === "base" ? "text-[#F0A030]" : "text-[#0F2B4C]/50"}`}>{tx[k]}</p>
-            <p className="mt-1 text-3xl font-bold tabular-nums">{fmtUsd(total(k))}</p>
-            <p className={`text-xs ${k === "base" ? "text-white/60" : "text-[#0F2B4C]/50"}`}>{tx.fcTotal} · {fmtUsd(total(k) / 12)}{tx.perMonth}</p>
+            <p className="mt-1 text-3xl font-bold tabular-nums">{money.fmt(total(k))}</p>
+            <p className={`text-xs ${k === "base" ? "text-white/60" : "text-[#0F2B4C]/50"}`}>{tx.fcTotal} · {money.fmt(total(k) / 12)}{tx.perMonth}</p>
           </div>
         ))}
       </div>
@@ -974,10 +1063,10 @@ function ForecastBlock({ forecast, tx, l }: { forecast: ReturnType<typeof projec
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke={NAVY} strokeOpacity={0.08} vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: NAVY }} />
-              <YAxis yAxisId="m" tick={{ fontSize: 11, fill: NAVY }} tickFormatter={(v) => fmtCompactUsd(v)} width={52} />
-              <YAxis yAxisId="c" orientation="right" tick={{ fontSize: 11, fill: SKY }} tickFormatter={(v) => fmtCompactUsd(v)} width={52} />
+              <YAxis yAxisId="m" tick={{ fontSize: 11, fill: NAVY }} tickFormatter={(v) => money.compact(v)} width={52} />
+              <YAxis yAxisId="c" orientation="right" tick={{ fontSize: 11, fill: SKY }} tickFormatter={(v) => money.compact(v)} width={52} />
               <Tooltip
-                formatter={(v) => (Array.isArray(v) ? `${fmtUsd(Number(v[0]))} – ${fmtUsd(Number(v[1]))}` : fmtUsd(Number(v)))}
+                formatter={(v) => (Array.isArray(v) ? `${money.fmt(Number(v[0]))} – ${money.fmt(Number(v[1]))}` : money.fmt(Number(v)))}
                 labelStyle={{ color: NAVY, fontWeight: 700 }}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
@@ -988,9 +1077,9 @@ function ForecastBlock({ forecast, tx, l }: { forecast: ReturnType<typeof projec
           </ResponsiveContainer>
         </div>
         <div className="mt-4 grid sm:grid-cols-3 gap-3 text-sm">
-          <p className="rounded-2xl bg-[#F5F7FA] px-4 py-3 text-[#0F2B4C]"><span className="text-[#0F2B4C]/55">{tx.fcAvg}</span><br /><span className="text-lg font-bold">{fmtUsd(total("base") / 12)}</span></p>
-          <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-emerald-900"><span className="opacity-70">{tx.fcBest}</span><br /><span className="text-lg font-bold">{best.label} · {fmtUsd(best.base)}</span></p>
-          <p className="rounded-2xl bg-rose-50 px-4 py-3 text-rose-900"><span className="opacity-70">{tx.fcWorst}</span><br /><span className="text-lg font-bold">{worst.label} · {fmtUsd(worst.base)}</span></p>
+          <p className="rounded-2xl bg-[#F5F7FA] px-4 py-3 text-[#0F2B4C]"><span className="text-[#0F2B4C]/55">{tx.fcAvg}</span><br /><span className="text-lg font-bold">{money.fmt(total("base") / 12)}</span></p>
+          <p className="rounded-2xl bg-emerald-50 px-4 py-3 text-emerald-900"><span className="opacity-70">{tx.fcBest}</span><br /><span className="text-lg font-bold">{best.label} · {money.fmt(best.base)}</span></p>
+          <p className="rounded-2xl bg-rose-50 px-4 py-3 text-rose-900"><span className="opacity-70">{tx.fcWorst}</span><br /><span className="text-lg font-bold">{worst.label} · {money.fmt(worst.base)}</span></p>
         </div>
       </Card>
       <Card className="p-4 sm:p-6">
@@ -1000,7 +1089,7 @@ function ForecastBlock({ forecast, tx, l }: { forecast: ReturnType<typeof projec
           {rows.map((r) => (
             <div key={r.label} className="rounded-2xl bg-[#F5F7FA] p-3">
               <p className="text-xs font-bold uppercase tracking-wider text-[#0F2B4C]/60">{r.label}</p>
-              <p className="mt-1 text-lg font-bold text-[#0F2B4C] tabular-nums">{fmtUsd(r.base)}</p>
+              <p className="mt-1 text-lg font-bold text-[#0F2B4C] tabular-nums">{money.fmt(r.base)}</p>
               <p className="text-[11px] text-[#0F2B4C]/50">≈ {r.nights} {tx.nights} {l === "es" ? "reservadas" : "booked"}</p>
               <div className="mt-2 h-1.5 rounded-full bg-white overflow-hidden">
                 <div className="h-full rounded-full bg-[#F0A030]" style={{ width: `${(r.base / maxBase) * 100}%` }} />
@@ -1016,12 +1105,12 @@ function ForecastBlock({ forecast, tx, l }: { forecast: ReturnType<typeof projec
 function NetCalculator({ tx, l, defaultAdr, defaultOcc, defaultPrice, kwhRd, kwhDate, usdDop }: {
   tx: Tx; l: "es" | "en"; defaultAdr: number; defaultOcc: number; defaultPrice: number; kwhRd: number; kwhDate: string; usdDop: number;
 }) {
+  const money = useMoney();
   const [bed, setBed] = useState<string>("1");
   const [occupancy, setOccupancy] = useState(Math.round(defaultOcc));
   const [adr, setAdr] = useState(Math.round(defaultAdr));
   const [price, setPrice] = useState(defaultPrice);
   const [management, setManagement] = useState(30);
-  const [priceCur, setPriceCur] = useState<"usd" | "dop">("usd");
   const [hoa, setHoa] = useState<number>(BEDROOMS[1].hoa);
   const [kwh, setKwh] = useState<number>(BEDROOMS[1].kwh);
   const [kwhPriceRd, setKwhPriceRd] = useState(kwhRd);
@@ -1029,10 +1118,10 @@ function NetCalculator({ tx, l, defaultAdr, defaultOcc, defaultPrice, kwhRd, kwh
   const itbis = 18;
   const kwhPriceUsd = rate > 0 ? kwhPriceRd / rate : 0;
   const r = netIncome({ adr, occupancy, price, itbis, management, hoaMonthly: hoa, kwhMonthly: kwh, kwhPriceUsd });
-  // El precio se guarda en US$; se puede ver y mover en RD$ (hasta RD$30 millones)
-  const fmtRd = (n: number) => `RD$${Math.round(n).toLocaleString("en-US")}`;
-  const priceShown = priceCur === "usd" ? price : price * rate;
-  const setPriceShown = (n: number) => setPrice(priceCur === "usd" ? n : rate > 0 ? n / rate : n);
+  // El precio se guarda en US$ y se mueve en la moneda elegida arriba (en RD$ hasta 30 millones)
+  const priceCur = money.cur;
+  const priceShown = priceCur === "usd" ? price : price * money.rate;
+  const setPriceShown = (n: number) => setPrice(priceCur === "usd" ? n : money.rate > 0 ? n / money.rate : n);
   const priceRange = priceCur === "usd" ? { min: 50000, max: 1500000, step: 5000 } : { min: 3000000, max: 30000000, step: 100000 };
 
   function pickBed(id: string) {
@@ -1051,11 +1140,11 @@ function NetCalculator({ tx, l, defaultAdr, defaultOcc, defaultPrice, kwhRd, kwh
     setRate(Math.round(usdDop * 100) / 100);
   }
 
-  const slider = (label: string, value: number, set: (n: number) => void, min: number, max: number, stepN: number, fmt: (n: number) => string, hint?: string) => (
+  const slider = (label: string, value: number, set: (n: number) => void, min: number, max: number, stepN: number, show: (n: number) => string, hint?: string) => (
     <label className="block">
       <div className="flex justify-between gap-2 text-sm">
         <span className="text-[#0F2B4C]/70">{label}{hint && <span className="text-[#0F2B4C]/40"> · {hint}</span>}</span>
-        <span className="font-semibold text-[#0F2B4C] tabular-nums text-right">{fmt(value)}</span>
+        <span className="font-semibold text-[#0F2B4C] tabular-nums text-right">{show(value)}</span>
       </div>
       <input type="range" min={min} max={max} step={stepN} value={value} onChange={(e) => set(Number(e.target.value))} className="mt-1.5 w-full accent-[#F0A030]" />
     </label>
@@ -1086,20 +1175,12 @@ function NetCalculator({ tx, l, defaultAdr, defaultOcc, defaultPrice, kwhRd, kwh
             ))}
           </div>
         </div>
-        {slider(tx.adr, adr, setAdr, 40, 1200, 5, (n) => fmtUsd(n))}
+        {slider(tx.adr, adr, setAdr, 40, 1200, 5, (n) => money.fmt(n))}
         {slider(tx.occ, occupancy, setOccupancy, 10, 95, 1, (n) => `${pct(n)} · ${Math.round(3.65 * n)} ${tx.nights}`)}
         <div>
           <div className="flex items-center justify-between gap-2 text-sm">
-            <span className="text-[#0F2B4C]/70">
-              {tx.price}: <b className="text-[#0F2B4C] tabular-nums">{priceCur === "usd" ? fmtUsd(price) : fmtRd(price * rate)}</b>
-            </span>
-            <div className="inline-flex rounded-lg bg-[#F5F7FA] p-0.5 text-xs font-semibold">
-              {(["usd", "dop"] as const).map((c) => (
-                <button key={c} onClick={() => setPriceCur(c)} className={`px-2.5 py-1 rounded-md ${priceCur === c ? "bg-[#0F2B4C] text-white" : "text-[#0F2B4C]/60"}`}>
-                  {c === "usd" ? "US$" : "RD$"}
-                </button>
-              ))}
-            </div>
+            <span className="text-[#0F2B4C]/70">{tx.price}</span>
+            <b className="text-[#0F2B4C] tabular-nums">{money.fmt(price)}</b>
           </div>
           <input
             type="range" min={priceRange.min} max={priceRange.max} step={priceRange.step}
@@ -1113,14 +1194,14 @@ function NetCalculator({ tx, l, defaultAdr, defaultOcc, defaultPrice, kwhRd, kwh
               onChange={(e) => setPriceShown(Number(e.target.value))}
               className="w-40 rounded-lg border border-[#0F2B4C]/15 bg-white px-3 py-1.5 text-sm font-semibold text-[#0F2B4C] tabular-nums"
             />
-            <span className="text-xs text-[#0F2B4C]/50 tabular-nums">≈ {priceCur === "usd" ? fmtRd(price * rate) : fmtUsd(price)}</span>
+            <span className="text-xs text-[#0F2B4C]/50 tabular-nums">≈ {priceCur === "usd" ? formatDop(price * money.rate) : formatUsd(price)}</span>
           </div>
         </div>
         {slider(tx.mgmt, management, setManagement, 0, 50, 1, (n) => pct(n), tx.mgmtHint)}
-        {slider(tx.hoa, hoa, setHoa, 0, 1500, 10, (n) => `${fmtUsd(n)}${tx.perMonthShort}`, tx.hoaHint)}
+        {slider(tx.hoa, hoa, setHoa, 0, 1500, 10, (n) => `${money.fmt(n)}${tx.perMonthShort}`, tx.hoaHint)}
 
         <div className="rounded-2xl bg-amber-50 border border-[#F0A030]/25 p-4 space-y-4">
-          <p className="flex items-center gap-2 text-sm font-semibold text-[#0F2B4C]"><Zap size={16} className="text-[#F0A030]" />{tx.power}: {fmtUsd(kwh * kwhPriceUsd)}{tx.perMonthShort}</p>
+          <p className="flex items-center gap-2 text-sm font-semibold text-[#0F2B4C]"><Zap size={16} className="text-[#F0A030]" />{tx.power}: {money.fmt(kwh * kwhPriceUsd)}{tx.perMonthShort}</p>
           {slider(tx.kwh, kwh, setKwh, 100, 3000, 25, (n) => `${n} kWh${tx.perMonthShort}`)}
           <div className="grid grid-cols-2 gap-3">
             <label className="block text-sm">
@@ -1145,13 +1226,13 @@ function NetCalculator({ tx, l, defaultAdr, defaultOcc, defaultPrice, kwhRd, kwh
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-2xl bg-[#F5F7FA] p-4">
             <p className="text-xs text-[#0F2B4C]/55">{tx.gross}</p>
-            <p className="text-2xl font-bold text-[#0F2B4C] tabular-nums">{fmtUsd(r.gross)}</p>
+            <p className="text-2xl font-bold text-[#0F2B4C] tabular-nums">{money.fmt(r.gross)}</p>
             <p className="text-xs text-[#0F2B4C]/45">{r.nights} {tx.nightsSold}</p>
           </div>
           <div className={`rounded-2xl p-4 ${r.net >= 0 ? "bg-[#0F2B4C]" : "bg-rose-700"}`}>
             <p className="text-xs text-white/60">{tx.net}</p>
-            <p className="text-2xl font-bold text-[#F0A030] tabular-nums">{fmtUsd(r.net)}</p>
-            <p className="text-xs text-white/50">{fmtUsd(r.net / 12)}{tx.perMonth}</p>
+            <p className="text-2xl font-bold text-[#F0A030] tabular-nums">{money.fmt(r.net)}</p>
+            <p className="text-xs text-white/50">{money.fmt(r.net / 12)}{tx.perMonth}</p>
           </div>
           <div className="rounded-2xl bg-[#F5F7FA] p-4">
             <p className="text-xs text-[#0F2B4C]/55">{tx.roi}</p>
@@ -1168,25 +1249,25 @@ function NetCalculator({ tx, l, defaultAdr, defaultOcc, defaultPrice, kwhRd, kwh
         {/* De cada dólar bruto, a dónde va */}
         <div className="mt-5 flex h-4 rounded-full overflow-hidden bg-[#F5F7FA]">
           {costs.map(([label, v, color]) => (
-            <div key={label} title={`${label}: ${fmtUsd(v)}`} style={{ width: `${r.gross > 0 ? (v / r.gross) * 100 : 0}%`, background: color }} className="transition-all duration-500" />
+            <div key={label} title={`${label}: ${money.fmt(v)}`} style={{ width: `${r.gross > 0 ? (v / r.gross) * 100 : 0}%`, background: color }} className="transition-all duration-500" />
           ))}
-          <div title={`${tx.net}: ${fmtUsd(r.net)}`} style={{ width: `${netShare * 100}%` }} className="bg-emerald-500 transition-all duration-500" />
+          <div title={`${tx.net}: ${money.fmt(r.net)}`} style={{ width: `${netShare * 100}%` }} className="bg-emerald-500 transition-all duration-500" />
         </div>
 
         <ul className="mt-4 space-y-2 text-sm">
           <li className="flex justify-between">
             <span className="text-[#0F2B4C]/65">{tx.gross}</span>
-            <span className="tabular-nums font-semibold text-[#0F2B4C]">{fmtUsd(r.gross)}</span>
+            <span className="tabular-nums font-semibold text-[#0F2B4C]">{money.fmt(r.gross)}</span>
           </li>
           {costs.map(([label, v, color]) => (
             <li key={label} className="flex justify-between items-center gap-2">
               <span className="flex items-center gap-2 text-[#0F2B4C]/65"><span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: color }} />− {label}</span>
-              <span className="tabular-nums text-rose-700">{fmtUsd(v)}</span>
+              <span className="tabular-nums text-rose-700">{money.fmt(v)}</span>
             </li>
           ))}
           <li className="flex justify-between border-t border-[#0F2B4C]/10 pt-2 font-semibold text-[#0F2B4C]">
             <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />= {tx.net}</span>
-            <span className="tabular-nums">{fmtUsd(r.net)}</span>
+            <span className="tabular-nums">{money.fmt(r.net)}</span>
           </li>
         </ul>
         <p className="mt-auto pt-5 text-xs text-[#0F2B4C]/50">{tx.calcNote}</p>

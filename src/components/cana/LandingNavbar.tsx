@@ -149,7 +149,7 @@ export function LandingNavbar() {
                 to="/"
                 aria-label={t("nav_back_home")}
                 title={t("nav_back_home")}
-                className="flex items-center gap-2 px-3 xl:px-5 py-2 text-sm font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-lg transition-colors shadow-lg shadow-[#F0A030]/20"
+                className="flex items-center gap-2 whitespace-nowrap px-3 xl:px-5 py-2 text-sm font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-lg transition-colors shadow-lg shadow-[#F0A030]/20"
               >
                 <Home size={14} />
                 {/* Icon-only between lg and xl so the nav fits with the Apps pill */}

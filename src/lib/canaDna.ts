@@ -53,10 +53,35 @@ export interface MarketNote {
   updated_at: string;
 }
 
+export interface MarketIndicator {
+  id: string;
+  key: string; // 'usd_dop' | 'kwh_cepm' | 'hotel_occ_bavaro' | 'arrivals_puj' | …
+  period: string;
+  period_label_es: string | null;
+  period_label_en: string | null;
+  value: number;
+  unit: string;
+  label_es: string;
+  label_en: string;
+  source: string | null;
+  source_url: string | null;
+  updated_at: string;
+}
+
+export interface MarketUpdate {
+  id: string;
+  ran_at: string;
+  summary_es: string;
+  summary_en: string;
+  sources: string[];
+}
+
 export interface CanaDnaData {
   zones: MarketZone[];
   months: MarketMonth[];
   notes: MarketNote[];
+  indicators: MarketIndicator[]; // el más reciente de cada key primero
+  updates: MarketUpdate[]; // más reciente primero
 }
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
@@ -78,10 +103,12 @@ export async function fetchCanaDna(): Promise<CanaDnaData> {
   const ctrl = new AbortController();
   const timer = window.setTimeout(() => ctrl.abort(), 12000);
   try {
-    const [zones, months, notes] = await Promise.all([
+    const [zones, months, notes, indicators, updates] = await Promise.all([
       getPublic<MarketZone[]>("market_zones?select=*&active=eq.true&order=sort_order", ctrl.signal),
       getPublic<MarketMonth[]>("market_monthly?select=*&order=year,month", ctrl.signal),
       getPublic<MarketNote[]>("market_notes?select=*&active=eq.true&order=sort_order", ctrl.signal),
+      getPublic<MarketIndicator[]>("market_indicators?select=*&order=key,period.desc", ctrl.signal),
+      getPublic<MarketUpdate[]>("market_updates?select=*&order=ran_at.desc&limit=10", ctrl.signal),
     ]);
     const num = (v: unknown) => (v == null ? null : Number(v));
     return {
@@ -94,6 +121,8 @@ export async function fetchCanaDna(): Promise<CanaDnaData> {
       })),
       months: months.map((m) => ({ ...m, occupancy: Number(m.occupancy), adr: Number(m.adr) })),
       notes,
+      indicators: indicators.map((i) => ({ ...i, value: Number(i.value) })),
+      updates,
     };
   } finally {
     window.clearTimeout(timer);
@@ -273,26 +302,46 @@ export function projectNext12(series: MonthPoint[]): ProjectionPoint[] {
   });
 }
 
-// ── Calculadora de ingreso neto (mismo modelo que /admin/calculadora) ────────
+/** Indicador más reciente por key. */
+export function latestIndicator(data: CanaDnaData, key: string) {
+  return data.indicators.filter((i) => i.key === key).sort((a, b) => (a.period < b.period ? 1 : -1))[0] ?? null;
+}
 
+// ── Rendimiento por tamaño y propiedades top ────────────────────────────────
+
+/**
+ * Multiplicadores de referencia sobre la propiedad típica de la zona (≈ 1–2 hab.):
+ * las unidades grandes cobran más por noche pero se llenan algo menos.
+ * kwh y hoa son consumo de luz al mes y cuota de mantenimiento (USD/mes) típicos.
+ */
 export const BEDROOMS = [
-  { id: "studio", es: "Estudio", en: "Studio", adr: 0.8 },
-  { id: "1", es: "1 habitación", en: "1 bedroom", adr: 1 },
-  { id: "2", es: "2 habitaciones", en: "2 bedrooms", adr: 1.4 },
-  { id: "3", es: "3 habitaciones", en: "3 bedrooms", adr: 1.85 },
-  { id: "4", es: "4+ habitaciones", en: "4+ bedrooms", adr: 2.6 },
+  { id: "studio", es: "Estudio", en: "Studio", adr: 0.8, occ: 1.04, kwh: 300, hoa: 120 },
+  { id: "1", es: "1 habitación", en: "1 bedroom", adr: 1, occ: 1, kwh: 450, hoa: 180 },
+  { id: "2", es: "2 habitaciones", en: "2 bedrooms", adr: 1.4, occ: 0.97, kwh: 650, hoa: 250 },
+  { id: "3", es: "3 habitaciones", en: "3 bedrooms", adr: 1.85, occ: 0.92, kwh: 900, hoa: 350 },
+  { id: "4", es: "4+ habitaciones", en: "4+ bedrooms", adr: 2.6, occ: 0.85, kwh: 1300, hoa: 500 },
 ] as const;
 
-export function netIncome(p: { adr: number; occupancy: number; price: number; itbis: number; commission: number; opex: number }) {
+/** Una propiedad bien gestionada (top 25 %) frente al promedio de la zona. */
+export const TOP_PERFORMER = { occPts: 15, adr: 1.15 };
+
+// ── Calculadora de ingreso neto (modelo de /admin/calculadora + luz y mantenimiento) ──
+
+export function netIncome(p: {
+  adr: number; occupancy: number; price: number; itbis: number; commission: number; opex: number;
+  hoaMonthly: number; kwhMonthly: number; kwhPriceUsd: number;
+}) {
   const occ = p.occupancy / 100;
   const nights = Math.round(365 * occ);
   const gross = p.adr * 365 * occ;
   const itbisAmt = gross * (p.itbis / 100);
   const commAmt = gross * (p.commission / 100);
   const opexAmt = gross * (p.opex / 100);
-  const net = gross - itbisAmt - commAmt - opexAmt;
+  const hoaAmt = p.hoaMonthly * 12;
+  const powerAmt = p.kwhMonthly * p.kwhPriceUsd * 12;
+  const net = gross - itbisAmt - commAmt - opexAmt - hoaAmt - powerAmt;
   return {
-    nights, gross, itbisAmt, commAmt, opexAmt, net,
+    nights, gross, itbisAmt, commAmt, opexAmt, hoaAmt, powerAmt, net,
     roiGross: p.price > 0 ? (gross / p.price) * 100 : 0,
     roiNet: p.price > 0 ? (net / p.price) * 100 : 0,
     payback: net > 0 ? p.price / net : null,

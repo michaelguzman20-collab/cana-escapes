@@ -89,7 +89,7 @@ INSERT INTO public.market_zones
    active_listings, listings_growth_pct, avg_property_price,
    score_demand, score_growth, score_seasonality, score_regulation, score_investability, sort_order)
 VALUES
-  ('bavaro', 'Bávaro', 18.672, -68.418,
+  ('bavaro', 'Bávaro', 18.652, -68.432,
    'El corazón turístico: playa, plazas comerciales y la mayor oferta de condos. Mucha demanda, pero también mucha competencia.',
    'The tourist heart: beaches, shopping plazas and the largest condo supply. Strong demand, but heavy competition.',
    ARRAY['Mayor volumen de huéspedes', 'Playa Bávaro y Los Corales a pie', 'Competencia alta en $80–150'],

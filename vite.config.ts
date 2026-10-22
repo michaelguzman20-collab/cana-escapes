@@ -9,6 +9,10 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // El worker de MapLibre (ver ZoneMap.tsx) es un módulo ES
+  worker: {
+    format: "es",
+  },
   server: {
     host: true, // listen on all network interfaces (0.0.0.0)
     port: 5173,

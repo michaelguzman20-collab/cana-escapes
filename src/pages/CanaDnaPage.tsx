@@ -770,6 +770,11 @@ function WeeklyBlock({ data, tx, l }: { data: CanaDnaData; tx: Tx; l: "es" | "en
   const latest = data.updates[0];
   const fmtVal = (unit: string, v: number) =>
     unit === "%" ? pct(v, 1) : unit === "turistas" ? (v >= 1e6 ? `${(v / 1e6).toFixed(2)}M` : v.toLocaleString("en-US")) : `RD$${v.toFixed(2)}`;
+  // La tarifa de luz se ve en la moneda elegida, con la otra entre paréntesis
+  const money = useMoney();
+  const kwhUsd = (rd: number) => `US$${(money.rate > 0 ? rd / money.rate : 0).toFixed(2)}`;
+  const kwhMain = (rd: number) => (money.cur === "usd" ? kwhUsd(rd) : `RD$${rd.toFixed(2)}`);
+  const kwhOther = (rd: number) => (money.cur === "usd" ? `RD$${rd.toFixed(2)}` : `≈ ${kwhUsd(rd)}`);
   return (
     <div className="grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-4">
       <div className="rounded-3xl p-6 bg-gradient-to-br from-[#0F2B4C] to-[#1d4470] text-white shadow-xl">
@@ -804,7 +809,14 @@ function WeeklyBlock({ data, tx, l }: { data: CanaDnaData; tx: Tx; l: "es" | "en
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#F0A030]/15 text-[#b8761a]"><Icon size={16} /></span>
                 {l === "es" ? ind.label_es : ind.label_en}
               </p>
-              <p className="mt-2 text-3xl font-bold text-[#0F2B4C] tabular-nums">{fmtVal(ind.unit, ind.value)}</p>
+              {k === "kwh_cepm" ? (
+                <p className="mt-2 text-3xl font-bold text-[#0F2B4C] tabular-nums">
+                  {kwhMain(ind.value)}
+                  <span className="text-sm font-medium text-[#0F2B4C]/50"> /kWh ({kwhOther(ind.value)})</span>
+                </p>
+              ) : (
+                <p className="mt-2 text-3xl font-bold text-[#0F2B4C] tabular-nums">{fmtVal(ind.unit, ind.value)}</p>
+              )}
               <p className="text-xs text-[#0F2B4C]/50">{l === "es" ? ind.period_label_es : ind.period_label_en}</p>
               {ind.source && (
                 <p className="mt-2 text-[11px] text-[#0F2B4C]/45">

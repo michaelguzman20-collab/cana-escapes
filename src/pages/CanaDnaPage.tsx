@@ -90,16 +90,20 @@ const TX = {
     insightYoy: (up: boolean, p: string) => (up ? `Este año se generó ${p} más que el año pasado.` : `Este año se generó ${p} menos que el año pasado: hay más competencia.`),
     yoyTitle: "Este año vs. año pasado", yoyDesc: "Ingreso de una propiedad típica en cada mes.",
     thisYear: "Últimos 12 meses", lastYear: "12 meses anteriores",
-    seasonTitle: "Calendario de temporadas", seasonDesc: "Qué esperar cada mes: lo que deja cada noche, el clima, los eventos y qué hacer con el precio.",
+    seasonTitle: "Calendario de temporadas", seasonDesc: "Qué esperar cada mes: cuánto se gana, a qué precio, el clima, los eventos y qué hacer con tu precio.",
+    seasonHow: "Cómo leer cada mes: la cifra grande es lo que gana una propiedad típica de la zona en ese mes (estimado, antes de gastos). Debajo verás el precio promedio por noche y cuántas de cada 10 noches se reservan. Cuanto más oscuro el cuadro, más rentable es el mes.",
+    perMonthLabel: "al mes", perNightShort: "/noche",
     best: "Mejor mes", worst: "Mes más flojo", seasonScore: "Estabilidad del ingreso", seasonScoreHint: "100 = gana lo mismo todo el año",
     advice: { up: "Sube precios", normal: "Precio normal", down: "Promociones" },
     perNight: "por noche disponible",
     fcTitle: "Proyección de ingresos — próximos 12 meses", fcDesc: "Basada en el mismo mes del año pasado y la tendencia de la zona. La franja muestra el rango entre un escenario conservador y uno optimista.",
     conservative: "Conservador", base: "Esperado", optimistic: "Optimista", fcTotal: "en 12 meses", range: "Rango posible", cumulative: "Acumulado",
     fcAvg: "Promedio al mes", fcBest: "Mejor mes", fcWorst: "Mes más bajo",
-    calcTitle: "Calculadora de ingreso neto RD", calcDesc: "Lo que te queda de verdad después de ITBIS, comisiones, mantenimiento del condominio y luz.",
+    fcMonthsTitle: "Detalle de cada mes (escenario esperado)",
+    fcMonthsDesc: "Cuánto podría ganar una propiedad típica en cada uno de los próximos 12 meses y cuántas noches se reservarían. La barra compara cada mes con el mejor.",
+    calcTitle: "Calculadora de ingreso neto RD", calcDesc: "Lo que te queda de verdad después de ITBIS, gestión de la propiedad, mantenimiento del condominio y luz.",
     bedrooms: "Tamaño", occ: "Noches reservadas (ocupación)", adr: "Precio por noche", price: "Precio de compra",
-    commission: "Comisión de plataformas", opex: "Gestión, limpieza y otros", itbis: "ITBIS",
+    mgmt: "Gestión de propiedad", mgmtHint: "comisiones de plataformas, gestión y limpieza", itbis: "ITBIS",
     hoa: "Mantenimiento del condominio", hoaHint: "cuota mensual", perMonthShort: "/mes",
     power: "Luz", kwh: "Consumo", kwhPrice: "Tarifa", rate: "Tasa del dólar",
     powerSource: (rd: string, date: string) => `Tarifa CEPM ${rd}/kWh (${date}). Con huéspedes y aire acondicionado, la luz es uno de los gastos más altos.`,
@@ -169,16 +173,20 @@ const TX = {
     insightYoy: (up: boolean, p: string) => (up ? `This year earned ${p} more than last year.` : `This year earned ${p} less than last year: there is more competition.`),
     yoyTitle: "This year vs. last year", yoyDesc: "Revenue of a typical listing each month.",
     thisYear: "Last 12 months", lastYear: "Previous 12 months",
-    seasonTitle: "Season calendar", seasonDesc: "What to expect each month: earnings per night, weather, events and what to do with your price.",
+    seasonTitle: "Season calendar", seasonDesc: "What to expect each month: how much you earn, at what price, the weather, events and what to do with your price.",
+    seasonHow: "How to read each month: the big number is what a typical listing in the area earns that month (estimate, before costs). Below it you'll see the average price per night and how many out of 10 nights get booked. The darker the box, the more profitable the month.",
+    perMonthLabel: "per month", perNightShort: "/night",
     best: "Best month", worst: "Weakest month", seasonScore: "Income stability", seasonScoreHint: "100 = earns the same all year",
     advice: { up: "Raise prices", normal: "Normal price", down: "Promotions" },
     perNight: "per available night",
     fcTitle: "Revenue forecast — next 12 months", fcDesc: "Based on the same month last year and the area's trend. The band shows the range between a conservative and an optimistic scenario.",
     conservative: "Conservative", base: "Expected", optimistic: "Optimistic", fcTotal: "over 12 months", range: "Possible range", cumulative: "Cumulative",
     fcAvg: "Monthly average", fcBest: "Best month", fcWorst: "Lowest month",
-    calcTitle: "DR net income calculator", calcDesc: "What you really keep after ITBIS, platform fees, condo maintenance and electricity.",
+    fcMonthsTitle: "Month-by-month detail (expected scenario)",
+    fcMonthsDesc: "What a typical listing could earn in each of the next 12 months and how many nights would be booked. The bar compares each month with the best one.",
+    calcTitle: "DR net income calculator", calcDesc: "What you really keep after ITBIS, property management, condo maintenance and electricity.",
     bedrooms: "Size", occ: "Nights booked (occupancy)", adr: "Price per night", price: "Purchase price",
-    commission: "Platform fees", opex: "Management, cleaning & other", itbis: "ITBIS (VAT)",
+    mgmt: "Property management", mgmtHint: "platform fees, management and cleaning", itbis: "ITBIS (VAT)",
     hoa: "Condo maintenance fee", hoaHint: "monthly fee", perMonthShort: "/mo",
     power: "Electricity", kwh: "Usage", kwhPrice: "Rate", rate: "Dollar rate",
     powerSource: (rd: string, date: string) => `CEPM rate ${rd}/kWh (${date}). With guests and air conditioning, power is one of the biggest costs.`,
@@ -861,12 +869,13 @@ function TrendsBlock({ series, revenueChange, tx, l, trendKey, setTrendKey }: {
 }
 
 function SeasonBlock({ profile, tx, l }: { profile: ReturnType<typeof seasonalProfile>; tx: Tx; l: "es" | "en" }) {
-  const vals = profile.map((p) => p.revpar);
+  // Todo se compara por lo que gana la propiedad en el mes (la cifra grande de cada cuadro)
+  const vals = profile.map(monthRevenue);
   const max = Math.max(...vals);
   const min = Math.min(...vals);
   const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
-  const best = profile.reduce((a, b) => (b.revpar > a.revpar ? b : a));
-  const worst = profile.reduce((a, b) => (b.revpar < a.revpar ? b : a));
+  const best = profile.reduce((a, b) => (monthRevenue(b) > monthRevenue(a) ? b : a));
+  const worst = profile.reduce((a, b) => (monthRevenue(b) < monthRevenue(a) ? b : a));
   const shade = (v: number) => (max === min ? 0.5 : (v - min) / (max - min));
   const advice = (v: number): keyof Tx["advice"] => (v > mean * 1.12 ? "up" : v < mean * 0.88 ? "down" : "normal");
   const adviceStyle = { up: "bg-emerald-100 text-emerald-800", normal: "bg-white/80 text-[#0F2B4C]", down: "bg-rose-100 text-rose-800" };
@@ -876,12 +885,12 @@ function SeasonBlock({ profile, tx, l }: { profile: ReturnType<typeof seasonalPr
         <Card className="p-5">
           <p className="text-sm text-[#0F2B4C]/60">{tx.best}</p>
           <p className="mt-1 text-2xl font-bold text-[#0F2B4C] capitalize">{MONTHS_LONG[l][best.month - 1]}</p>
-          <p className="text-xs text-[#0F2B4C]/50">{fmtUsd(best.revpar)} {tx.perNight}</p>
+          <p className="text-xs text-[#0F2B4C]/50">≈ {fmtUsd(monthRevenue(best))} {tx.perMonthLabel} · {fmtUsd(best.adr)}{tx.perNightShort}</p>
         </Card>
         <Card className="p-5">
           <p className="text-sm text-[#0F2B4C]/60">{tx.worst}</p>
           <p className="mt-1 text-2xl font-bold text-[#0F2B4C] capitalize">{MONTHS_LONG[l][worst.month - 1]}</p>
-          <p className="text-xs text-[#0F2B4C]/50">{fmtUsd(worst.revpar)} {tx.perNight}</p>
+          <p className="text-xs text-[#0F2B4C]/50">≈ {fmtUsd(monthRevenue(worst))} {tx.perMonthLabel} · {fmtUsd(worst.adr)}{tx.perNightShort}</p>
         </Card>
         <Card className="p-5">
           <p className="text-sm text-[#0F2B4C]/60">{tx.seasonScore}</p>
@@ -892,9 +901,9 @@ function SeasonBlock({ profile, tx, l }: { profile: ReturnType<typeof seasonalPr
       <Card className="p-3 sm:p-5">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2.5">
           {profile.map((p) => {
-            const s = shade(p.revpar);
+            const s = shade(monthRevenue(p));
             const info = SEASON_INFO[p.month - 1];
-            const a = advice(p.revpar);
+            const a = advice(monthRevenue(p));
             return (
               <div
                 key={p.month}
@@ -905,18 +914,25 @@ function SeasonBlock({ profile, tx, l }: { profile: ReturnType<typeof seasonalPr
                   <p className="text-xs font-bold uppercase tracking-wider">{MONTHS[l][p.month - 1]}</p>
                   <span className="text-sm" title={`${info.temp}°C`}>{info.icon} <span className="text-[11px] opacity-75">{info.temp}°</span></span>
                 </div>
-                <p className="mt-1 text-xl font-bold tabular-nums">{fmtUsd(p.revpar)}</p>
-                <p className="text-[11px] opacity-75">{tenths(p.occupancy)}/10 {tx.nights} · {fmtUsd(p.adr)}</p>
+                <p className="mt-1 text-xl font-bold tabular-nums">{fmtUsd(monthRevenue(p))}<span className="text-[11px] font-medium opacity-75"> {tx.perMonthLabel}</span></p>
+                <p className="text-[11px] opacity-80">{fmtUsd(p.adr)}{tx.perNightShort} · {tenths(p.occupancy)}/10 {tx.nights}</p>
                 <p className="mt-2 text-[11px] leading-snug opacity-90 min-h-[2.5em]">{info[l]}</p>
                 <span className={`mt-2 self-start px-2 py-0.5 rounded-full text-[10px] font-bold ${adviceStyle[a]}`}>{tx.advice[a]}</span>
               </div>
             );
           })}
         </div>
+        <p className="mt-4 flex gap-2 rounded-2xl bg-[#F5F7FA] px-4 py-3 text-sm text-[#0F2B4C]/75">
+          <Info size={16} className="flex-shrink-0 mt-0.5 text-[#b8761a]" />
+          {tx.seasonHow}
+        </p>
       </Card>
     </div>
   );
 }
+
+/** Ingreso de una propiedad típica en un mes del calendario (RevPAR × días del mes). */
+const monthRevenue = (p: { month: number; revpar: number }) => p.revpar * new Date(2026, p.month, 0).getDate();
 
 function ForecastBlock({ forecast, tx, l }: { forecast: ReturnType<typeof projectNext12>; tx: Tx; l: "es" | "en" }) {
   if (!forecast.length) return null;
@@ -977,18 +993,22 @@ function ForecastBlock({ forecast, tx, l }: { forecast: ReturnType<typeof projec
           <p className="rounded-2xl bg-rose-50 px-4 py-3 text-rose-900"><span className="opacity-70">{tx.fcWorst}</span><br /><span className="text-lg font-bold">{worst.label} · {fmtUsd(worst.base)}</span></p>
         </div>
       </Card>
-      <div className="flex gap-2.5 overflow-x-auto pb-2">
-        {rows.map((r) => (
-          <div key={r.label} className="flex-shrink-0 w-28 rounded-2xl bg-white border border-[#0F2B4C]/10 p-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-[#0F2B4C]/60">{r.label}</p>
-            <p className="mt-1 text-base font-bold text-[#0F2B4C] tabular-nums">{fmtCompactUsd(r.base)}</p>
-            <p className="text-[11px] text-[#0F2B4C]/50">≈ {r.nights} {tx.nights}</p>
-            <div className="mt-2 h-1.5 rounded-full bg-[#F5F7FA] overflow-hidden">
-              <div className="h-full rounded-full bg-[#F0A030]" style={{ width: `${(r.base / maxBase) * 100}%` }} />
+      <Card className="p-4 sm:p-6">
+        <h3 className="font-semibold text-[#0F2B4C]">{tx.fcMonthsTitle}</h3>
+        <p className="text-xs text-[#0F2B4C]/55">{tx.fcMonthsDesc}</p>
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2.5">
+          {rows.map((r) => (
+            <div key={r.label} className="rounded-2xl bg-[#F5F7FA] p-3">
+              <p className="text-xs font-bold uppercase tracking-wider text-[#0F2B4C]/60">{r.label}</p>
+              <p className="mt-1 text-lg font-bold text-[#0F2B4C] tabular-nums">{fmtUsd(r.base)}</p>
+              <p className="text-[11px] text-[#0F2B4C]/50">≈ {r.nights} {tx.nights} {l === "es" ? "reservadas" : "booked"}</p>
+              <div className="mt-2 h-1.5 rounded-full bg-white overflow-hidden">
+                <div className="h-full rounded-full bg-[#F0A030]" style={{ width: `${(r.base / maxBase) * 100}%` }} />
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }
@@ -1000,15 +1020,20 @@ function NetCalculator({ tx, l, defaultAdr, defaultOcc, defaultPrice, kwhRd, kwh
   const [occupancy, setOccupancy] = useState(Math.round(defaultOcc));
   const [adr, setAdr] = useState(Math.round(defaultAdr));
   const [price, setPrice] = useState(defaultPrice);
-  const [commission, setCommission] = useState(12);
-  const [opex, setOpex] = useState(20);
+  const [management, setManagement] = useState(30);
+  const [priceCur, setPriceCur] = useState<"usd" | "dop">("usd");
   const [hoa, setHoa] = useState<number>(BEDROOMS[1].hoa);
   const [kwh, setKwh] = useState<number>(BEDROOMS[1].kwh);
   const [kwhPriceRd, setKwhPriceRd] = useState(kwhRd);
   const [rate, setRate] = useState(Math.round(usdDop * 100) / 100);
   const itbis = 18;
   const kwhPriceUsd = rate > 0 ? kwhPriceRd / rate : 0;
-  const r = netIncome({ adr, occupancy, price, itbis, commission, opex, hoaMonthly: hoa, kwhMonthly: kwh, kwhPriceUsd });
+  const r = netIncome({ adr, occupancy, price, itbis, management, hoaMonthly: hoa, kwhMonthly: kwh, kwhPriceUsd });
+  // El precio se guarda en US$; se puede ver y mover en RD$ (hasta RD$30 millones)
+  const fmtRd = (n: number) => `RD$${Math.round(n).toLocaleString("en-US")}`;
+  const priceShown = priceCur === "usd" ? price : price * rate;
+  const setPriceShown = (n: number) => setPrice(priceCur === "usd" ? n : rate > 0 ? n / rate : n);
+  const priceRange = priceCur === "usd" ? { min: 50000, max: 1500000, step: 5000 } : { min: 3000000, max: 30000000, step: 100000 };
 
   function pickBed(id: string) {
     const b = BEDROOMS.find((x) => x.id === id);
@@ -1038,8 +1063,7 @@ function NetCalculator({ tx, l, defaultAdr, defaultOcc, defaultPrice, kwhRd, kwh
 
   const costs: [string, number, string][] = [
     [`${tx.itbis} (${itbis}%)`, r.itbisAmt, "#e11d48"],
-    [`${tx.commission} (${commission}%)`, r.commAmt, "#f97316"],
-    [`${tx.opex} (${opex}%)`, r.opexAmt, "#a855f7"],
+    [`${tx.mgmt} (${management}%)`, r.mgmtAmt, "#a855f7"],
     [tx.hoa, r.hoaAmt, "#0ea5e9"],
     [tx.power, r.powerAmt, "#eab308"],
   ];
@@ -1064,9 +1088,35 @@ function NetCalculator({ tx, l, defaultAdr, defaultOcc, defaultPrice, kwhRd, kwh
         </div>
         {slider(tx.adr, adr, setAdr, 40, 1200, 5, (n) => fmtUsd(n))}
         {slider(tx.occ, occupancy, setOccupancy, 10, 95, 1, (n) => `${pct(n)} · ${Math.round(3.65 * n)} ${tx.nights}`)}
-        {slider(tx.price, price, setPrice, 50000, 1500000, 5000, (n) => fmtUsd(n))}
-        {slider(tx.commission, commission, setCommission, 0, 25, 0.5, (n) => pct(n, 1))}
-        {slider(tx.opex, opex, setOpex, 5, 40, 1, (n) => pct(n))}
+        <div>
+          <div className="flex items-center justify-between gap-2 text-sm">
+            <span className="text-[#0F2B4C]/70">
+              {tx.price}: <b className="text-[#0F2B4C] tabular-nums">{priceCur === "usd" ? fmtUsd(price) : fmtRd(price * rate)}</b>
+            </span>
+            <div className="inline-flex rounded-lg bg-[#F5F7FA] p-0.5 text-xs font-semibold">
+              {(["usd", "dop"] as const).map((c) => (
+                <button key={c} onClick={() => setPriceCur(c)} className={`px-2.5 py-1 rounded-md ${priceCur === c ? "bg-[#0F2B4C] text-white" : "text-[#0F2B4C]/60"}`}>
+                  {c === "usd" ? "US$" : "RD$"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <input
+            type="range" min={priceRange.min} max={priceRange.max} step={priceRange.step}
+            value={Math.min(priceRange.max, Math.max(priceRange.min, priceShown))}
+            onChange={(e) => setPriceShown(Number(e.target.value))}
+            className="mt-1.5 w-full accent-[#F0A030]"
+          />
+          <div className="mt-1 flex items-center justify-between gap-3">
+            <input
+              type="number" min={0} step={priceCur === "usd" ? 1000 : 50000} value={Math.round(priceShown)}
+              onChange={(e) => setPriceShown(Number(e.target.value))}
+              className="w-40 rounded-lg border border-[#0F2B4C]/15 bg-white px-3 py-1.5 text-sm font-semibold text-[#0F2B4C] tabular-nums"
+            />
+            <span className="text-xs text-[#0F2B4C]/50 tabular-nums">≈ {priceCur === "usd" ? fmtRd(price * rate) : fmtUsd(price)}</span>
+          </div>
+        </div>
+        {slider(tx.mgmt, management, setManagement, 0, 50, 1, (n) => pct(n), tx.mgmtHint)}
         {slider(tx.hoa, hoa, setHoa, 0, 1500, 10, (n) => `${fmtUsd(n)}${tx.perMonthShort}`, tx.hoaHint)}
 
         <div className="rounded-2xl bg-amber-50 border border-[#F0A030]/25 p-4 space-y-4">

@@ -328,20 +328,20 @@ export const TOP_PERFORMER = { occPts: 15, adr: 1.15 };
 // ── Calculadora de ingreso neto (modelo de /admin/calculadora + luz y mantenimiento) ──
 
 export function netIncome(p: {
-  adr: number; occupancy: number; price: number; itbis: number; commission: number; opex: number;
+  adr: number; occupancy: number; price: number; itbis: number;
+  management: number; // % del bruto: comisiones de plataformas + gestión + limpieza
   hoaMonthly: number; kwhMonthly: number; kwhPriceUsd: number;
 }) {
   const occ = p.occupancy / 100;
   const nights = Math.round(365 * occ);
   const gross = p.adr * 365 * occ;
   const itbisAmt = gross * (p.itbis / 100);
-  const commAmt = gross * (p.commission / 100);
-  const opexAmt = gross * (p.opex / 100);
+  const mgmtAmt = gross * (p.management / 100);
   const hoaAmt = p.hoaMonthly * 12;
   const powerAmt = p.kwhMonthly * p.kwhPriceUsd * 12;
-  const net = gross - itbisAmt - commAmt - opexAmt - hoaAmt - powerAmt;
+  const net = gross - itbisAmt - mgmtAmt - hoaAmt - powerAmt;
   return {
-    nights, gross, itbisAmt, commAmt, opexAmt, hoaAmt, powerAmt, net,
+    nights, gross, itbisAmt, mgmtAmt, hoaAmt, powerAmt, net,
     roiGross: p.price > 0 ? (gross / p.price) * 100 : 0,
     roiNet: p.price > 0 ? (net / p.price) * 100 : 0,
     payback: net > 0 ? p.price / net : null,

@@ -21,6 +21,7 @@ import { AdminMantenimiento } from "@/pages/admin/AdminMantenimiento";
 import { AdminPagosPropietarios } from "@/pages/admin/AdminPagosPropietarios";
 import { AdminWhatsapp } from "@/pages/admin/AdminWhatsapp";
 import { AdminTrack } from "@/pages/admin/AdminTrack";
+import { AdminCanaDna } from "@/pages/admin/AdminCanaDna";
 import { TrackTeamPage } from "@/pages/TrackTeamPage";
 import { GuestDashboard } from "@/pages/guest/GuestDashboard";
 import { ShareView } from "@/pages/share/ShareView";
@@ -31,6 +32,7 @@ import { HomePage } from "@/pages/HomePage";
 import { PropietariosPage } from "@/pages/PropietariosPage";
 import { ServiciosPage } from "@/pages/ServiciosPage";
 import { AppsPage } from "@/pages/AppsPage";
+import { CanaDnaPage } from "@/pages/CanaDnaPage";
 import { AppGuidePage } from "@/pages/AppGuidePage";
 import { AppPrivacyPage } from "@/pages/AppPrivacyPage";
 import { TrackDeleteAccountPage } from "@/pages/TrackDeleteAccountPage";
@@ -120,6 +122,7 @@ export default function App() {
               <Route path="/admin/contabilidad" element={<AdminContabilidad />} />
               <Route path="/admin/whatsapp" element={<AdminWhatsapp />} />
               <Route path="/admin/track" element={<AdminTrack />} />
+              <Route path="/admin/cana-dna" element={<AdminCanaDna />} />
               <Route path="/admin/configuracion" element={<AdminConfiguracion />} />
             </Route>
           </Route>
@@ -153,6 +156,7 @@ export default function App() {
           <Route path="/propietarios" element={<PropietariosPage />} />
           <Route path="/servicios" element={<ServiciosPage />} />
           <Route path="/apps" element={<AppsPage />} />
+          <Route path="/cana-dna" element={<CanaDnaPage />} />
           <Route path="/apps/:slug/guia" element={<AppGuidePage />} />
           <Route path="/apps/:slug/privacidad" element={<AppPrivacyPage />} />
           <Route path="/apps/cana-track/borrar-cuenta" element={<TrackDeleteAccountPage />} />

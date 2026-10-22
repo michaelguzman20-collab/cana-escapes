@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Menu, X, Globe, LogIn, Home, Smartphone } from "lucide-react";
+import { Menu, X, Globe, LogIn, Home, Smartphone, Dna } from "lucide-react";
 import { useLang } from "@/lib/LangContext";
 
 // Guest-focused home sections (anchors live on the "/" route)
@@ -19,6 +19,9 @@ const ROUTE_LINKS = [
 
 // Downloadable Android apps (canaescapes.com/apps) — shown right after Servicios
 const APPS_LINK = { key: "nav_apps", to: "/apps" };
+
+// Cana DNA market data (canaescapes.com/cana-dna) — shown right after Apps
+const DNA_LINK = { key: "nav_cana_dna", to: "/cana-dna" };
 
 export function LandingNavbar() {
   const { lang, setLang, t } = useLang();
@@ -84,7 +87,7 @@ export function LandingNavbar() {
               <button
                 key={link.key}
                 onClick={() => scrollTo(link.href)}
-                className="group relative px-3 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors"
+                className="group relative px-2 xl:px-3 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors"
               >
                 {t(link.key)}
                 <span className="absolute left-3 right-3 -bottom-0.5 h-0.5 rounded-full bg-[#F0A030] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
@@ -111,10 +114,17 @@ export function LandingNavbar() {
               <Smartphone size={14} />
               {t(APPS_LINK.key)}
             </Link>
+            <Link
+              to={DNA_LINK.to}
+              className="ml-1 flex items-center gap-1.5 whitespace-nowrap px-3.5 py-1.5 text-sm font-semibold text-[#F0A030] border border-[#F0A030]/40 rounded-full hover:bg-[#F0A030] hover:text-[#0F2B4C] transition-colors"
+            >
+              <Dna size={14} />
+              {t(DNA_LINK.key)}
+            </Link>
           </div>
 
           {/* Desktop right */}
-          <div className="hidden lg:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-2 xl:gap-3">
             <button
               onClick={() => setLang(lang === "es" ? "en" : "es")}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white/60 hover:text-white transition-colors rounded-lg hover:bg-white/5"
@@ -125,10 +135,13 @@ export function LandingNavbar() {
 
             <Link
               to="/login"
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white/80 hover:text-white border border-white/20 hover:border-white/40 rounded-lg transition-all"
+              aria-label={t("nav_login")}
+              title={t("nav_login")}
+              className="flex items-center gap-2 px-3 xl:px-4 py-2 text-sm font-medium text-white/80 hover:text-white border border-white/20 hover:border-white/40 rounded-lg transition-all"
             >
               <LogIn size={14} />
-              {t("nav_login")}
+              {/* Icon-only between lg and xl so the nav fits with the Apps + Cana DNA pills */}
+              <span className="hidden xl:inline">{t("nav_login")}</span>
             </Link>
 
             {!isHome && (
@@ -136,7 +149,7 @@ export function LandingNavbar() {
                 to="/"
                 aria-label={t("nav_back_home")}
                 title={t("nav_back_home")}
-                className="flex items-center gap-2 px-3 xl:px-5 py-2 text-sm font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-lg transition-colors shadow-lg shadow-[#F0A030]/20"
+                className="flex items-center gap-2 whitespace-nowrap px-3 xl:px-5 py-2 text-sm font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-lg transition-colors shadow-lg shadow-[#F0A030]/20"
               >
                 <Home size={14} />
                 {/* Icon-only between lg and xl so the nav fits with the Apps pill */}
@@ -207,6 +220,14 @@ export function LandingNavbar() {
           >
             <Smartphone size={18} />
             {t(APPS_LINK.key)}
+          </Link>
+          <Link
+            to={DNA_LINK.to}
+            onClick={() => setMobileOpen(false)}
+            className="flex items-center gap-2 text-left px-4 py-3 text-lg font-semibold text-[#F0A030] border border-[#F0A030]/30 hover:bg-[#F0A030]/10 rounded-xl transition-colors"
+          >
+            <Dna size={18} />
+            {t(DNA_LINK.key)}
           </Link>
           <div className="border-t border-white/10 my-4" />
           <button

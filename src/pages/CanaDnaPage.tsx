@@ -27,7 +27,13 @@ const WA_URL = "https://wa.me/18092102773";
 const NAVY = "#0F2B4C";
 const AMBER = "#F0A030";
 const SKY = "#7FA0C8";
-const WEEK_MS = 7 * 24 * 3600 * 1000;
+// La rutina semanal en la nube corre los lunes 00:00 UTC = domingo 8:00 pm en RD (cron `0 0 * * 1`)
+function nextWeeklyRun(now = new Date()) {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  d.setUTCDate(d.getUTCDate() + ((8 - d.getUTCDay()) % 7)); // próximo lunes UTC (hoy si es lunes)
+  if (d.getTime() + 15 * 60 * 1000 <= now.getTime()) d.setUTCDate(d.getUTCDate() + 7); // ya corrió esta semana
+  return d;
+}
 // Si la base aún no tiene el dato de la luz/dólar, se usan estos (CEPM RBT-1 y BCRD, oct-2026)
 const FALLBACK_KWH_RD = 22.9;
 const FALLBACK_USD_DOP = 61.83;
@@ -230,8 +236,9 @@ const SEASON_INFO: { icon: string; temp: number; es: string; en: string }[] = [
 ];
 
 const pct = (n: number, d = 0) => `${n.toFixed(d)}%`;
+// Fechas siempre en hora de RD, para que el domingo 8 pm no se vea como lunes fuera del país
 const fmtDate = (iso: string, l: "es" | "en") =>
-  new Date(iso).toLocaleDateString(l === "en" ? "en-US" : "es-DO", { day: "numeric", month: "long", year: "numeric" });
+  new Date(iso).toLocaleDateString(l === "en" ? "en-US" : "es-DO", { day: "numeric", month: "long", year: "numeric", timeZone: "America/Santo_Domingo" });
 const tenths = (occ: number) => Math.round(occ / 10);
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -1326,8 +1333,8 @@ function MarketNotes({ data, tx, l }: { data: CanaDnaData; tx: Tx; l: "es" | "en
 }
 
 function Shell({ tx, l, lastRun, children }: { tx: Tx; l: "es" | "en"; lastRun?: string | null; children: ReactNode }) {
-  // Próxima actualización: una semana después de la última (o hoy, si ya se pasó)
-  const next = lastRun ? new Date(Math.max(Date.now(), new Date(lastRun).getTime() + WEEK_MS)).toISOString() : null;
+  // Próxima actualización: el próximo domingo a las 8 pm (hora RD), cuando corre la rutina semanal
+  const next = lastRun ? nextWeeklyRun().toISOString() : null;
   return (
     <div className="min-h-screen bg-[#F5F7FA]">
       <LandingNavbar />

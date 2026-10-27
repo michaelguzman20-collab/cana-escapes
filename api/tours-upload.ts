@@ -25,10 +25,11 @@ const rfc3986 = (s: string) => encodeURIComponent(s).replace(/[!'()*]/g, (c) => 
 
 // URL prefirmada S3 (SigV4, firma en la query) — R2 usa región "auto"
 async function presign(method: "PUT" | "DELETE", key: string, expires = 900) {
-  const account = process.env.R2_ACCOUNT_ID!;
-  const accessKey = process.env.R2_ACCESS_KEY_ID!;
-  const secret = process.env.R2_SECRET_ACCESS_KEY!;
-  const bucket = process.env.R2_BUCKET || "cana-media";
+  // trim: un espacio pegado por error en Vercel rompe la firma ("access key has length 33")
+  const account = process.env.R2_ACCOUNT_ID!.trim();
+  const accessKey = process.env.R2_ACCESS_KEY_ID!.trim();
+  const secret = process.env.R2_SECRET_ACCESS_KEY!.trim();
+  const bucket = (process.env.R2_BUCKET || "cana-media").trim();
   const host = `${account}.r2.cloudflarestorage.com`;
   const now = new Date();
   const amzDate = now.toISOString().replace(/[-:]|\.\d{3}/g, "");
@@ -88,11 +89,22 @@ export async function POST(req: Request) {
   }
   if (body.action === "delete") {
     let deleted = 0;
+    const errors: { path: string; status: number; code?: string; message?: string }[] = [];
     for (const path of paths) {
       const r = await fetch(await presign("DELETE", path, 60), { method: "DELETE" });
       if (r.ok || r.status === 404) deleted++;
+      // Código S3 de R2 (p. ej. SignatureDoesNotMatch, InvalidAccessKeyId) para diagnosticar claves
+      else {
+        const xml = await r.text();
+        errors.push({
+          path,
+          status: r.status,
+          code: xml.match(/<Code>([^<]+)<\/Code>/)?.[1],
+          message: xml.match(/<Message>([^<]+)<\/Message>/)?.[1],
+        });
+      }
     }
-    return Response.json({ deleted });
+    return Response.json(errors.length ? { deleted, errors } : { deleted });
   }
   return Response.json({ error: "Acción desconocida" }, { status: 400 });
 }

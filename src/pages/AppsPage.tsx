@@ -214,17 +214,13 @@ function AppCard({ app, releases }: { app: (typeof APPS)[number]; releases: Rele
           {showHistory && (
             <ul className="px-6 sm:px-8 pb-5 space-y-3">
               {older.map((r) => (
-                <li key={r.id} className="flex items-start justify-between gap-4 text-sm">
-                  <div className="min-w-0">
-                    <span className="font-semibold text-[#0F2B4C]">v{r.version_name}</span>
-                    <span className="text-[#0F2B4C]/50"> · {formatDate(r.published_at, l)}</span>
-                    {r.release_notes && (
-                      <p className="text-[#0F2B4C]/60 whitespace-pre-line mt-0.5">{r.release_notes}</p>
-                    )}
-                  </div>
-                  <a href={r.apk_url} download className="flex-shrink-0 text-[#b8761a] hover:text-[#0F2B4C] font-medium">
-                    APK
-                  </a>
+                // Solo se guarda el APK de la última versión (espacio de Supabase): el historial es solo de notas
+                <li key={r.id} className="text-sm">
+                  <span className="font-semibold text-[#0F2B4C]">v{r.version_name}</span>
+                  <span className="text-[#0F2B4C]/50"> · {formatDate(r.published_at, l)}</span>
+                  {r.release_notes && (
+                    <p className="text-[#0F2B4C]/60 whitespace-pre-line mt-0.5">{r.release_notes}</p>
+                  )}
                 </li>
               ))}
             </ul>

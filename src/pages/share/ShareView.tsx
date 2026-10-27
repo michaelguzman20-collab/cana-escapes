@@ -93,9 +93,9 @@ export function ShareView() {
   const [year, setYear]   = useState(now.getFullYear());
 
   const { data: property, isLoading: propLoading } = useSharedProperty(token ?? "");
-  const { data: allBrackets = [] } = useSharedBrackets();
+  const { data: allBrackets = [] } = useSharedBrackets(token ?? "");
   const { data: reservations = [], isLoading: resLoading } = useSharedReservations(
-    property?.id ?? "",
+    token ?? "",
     month,
     year
   );

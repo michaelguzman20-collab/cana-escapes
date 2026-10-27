@@ -408,7 +408,111 @@ const track: AppPolicy = {
   ],
 };
 
+const check: AppPolicy = {
+  slug: "cana-check",
+  updated: "2026-10-27",
+  intro: {
+    es: "Cana Check guarda el récord de mantenimiento de tus propiedades en tu teléfono. No pide cuenta, no tiene publicidad y no envía tus datos ni tus fotos a ningún servidor nuestro.",
+    en: "Cana Check keeps your properties' maintenance record on your phone. It needs no account, has no ads and does not send your data or photos to any server of ours.",
+  },
+  sections: [
+    {
+      id: "resumen",
+      emoji: "🔒",
+      title: { es: "En resumen", en: "In short" },
+      blocks: [
+        {
+          type: "list",
+          items: {
+            es: [
+              "No hay cuentas ni registro. El nombre que escribes al empezar solo se usa dentro de la app.",
+              "Tus propiedades, trabajos, días de ocupación y fotos se guardan solo en tu teléfono.",
+              "Los recordatorios los programa el mismo teléfono; no pasan por ningún servidor.",
+              "No hay publicidad ni herramientas de seguimiento o analítica.",
+              "No vendemos ni compartimos datos con nadie.",
+            ],
+            en: [
+              "No accounts or sign-up. The name you type at the start is only used inside the app.",
+              "Your properties, jobs, occupancy days and photos are stored only on your phone.",
+              "Reminders are scheduled by the phone itself; they don't go through any server.",
+              "No ads and no tracking or analytics tools.",
+              "We do not sell or share data with anyone.",
+            ],
+          },
+        },
+      ],
+    },
+    {
+      id: "datos",
+      emoji: "📄",
+      title: { es: "Qué datos usa la app y dónde quedan", en: "What data the app uses and where it stays" },
+      blocks: [
+        {
+          type: "p",
+          text: {
+            es: "Datos de mantenimiento: las propiedades (nombre, tipo, ubicación, propietario y equipos), los días de ocupación, los trabajos (fechas, a quién se asignaron, quién los hizo, costos y notas) se guardan en el almacenamiento privado de la app en tu teléfono. Nosotros no tenemos copia ni acceso a ellos.",
+            en: "Maintenance data: properties (name, type, location, owner and equipment), occupancy days and jobs (dates, who they were assigned to, who did them, costs and notes) are saved in the app's private storage on your phone. We have no copy of them and no access to them.",
+          },
+        },
+        {
+          type: "p",
+          text: {
+            es: "Cámara y fotos: la app pide permiso de cámara solo para tomar fotos de los trabajos. Si eliges una foto de la galería, se abre el selector de fotos de Android y la app solo recibe la foto que escoges. Las fotos se guardan reducidas dentro de la app.",
+            en: "Camera and photos: the app asks for camera permission only to take photos of jobs. If you pick a photo from the gallery, Android's photo picker opens and the app only receives the photo you choose. Photos are stored, resized, inside the app.",
+          },
+        },
+        {
+          type: "p",
+          text: {
+            es: "Notificaciones: la app pide permiso para mostrar recordatorios. Se programan en el teléfono con tus propios datos.",
+            en: "Notifications: the app asks permission to show reminders. They are scheduled on the phone using your own data.",
+          },
+        },
+        {
+          type: "p",
+          text: {
+            es: "Compartir y respaldos: el reporte PDF, las tablas de Excel, el resumen de un trabajo o el respaldo solo salen del teléfono cuando tú tocas Compartir y eliges a dónde enviarlos (WhatsApp, correo, Drive…). Desde ahí aplica la política de esa app o servicio. El botón «¿Necesitas un técnico?» abre WhatsApp con un mensaje que tú decides si envías.",
+            en: "Sharing and backups: the PDF report, Excel tables, a job summary or a backup only leave the phone when you tap Share and pick where to send them (WhatsApp, email, Drive…). From then on, that app's or service's policy applies. The “Need a technician?” button opens WhatsApp with a message you decide whether to send.",
+          },
+        },
+        updatesBlock("Cana Check"),
+      ],
+    },
+    {
+      id: "borrar",
+      emoji: "🗑️",
+      title: { es: "Cómo borrar tus datos", en: "How to delete your data" },
+      blocks: [
+        {
+          type: "p",
+          text: {
+            es: "Todo está en tu teléfono: puedes borrar trabajos, fotos o propiedades desde la app, o todo a la vez en Más → «Borrar todos los datos». Si desinstalas la app o borras sus datos en Ajustes de Android, se elimina todo. No hay nada que pedirnos que borremos porque no guardamos nada tuyo.",
+            en: "Everything is on your phone: you can delete jobs, photos or properties in the app, or everything at once in More → “Delete all data”. Uninstalling the app or clearing its data in Android Settings removes everything. There is nothing to ask us to delete because we keep nothing of yours.",
+          },
+        },
+      ],
+    },
+    {
+      id: "menores",
+      emoji: "👶",
+      title: { es: "Menores de edad", en: "Children" },
+      blocks: [
+        {
+          type: "p",
+          text: {
+            es: "La app es una herramienta de trabajo y no está dirigida a niños. No recopilamos datos de nadie, tampoco de menores.",
+            en: "The app is a work tool and is not directed at children. We collect no data from anyone, including minors.",
+          },
+        },
+      ],
+    },
+    changesSection,
+    contactSection(),
+  ],
+};
+
 export const APP_POLICIES: Record<string, AppPolicy> = {
   [scanner.slug]: scanner,
   [track.slug]: track,
+  [check.slug]: check,
 };

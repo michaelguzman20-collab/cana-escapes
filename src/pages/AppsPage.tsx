@@ -39,6 +39,19 @@ const APPS = [
       en: ["Quick join with name and WhatsApp", "Pick your vehicle: motorbike, car, minivan…", "One tap to start or stop sharing", "Ping to reply on WhatsApp"],
     },
   },
+  {
+    slug: "cana-check",
+    name: "Cana Check",
+    icon: "/apps/cana-check.png",
+    desc: {
+      es: "Mantenimiento preventivo de tus propiedades al día. Te recuerda qué toca según la temporada y la ocupación, lleva el récord de cada trabajo con fotos y genera el reporte mensual. Para propietarios, administradores y técnicos.",
+      en: "Keep your properties' preventive maintenance on track. It reminds you what's due based on season and occupancy, keeps a record of every job with photos and creates the monthly report. For owners, managers and technicians.",
+    },
+    features: {
+      es: ["Plan de mantenimiento para Punta Cana y rentas cortas", "Recordatorios en el teléfono", "Fotos de antes y después", "Reporte mensual en PDF y exportar a Excel"],
+      en: ["Maintenance plan for Punta Cana and short-term rentals", "Phone reminders", "Before and after photos", "Monthly PDF report and Excel export"],
+    },
+  },
 ];
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;

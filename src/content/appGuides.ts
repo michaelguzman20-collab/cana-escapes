@@ -797,9 +797,298 @@ const track: AppGuide = {
   ],
 };
 
+const check: AppGuide = {
+  slug: "cana-check",
+  name: "Cana Check",
+  icon: "/apps/cana-check.png",
+  tagline: {
+    es: "Mantenimiento preventivo de tus propiedades: recordatorios, récord con fotos y reportes.",
+    en: "Preventive maintenance for your properties: reminders, photo records and reports.",
+  },
+  parts: [
+    {
+      sections: [
+        {
+          id: "que-es",
+          emoji: "🏠",
+          title: { es: "¿Qué es Cana Check?", en: "What is Cana Check?" },
+          blocks: [
+            {
+              type: "p",
+              text: {
+                es: "Cana Check te dice qué mantenimiento preventivo toca en cada propiedad y cuándo, te lo recuerda en el teléfono y guarda el récord de lo que se hizo, con fotos. Está pensada para Punta Cana y Bávaro (salitre, humedad, temporada ciclónica) y para propiedades en renta corta. No necesitas cuenta: tus datos se guardan solo en tu teléfono.",
+                en: "Cana Check tells you which preventive maintenance is due at each property and when, reminds you on your phone and keeps a record of what was done, with photos. It's designed for Punta Cana and Bávaro (salt air, humidity, hurricane season) and for short-term rentals. No account needed: your data stays on your phone.",
+              },
+            },
+            {
+              type: "list",
+              items: {
+                es: [
+                  "Una o varias propiedades: apartamento, villa, casa o áreas comunes de condominio.",
+                  "Plan de mantenimiento armado según los equipos de cada propiedad (AC, piscina, cisterna, inversor, planta…).",
+                  "Recordatorios en el teléfono, con el porqué de cada tarea.",
+                  "Días de ocupación para hacer los trabajos cuando no hay huéspedes.",
+                  "Tablero de trabajos: pendiente, agendado, en proceso y completado.",
+                  "Fotos de antes y después, reporte mensual en PDF y exportar a Excel.",
+                ],
+                en: [
+                  "One or more properties: apartment, villa, house or condo common areas.",
+                  "Maintenance plan built from each property's equipment (AC, pool, cistern, inverter, generator…).",
+                  "Phone reminders, with the reason behind each task.",
+                  "Occupancy days so work gets done when there are no guests.",
+                  "Job board: pending, scheduled, in progress and done.",
+                  "Before and after photos, monthly PDF report and Excel export.",
+                ],
+              },
+            },
+          ],
+        },
+        {
+          id: "empezar",
+          emoji: "🚀",
+          title: { es: "Primeros pasos", en: "Getting started" },
+          blocks: [
+            {
+              type: "steps",
+              items: {
+                es: [
+                  "Abre la app y elige el idioma, cómo la vas a usar (propietario, administrador o técnico) y tu nombre.",
+                  "Acepta el permiso de notificaciones: así llegan los recordatorios.",
+                  "Toca «Agregar propiedad»: ponle nombre, elige el tipo y marca los equipos e instalaciones que tiene.",
+                  "Si la rentas por días, deja activado «Renta corta» y agrega los días de ocupación.",
+                ],
+                en: [
+                  "Open the app and choose the language, how you'll use it (owner, manager or technician) and your name.",
+                  "Allow notifications: that's how reminders reach you.",
+                  "Tap “Add property”: name it, pick the type and select the equipment and facilities it has.",
+                  "If you rent it by the night, keep “Short-term rental” on and add the occupancy days.",
+                ],
+              },
+            },
+            {
+              type: "tip",
+              text: {
+                es: "¿Quieres verla funcionando antes de cargar tus datos? En Inicio toca «Ver con una propiedad de ejemplo». Luego puedes borrarla desde la propiedad (lápiz → Eliminar).",
+                en: "Want to see it working before entering your data? On Home tap “Try it with a sample property”. You can delete it later from the property (pencil → Delete).",
+              },
+            },
+          ],
+        },
+        {
+          id: "plan",
+          emoji: "🗓️",
+          title: { es: "El plan de mantenimiento", en: "The maintenance plan" },
+          blocks: [
+            {
+              type: "p",
+              text: {
+                es: "En cada propiedad, la pestaña «Plan» muestra las tareas agrupadas por área. Cada una dice su estado: vencida, por hacer, al día o sin registro. Toca una tarea para ver por qué conviene hacerla y qué hacer con ella.",
+                en: "In each property, the “Plan” tab lists tasks grouped by area. Each shows its status: overdue, coming up, up to date or no record. Tap a task to see why it matters and what to do with it.",
+              },
+            },
+            {
+              type: "list",
+              items: {
+                es: [
+                  "Marcar como hecho: registra el trabajo con fecha, quién lo hizo, costo, notas y fotos.",
+                  "Agendar: crea el trabajo con fecha y a quién se le asignó.",
+                  "Ya estaba hecho: si no tienes el registro, indica más o menos cuándo se hizo y el plan se pone al día.",
+                  "Frecuencia: cámbiala si tu propiedad necesita más o menos.",
+                  "No aplica: oculta la tarea (puedes restaurarla al final del plan).",
+                  "Agregar tarea propia: para lo que no esté en el catálogo.",
+                ],
+                en: [
+                  "Mark as done: records the job with date, who did it, cost, notes and photos.",
+                  "Schedule: creates the job with a date and who it's assigned to.",
+                  "Already done: if you have no record, say roughly when it was done and the plan catches up.",
+                  "Frequency: change it if your property needs more or less.",
+                  "Doesn't apply: hides the task (you can restore it at the end of the plan).",
+                  "Add your own task: for anything not in the catalog.",
+                ],
+              },
+            },
+            {
+              type: "tip",
+              text: {
+                es: "Antes de la temporada ciclónica (1 de junio) y de la temporada alta (mediados de diciembre), la app adelanta las tareas que conviene tener listas para esas fechas.",
+                en: "Before hurricane season (June 1) and high season (mid-December), the app moves up the tasks that should be ready by those dates.",
+              },
+            },
+          ],
+        },
+        {
+          id: "ocupacion",
+          emoji: "🛏️",
+          title: { es: "Días de ocupación (renta corta)", en: "Occupancy days (short-term rental)" },
+          blocks: [
+            {
+              type: "steps",
+              items: {
+                es: [
+                  "Entra a la propiedad → pestaña «Ocupación» → «Agregar días de ocupación».",
+                  "Toca el día de llegada y luego el de salida.",
+                  "Elige «Reservado» (reserva confirmada) o «Proyectado» (ocupación que esperas) y guarda.",
+                ],
+                en: [
+                  "Open the property → “Occupancy” tab → “Add occupancy days”.",
+                  "Tap the arrival day, then the departure day.",
+                  "Choose “Booked” (confirmed) or “Projected” (expected occupancy) and save.",
+                ],
+              },
+            },
+            {
+              type: "p",
+              text: {
+                es: "Con eso, Inicio te muestra los próximos días libres y qué conviene hacer en ellos (primero lo que necesita la unidad vacía, como fumigar o pintar), y te avisa si se acerca un periodo de mucha ocupación. Al agendar un trabajo, la app te advierte si ese día hay huéspedes.",
+                en: "With that, Home shows the next free days and what to do in them (first what needs an empty unit, like fumigation or painting), and warns you when a busy period is coming. When you schedule a job, the app warns you if there are guests that day.",
+              },
+            },
+          ],
+        },
+        {
+          id: "trabajos",
+          emoji: "🔧",
+          title: { es: "Trabajos, fotos y quién lo hizo", en: "Jobs, photos and who did it" },
+          blocks: [
+            {
+              type: "p",
+              text: {
+                es: "La pestaña «Trabajos» es el tablero: Pendiente, Agendado, En proceso y Completado. En «Pendiente» también aparecen las tareas del plan vencidas o próximas. Toca el botón + para crear un trabajo que no esté en el plan (por ejemplo, una reparación).",
+                en: "The “Jobs” tab is the board: Pending, Scheduled, In progress and Done. “Pending” also shows plan tasks that are overdue or coming up. Tap + to create a job that isn't in the plan (for example, a repair).",
+              },
+            },
+            {
+              type: "list",
+              items: {
+                es: [
+                  "Cualquiera puede marcar un trabajo como completado: propietario, administrador, técnico o un contratista particular.",
+                  "Agrega fotos de «Antes» y «Después» con la cámara o desde la galería. Toca una foto para verla en grande o borrarla.",
+                  "Con el botón de compartir (arriba) envías el resumen del trabajo por WhatsApp.",
+                  "¿Necesitas un técnico? En los trabajos abiertos puedes escribir a Cana Escapes Maintenance.",
+                ],
+                en: [
+                  "Anyone can mark a job as done: owner, manager, technician or an outside contractor.",
+                  "Add “Before” and “After” photos with the camera or from the gallery. Tap a photo to view it full size or delete it.",
+                  "Use the share button (top) to send the job summary on WhatsApp.",
+                  "Need a technician? Open jobs let you message Cana Escapes Maintenance.",
+                ],
+              },
+            },
+          ],
+        },
+        {
+          id: "recordatorios",
+          emoji: "🔔",
+          title: { es: "Recordatorios", en: "Reminders" },
+          blocks: [
+            {
+              type: "list",
+              items: {
+                es: [
+                  "El día que vence una tarea del plan.",
+                  "Un día antes y el mismo día de cada trabajo agendado.",
+                  "Un resumen cuando tienes tareas vencidas.",
+                  "Un consejo semanal sobre tareas que no tienen registro, con el porqué.",
+                  "Avisos de temporada ciclónica y temporada alta.",
+                ],
+                en: [
+                  "The day a plan task is due.",
+                  "The day before and the day of each scheduled job.",
+                  "A summary when you have overdue tasks.",
+                  "A weekly tip about tasks with no record, with the reason why.",
+                  "Hurricane-season and high-season alerts.",
+                ],
+              },
+            },
+            {
+              type: "tip",
+              text: {
+                es: "En Más → Ajustes eliges la hora de los recordatorios y puedes enviarte uno de prueba.",
+                en: "In More → Settings you pick the reminder time and can send yourself a test.",
+              },
+            },
+          ],
+        },
+        {
+          id: "reportes",
+          emoji: "📊",
+          title: { es: "Reportes, Excel y respaldo", en: "Reports, Excel and backup" },
+          blocks: [
+            {
+              type: "list",
+              items: {
+                es: [
+                  "Reporte mensual (Más): elige el mes y la propiedad y toca «Generar y compartir PDF». Incluye trabajos completados con fotos, en proceso, agendados y pendientes, con el costo total.",
+                  "Exportar a Excel: el historial de trabajos y el plan de mantenimiento salen como tablas que abren en Excel o Google Sheets.",
+                  "Respaldo: «Exportar respaldo» crea un archivo con todos tus datos y fotos. Guárdalo en Drive o envíatelo.",
+                  "Restaurar: en otro teléfono (o después de reinstalar) toca «Restaurar un respaldo» y elige ese archivo.",
+                ],
+                en: [
+                  "Monthly report (More): pick the month and property and tap “Generate & share PDF”. It includes completed jobs with photos, in progress, scheduled and pending, with the total cost.",
+                  "Excel export: the job history and the maintenance plan come out as tables that open in Excel or Google Sheets.",
+                  "Backup: “Export backup” creates a file with all your data and photos. Keep it in Drive or send it to yourself.",
+                  "Restore: on another phone (or after reinstalling) tap “Restore a backup” and pick that file.",
+                ],
+              },
+            },
+            {
+              type: "warn",
+              text: {
+                es: "Tus datos están solo en este teléfono. Si desinstalas la app sin un respaldo, se pierden.",
+                en: "Your data is only on this phone. If you uninstall the app without a backup, it's lost.",
+              },
+            },
+          ],
+        },
+        {
+          id: "preguntas",
+          emoji: "❓",
+          title: { es: "Preguntas frecuentes", en: "FAQ" },
+          blocks: [
+            {
+              type: "faq",
+              items: [
+                {
+                  q: { es: "¿Cuesta algo?", en: "Does it cost anything?" },
+                  a: {
+                    es: "No. Cana Check es gratis, sin publicidad y sin cuenta.",
+                    en: "No. Cana Check is free, with no ads and no account.",
+                  },
+                },
+                {
+                  q: { es: "¿El administrador y el técnico ven lo mismo?", en: "Do the manager and the technician see the same data?" },
+                  a: {
+                    es: "Por ahora cada teléfono tiene sus propios datos. Para pasar la información, comparte el reporte PDF, el Excel, el resumen de un trabajo o un respaldo.",
+                    en: "For now each phone has its own data. To pass information along, share the PDF report, the Excel file, a job summary or a backup.",
+                  },
+                },
+                {
+                  q: { es: "No me llegan los recordatorios", en: "I'm not getting reminders" },
+                  a: {
+                    es: "Revisa que estén activados en Más → Ajustes y que el teléfono permita notificaciones de Cana Check. Algunos teléfonos cierran las apps para ahorrar batería: quita a Cana Check de la optimización de batería.",
+                    en: "Make sure they're on in More → Settings and that the phone allows Cana Check notifications. Some phones close apps to save battery: exclude Cana Check from battery optimization.",
+                  },
+                },
+                {
+                  q: { es: "¿Cómo actualizo la app?", en: "How do I update the app?" },
+                  a: {
+                    es: "Cuando hay una versión nueva aparece un aviso en Más. Toca «Actualizar» y luego «Instalar». No pierdes tus datos.",
+                    en: "When a new version is out, a notice appears in More. Tap “Update” and then “Install”. Your data is kept.",
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
 export const APP_GUIDES: Record<string, AppGuide> = {
   [scanner.slug]: scanner,
   [track.slug]: track,
+  [check.slug]: check,
 };
 
 export const guidePdfUrl = (slug: string, lang: string) => `/guias/${slug}-guia-${lang === "en" ? "en" : "es"}.pdf`;

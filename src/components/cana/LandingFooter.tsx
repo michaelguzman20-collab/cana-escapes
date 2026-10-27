@@ -17,6 +17,7 @@ export function LandingFooter() {
     { label: t("nav_services"), href: "/servicios" },
     { label: t("nav_apps"), href: "/apps" },
     { label: t("nav_cana_dna"), href: "/cana-dna" },
+    { label: t("nav_tours"), href: "/tours" },
     { label: t("nav_contact"), href: "#contacto" },
     { label: t("nav_owner_btn"), href: "/propietarios" },
   ];

@@ -22,6 +22,7 @@ import { AdminPagosPropietarios } from "@/pages/admin/AdminPagosPropietarios";
 import { AdminWhatsapp } from "@/pages/admin/AdminWhatsapp";
 import { AdminTrack } from "@/pages/admin/AdminTrack";
 import { AdminCanaDna } from "@/pages/admin/AdminCanaDna";
+import { AdminTours } from "@/pages/admin/AdminTours";
 import { TrackTeamPage } from "@/pages/TrackTeamPage";
 import { GuestDashboard } from "@/pages/guest/GuestDashboard";
 import { ShareView } from "@/pages/share/ShareView";
@@ -33,6 +34,8 @@ import { PropietariosPage } from "@/pages/PropietariosPage";
 import { ServiciosPage } from "@/pages/ServiciosPage";
 import { AppsPage } from "@/pages/AppsPage";
 import { CanaDnaPage } from "@/pages/CanaDnaPage";
+import { ToursPage } from "@/pages/ToursPage";
+import { TourPage } from "@/pages/TourPage";
 import { AppGuidePage } from "@/pages/AppGuidePage";
 import { AppPrivacyPage } from "@/pages/AppPrivacyPage";
 import { TrackDeleteAccountPage } from "@/pages/TrackDeleteAccountPage";
@@ -123,6 +126,7 @@ export default function App() {
               <Route path="/admin/whatsapp" element={<AdminWhatsapp />} />
               <Route path="/admin/track" element={<AdminTrack />} />
               <Route path="/admin/cana-dna" element={<AdminCanaDna />} />
+              <Route path="/admin/tours" element={<AdminTours />} />
               <Route path="/admin/configuracion" element={<AdminConfiguracion />} />
             </Route>
           </Route>
@@ -157,6 +161,8 @@ export default function App() {
           <Route path="/servicios" element={<ServiciosPage />} />
           <Route path="/apps" element={<AppsPage />} />
           <Route path="/cana-dna" element={<CanaDnaPage />} />
+          <Route path="/tours" element={<ToursPage />} />
+          <Route path="/tour/:slug" element={<TourPage />} />
           <Route path="/apps/:slug/guia" element={<AppGuidePage />} />
           <Route path="/apps/:slug/privacidad" element={<AppPrivacyPage />} />
           <Route path="/apps/cana-track/borrar-cuenta" element={<TrackDeleteAccountPage />} />

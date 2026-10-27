@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Menu, X, Globe, LogIn, Home, Smartphone, Dna } from "lucide-react";
+import { Menu, X, Globe, LogIn, Home, Smartphone, Dna, Rotate3d } from "lucide-react";
 import { useLang } from "@/lib/LangContext";
 
 // Guest-focused home sections (anchors live on the "/" route)
@@ -22,6 +22,9 @@ const APPS_LINK = { key: "nav_apps", to: "/apps" };
 
 // Cana DNA market data (canaescapes.com/cana-dna) — shown right after Apps
 const DNA_LINK = { key: "nav_cana_dna", to: "/cana-dna" };
+
+// Recorridos virtuales 360 (canaescapes.com/tours) — shown right after Cana DNA
+const TOURS_LINK = { key: "nav_tours", to: "/tours" };
 
 export function LandingNavbar() {
   const { lang, setLang, t } = useLang();
@@ -109,17 +112,33 @@ export function LandingNavbar() {
             ))}
             <Link
               to={APPS_LINK.to}
-              className="ml-1 flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-semibold text-[#F0A030] border border-[#F0A030]/40 rounded-full hover:bg-[#F0A030] hover:text-[#0F2B4C] transition-colors"
+              title={t(APPS_LINK.key)}
+              aria-label={t(APPS_LINK.key)}
+              className="ml-1 flex items-center gap-1.5 px-2.5 2xl:px-3.5 py-1.5 text-sm font-semibold text-[#F0A030] border border-[#F0A030]/40 rounded-full hover:bg-[#F0A030] hover:text-[#0F2B4C] transition-colors"
             >
               <Smartphone size={14} />
-              {t(APPS_LINK.key)}
+              {/* Icon-only below 2xl so the nav fits with the Apps · Cana DNA · Tours 360 pills */}
+              <span className="hidden 2xl:inline">{t(APPS_LINK.key)}</span>
             </Link>
             <Link
               to={DNA_LINK.to}
-              className="ml-1 flex items-center gap-1.5 whitespace-nowrap px-3.5 py-1.5 text-sm font-semibold text-[#F0A030] border border-[#F0A030]/40 rounded-full hover:bg-[#F0A030] hover:text-[#0F2B4C] transition-colors"
+              title={t(DNA_LINK.key)}
+              aria-label={t(DNA_LINK.key)}
+              className="ml-1 flex items-center gap-1.5 whitespace-nowrap px-2.5 2xl:px-3.5 py-1.5 text-sm font-semibold text-[#F0A030] border border-[#F0A030]/40 rounded-full hover:bg-[#F0A030] hover:text-[#0F2B4C] transition-colors"
             >
               <Dna size={14} />
-              {t(DNA_LINK.key)}
+              {/* Icon-only below 2xl so the nav fits with the Apps · Cana DNA · Tours 360 pills */}
+              <span className="hidden 2xl:inline">{t(DNA_LINK.key)}</span>
+            </Link>
+            <Link
+              to={TOURS_LINK.to}
+              title={t(TOURS_LINK.key)}
+              aria-label={t(TOURS_LINK.key)}
+              className="ml-1 flex items-center gap-1.5 whitespace-nowrap px-2.5 2xl:px-3.5 py-1.5 text-sm font-semibold text-[#F0A030] border border-[#F0A030]/40 rounded-full hover:bg-[#F0A030] hover:text-[#0F2B4C] transition-colors"
+            >
+              <Rotate3d size={14} />
+              {/* Icon-only below 2xl so the nav fits with the Apps · Cana DNA · Tours 360 pills */}
+              <span className="hidden 2xl:inline">{t(TOURS_LINK.key)}</span>
             </Link>
           </div>
 
@@ -228,6 +247,14 @@ export function LandingNavbar() {
           >
             <Dna size={18} />
             {t(DNA_LINK.key)}
+          </Link>
+          <Link
+            to={TOURS_LINK.to}
+            onClick={() => setMobileOpen(false)}
+            className="flex items-center gap-2 text-left px-4 py-3 text-lg font-semibold text-[#F0A030] border border-[#F0A030]/30 hover:bg-[#F0A030]/10 rounded-xl transition-colors"
+          >
+            <Rotate3d size={18} />
+            {t(TOURS_LINK.key)}
           </Link>
           <div className="border-t border-white/10 my-4" />
           <button

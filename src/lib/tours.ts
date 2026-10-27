@@ -169,10 +169,13 @@ export async function fetchTourContent(tour: Tour): Promise<FullTour> {
   return { tour, scenes: scenes ?? [], hotspots };
 }
 
-export async function fetchPublishedTours(): Promise<Tour[]> {
+/** Tour de la galería con la vista inicial de su escena de portada (para recortar la miniatura) */
+export type TourCard = Tour & { start: Pick<TourScene, "initial_yaw" | "initial_pitch" | "fov_initial"> | null };
+
+export async function fetchPublishedTours(): Promise<TourCard[]> {
   const { data, error } = await db
     .from("tours")
-    .select("*")
+    .select("*, start:tour_scenes!tours_start_scene_fk(initial_yaw, initial_pitch, fov_initial)")
     .eq("published", true)
     .order("sort_order")
     .order("created_at", { ascending: false });

@@ -11,6 +11,7 @@ import "@photo-sphere-viewer/virtual-tour-plugin/index.css";
 import "./tours.css";
 import { LOADER_IMG, nadirLogoUrl, nadirMarker } from "./markerHtml";
 import { addonElement, addonMarker } from "./tourAddons";
+import { PanoThumb } from "./PanoThumb";
 import {
   addonsForScene, clampPitch, sceneLabel, sphereCorrection, startScene, zoomLevelFor, type FullTour, type TourHotspot, type TourScene,
 } from "@/lib/tours";
@@ -215,13 +216,11 @@ export default function TourViewer({ full, loadingText, startLabel }: Props) {
                 key={s.id}
                 onClick={() => s.id !== current && tourRef.current?.setCurrentNode(s.id)}
                 className={cn(
-                  "shrink-0 w-20 sm:w-24 rounded-lg overflow-hidden border-2 text-left transition-colors",
+                  "shrink-0 w-16 sm:w-20 rounded-lg overflow-hidden border-2 text-left transition-colors",
                   s.id === current ? "border-[#F0A030]" : "border-transparent opacity-80 hover:opacity-100"
                 )}
               >
-                <div className="aspect-[2/1] bg-black/40">
-                  {s.thumb_url && <img src={s.thumb_url} alt="" className="w-full h-full object-cover" loading="lazy" />}
-                </div>
+                <PanoThumb src={s.thumb_url} yaw={s.initial_yaw} pitch={s.initial_pitch} fov={s.fov_initial} className="bg-black/40" />
                 <div className="px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium text-white truncate bg-black/50">{s.area?.trim() || s.title || "—"}</div>
               </button>
             ))}

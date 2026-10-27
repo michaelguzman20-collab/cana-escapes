@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { tourStorage, processPanorama, extOf } from "@/lib/tourStorage";
+import { PanoThumb } from "@/components/tours/PanoThumb";
 import { applyFilters as renderFilters, canvasToBlob, cssPreview, thumbFrom } from "@/lib/panoFilters";
 import {
   db, fetchTourContent, slugify, tourUrl, hasFilters, FILTER_KEYS,
@@ -867,8 +868,8 @@ function SceneCard({ scene, isStart, selected, onSelect, onRename, onStart, onOp
           <Pencil size={14} />
         </button>
       </div>
-      <button onClick={onOpen} className="block w-full aspect-[2/1] bg-gray-100">
-        {scene.thumb_url && <img src={scene.thumb_url} alt="" className="w-full h-full object-cover" loading="lazy" />}
+      <button onClick={onOpen} className="block w-full">
+        <PanoThumb src={scene.thumb_url} yaw={scene.initial_yaw} pitch={scene.initial_pitch} fov={scene.fov_initial} className="bg-gray-100" />
       </button>
       <div className="px-2.5 py-1.5 text-xs">
         <input
@@ -1473,7 +1474,7 @@ function SceneEditor({
               >
                 Usar el zoom actual
               </button>
-              <button onClick={() => onUpdateScene(scene.id, { fov_min: 30, fov_max: 100, fov_initial: 75 })} className="text-white/60 hover:text-white hover:underline">
+              <button onClick={() => onUpdateScene(scene.id, { fov_min: 30, fov_max: 120, fov_initial: 120 })} className="text-white/60 hover:text-white hover:underline">
                 Restablecer
               </button>
             </div>
@@ -1606,9 +1607,9 @@ function SceneEditor({
             data-id={s.id}
             onClick={() => s.id !== scene.id && guard(() => setCurrentId(s.id))}
             title={sceneLabel(s)}
-            className={cn("relative shrink-0 w-24 aspect-[2/1] rounded overflow-hidden border-2", s.id === scene.id ? "border-[#F0A030]" : "border-transparent opacity-70 hover:opacity-100")}
+            className={cn("relative shrink-0 w-16 rounded overflow-hidden border-2", s.id === scene.id ? "border-[#F0A030]" : "border-transparent opacity-70 hover:opacity-100")}
           >
-            {s.thumb_url && <img src={s.thumb_url} alt="" className="w-full h-full object-cover" loading="lazy" />}
+            <PanoThumb src={s.thumb_url} yaw={s.initial_yaw} pitch={s.initial_pitch} fov={s.fov_initial} />
             {s.id === startId && <Star size={11} className="absolute top-0.5 left-0.5 text-[#F0A030]" fill="currentColor" />}
           </button>
         ))}

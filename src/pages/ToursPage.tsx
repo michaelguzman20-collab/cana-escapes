@@ -5,12 +5,13 @@ import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { LandingFooter } from "@/components/cana/LandingFooter";
-import { fetchPublishedTours, type Tour } from "@/lib/tours";
+import { fetchPublishedTours, type TourCard } from "@/lib/tours";
+import { PanoThumb } from "@/components/tours/PanoThumb";
 
 // Galería pública de recorridos 360: canaescapes.com/tours
 function ToursContent() {
   const { t } = useLang();
-  const [tours, setTours] = useState<Tour[] | null>(null);
+  const [tours, setTours] = useState<TourCard[] | null>(null);
 
   useEffect(() => {
     fetchPublishedTours()
@@ -50,10 +51,15 @@ function ToursContent() {
                 to={`/tour/${tour.slug}`}
                 className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow"
               >
-                <div className="relative aspect-[2/1] bg-gray-200 overflow-hidden">
-                  {tour.cover_url && (
-                    <img src={tour.cover_url} alt={tour.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                  )}
+                <div className="relative bg-gray-200 overflow-hidden">
+                  <PanoThumb
+                    src={tour.cover_url}
+                    yaw={tour.start?.initial_yaw}
+                    pitch={tour.start?.initial_pitch}
+                    fov={tour.start?.fov_initial}
+                    alt={tour.title}
+                    className="group-hover:scale-105 transition-transform duration-500"
+                  />
                   <span className="absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/55 text-white text-xs font-semibold">
                     <Rotate3d size={13} /> 360°
                   </span>

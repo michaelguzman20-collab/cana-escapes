@@ -44,12 +44,24 @@ const APPS = [
     name: "Cana Check",
     icon: "/apps/cana-check.png",
     desc: {
-      es: "Mantenimiento preventivo de tus propiedades al día. Te recuerda qué toca según la temporada y la ocupación, lleva el récord de cada trabajo con fotos y genera el reporte mensual. Para propietarios, administradores y técnicos.",
-      en: "Keep your properties' preventive maintenance on track. It reminds you what's due based on season and occupancy, keeps a record of every job with photos and creates the monthly report. For owners, managers and technicians.",
+      es: "Mantenimiento preventivo de tus propiedades al día. Te recuerda qué toca según la temporada y la ocupación, lleva el récord de cada trabajo con fotos, hace checklists de inspección y genera reportes del periodo que elijas. Para propietarios, administradores y técnicos.",
+      en: "Keep your properties' preventive maintenance on track. It reminds you what's due based on season and occupancy, keeps a record of every job with photos, runs inspection checklists and creates reports for any period you choose. For owners, managers and technicians.",
     },
     features: {
-      es: ["Plan de mantenimiento para Punta Cana y rentas cortas", "Recordatorios en el teléfono", "Fotos de antes y después", "Reporte mensual en PDF y exportar a Excel"],
-      en: ["Maintenance plan for Punta Cana and short-term rentals", "Phone reminders", "Before and after photos", "Monthly PDF report and Excel export"],
+      es: [
+        "Plan de mantenimiento para propiedades, renta corta y condominios",
+        "Recordatorios dinámicos",
+        "Checklists de inspección por tipo de propiedad",
+        "Fotos de antes y después",
+        "Reportes en PDF por fechas y exportar a Excel",
+      ],
+      en: [
+        "Maintenance plan for properties, short-term rentals and condos",
+        "Dynamic reminders",
+        "Inspection checklists by property type",
+        "Before and after photos",
+        "PDF reports by date range and Excel export",
+      ],
     },
   },
 ];

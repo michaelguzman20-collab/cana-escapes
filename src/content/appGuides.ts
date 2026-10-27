@@ -802,8 +802,8 @@ const check: AppGuide = {
   name: "Cana Check",
   icon: "/apps/cana-check.png",
   tagline: {
-    es: "Mantenimiento preventivo de tus propiedades: recordatorios, récord con fotos y reportes.",
-    en: "Preventive maintenance for your properties: reminders, photo records and reports.",
+    es: "Mantenimiento preventivo de tus propiedades: recordatorios dinámicos, récord con fotos, checklists y reportes.",
+    en: "Preventive maintenance for your properties: dynamic reminders, photo records, checklists and reports.",
   },
   parts: [
     {
@@ -816,8 +816,8 @@ const check: AppGuide = {
             {
               type: "p",
               text: {
-                es: "Cana Check te dice qué mantenimiento preventivo toca en cada propiedad y cuándo, te lo recuerda en el teléfono y guarda el récord de lo que se hizo, con fotos. Está pensada para Punta Cana y Bávaro (salitre, humedad, temporada ciclónica) y para propiedades en renta corta. No necesitas cuenta: tus datos se guardan solo en tu teléfono.",
-                en: "Cana Check tells you which preventive maintenance is due at each property and when, reminds you on your phone and keeps a record of what was done, with photos. It's designed for Punta Cana and Bávaro (salt air, humidity, hurricane season) and for short-term rentals. No account needed: your data stays on your phone.",
+                es: "Cana Check te dice qué mantenimiento preventivo toca en cada propiedad y cuándo, te lo recuerda y guarda el récord de lo que se hizo, con fotos. Sirve para propiedades, rentas cortas y condominios, y está pensada para Punta Cana y Bávaro (salitre, humedad, temporada ciclónica). No necesitas cuenta: tus datos se guardan solo en tu teléfono.",
+                en: "Cana Check tells you which preventive maintenance is due at each property and when, reminds you and keeps a record of what was done, with photos. It works for properties, short-term rentals and condos, and is designed for Punta Cana and Bávaro (salt air, humidity, hurricane season). No account needed: your data stays on your phone.",
               },
             },
             {
@@ -826,18 +826,20 @@ const check: AppGuide = {
                 es: [
                   "Una o varias propiedades: apartamento, villa, casa o áreas comunes de condominio.",
                   "Plan de mantenimiento armado según los equipos de cada propiedad (AC, piscina, cisterna, inversor, planta…).",
-                  "Recordatorios en el teléfono, con el porqué de cada tarea.",
+                  "Recordatorios dinámicos que se ajustan a lo que haces, con el porqué de cada tarea.",
                   "Días de ocupación para hacer los trabajos cuando no hay huéspedes.",
                   "Tablero de trabajos: pendiente, agendado, en proceso y completado.",
-                  "Fotos de antes y después, reporte mensual en PDF y exportar a Excel.",
+                  "Checklists de inspección detallados según el tipo de propiedad, con notas y fotos.",
+                  "Fotos de antes y después, reportes en PDF por las fechas que elijas y exportar a Excel.",
                 ],
                 en: [
                   "One or more properties: apartment, villa, house or condo common areas.",
                   "Maintenance plan built from each property's equipment (AC, pool, cistern, inverter, generator…).",
-                  "Phone reminders, with the reason behind each task.",
+                  "Dynamic reminders that adjust to what you do, with the reason behind each task.",
                   "Occupancy days so work gets done when there are no guests.",
                   "Job board: pending, scheduled, in progress and done.",
-                  "Before and after photos, monthly PDF report and Excel export.",
+                  "Detailed inspection checklists by property type, with notes and photos.",
+                  "Before and after photos, PDF reports for any dates you choose and Excel export.",
                 ],
               },
             },
@@ -868,8 +870,34 @@ const check: AppGuide = {
             {
               type: "tip",
               text: {
-                es: "¿Quieres verla funcionando antes de cargar tus datos? En Inicio toca «Ver con una propiedad de ejemplo». Luego puedes borrarla desde la propiedad (lápiz → Eliminar).",
-                en: "Want to see it working before entering your data? On Home tap “Try it with a sample property”. You can delete it later from the property (pencil → Delete).",
+                es: "¿Quieres verla funcionando antes de cargar tus datos? En Inicio toca «Ver con una propiedad de ejemplo» (trae trabajos, ocupación y un checklist). Luego puedes borrarla en Propiedades manteniéndola presionada → Eliminar.",
+                en: "Want to see it working before entering your data? On Home tap “Try it with a sample property” (it comes with jobs, occupancy and a checklist). You can delete it later in Properties by pressing and holding it → Delete.",
+              },
+            },
+          ],
+        },
+        {
+          id: "inicio",
+          emoji: "📱",
+          title: { es: "Inicio y Propiedades", en: "Home and Properties" },
+          blocks: [
+            {
+              type: "list",
+              items: {
+                es: [
+                  "Los cuatro indicadores de arriba (Vencidas, Por hacer, En proceso, Hechos este mes) abren Trabajos mostrando solo eso. Toca «Ver todo» para quitar el filtro.",
+                  "Gráficas: estado del plan (% al día), trabajos completados de los últimos 6 meses y ocupación de los próximos 30 días.",
+                  "«Necesitan atención» se despliega al tocarlo y muestra las tareas vencidas y próximas.",
+                  "El botón «Nuevo trabajo» (abajo a la derecha) crea un trabajo desde Inicio.",
+                  "En Propiedades, el botón + del centro agrega una propiedad. Mantén presionada una propiedad para abrirla, editarla, moverla de lugar o eliminarla (siempre pide confirmación).",
+                ],
+                en: [
+                  "The four indicators at the top (Overdue, Coming up, In progress, Done this month) open Jobs showing only that. Tap “Show all” to clear the filter.",
+                  "Charts: plan status (% up to date), jobs completed in the last 6 months and occupancy for the next 30 days.",
+                  "“Need attention” expands when you tap it and lists overdue and upcoming tasks.",
+                  "The “New job” button (bottom right) creates a job from Home.",
+                  "In Properties, the + button in the center adds a property. Press and hold a property to open, edit, move or delete it (it always asks for confirmation).",
+                ],
               },
             },
           ],
@@ -963,15 +991,55 @@ const check: AppGuide = {
                 es: [
                   "Cualquiera puede marcar un trabajo como completado: propietario, administrador, técnico o un contratista particular.",
                   "Agrega fotos de «Antes» y «Después» con la cámara o desde la galería. Toca una foto para verla en grande o borrarla.",
-                  "Con el botón de compartir (arriba) envías el resumen del trabajo por WhatsApp.",
-                  "¿Necesitas un técnico? En los trabajos abiertos puedes escribir a Cana Escapes Maintenance.",
+                  "Con el botón de compartir (arriba) envías el trabajo por WhatsApp como reporte PDF con sus fotos de antes y después, o solo el texto.",
                 ],
                 en: [
                   "Anyone can mark a job as done: owner, manager, technician or an outside contractor.",
                   "Add “Before” and “After” photos with the camera or from the gallery. Tap a photo to view it full size or delete it.",
-                  "Use the share button (top) to send the job summary on WhatsApp.",
-                  "Need a technician? Open jobs let you message Cana Escapes Maintenance.",
+                  "Use the share button (top) to send the job on WhatsApp as a PDF report with its before and after photos, or as text only.",
                 ],
+              },
+            },
+          ],
+        },
+        {
+          id: "checklists",
+          emoji: "✅",
+          title: { es: "Checklists de inspección", en: "Inspection checklists" },
+          blocks: [
+            {
+              type: "p",
+              text: {
+                es: "La pestaña «Checklist» sirve para inspeccionar una propiedad espacio por espacio: en una entrada o salida de huésped, una entrega o una revisión general. Al terminar lo compartes con el responsable o el propietario.",
+                en: "The “Checklist” tab lets you inspect a property space by space: at a guest check-in or check-out, a handover or a general review. When you finish, share it with the person in charge or the owner.",
+              },
+            },
+            {
+              type: "steps",
+              items: {
+                es: [
+                  "Toca + y elige la propiedad (u «Otra» para un lugar que no tienes guardado).",
+                  "Elige el tipo: apartamento, villa, casa o áreas comunes de condominio. Indica cuántas habitaciones y baños tiene y marca sus equipos (piscina, planta, cisterna…): el checklist se arma con todo eso.",
+                  "Elige el motivo y crea el checklist.",
+                  "Abre cada espacio y marca cada punto: ✓ Bien, ✗ Falla o N/A. Toca un punto para agregarle una nota. Cada espacio tiene sus notas y fotos opcionales.",
+                  "¿Falta algo? Agrega elementos dentro de un espacio o espacios nuevos al final. Mantén presionado un elemento o espacio para eliminarlo.",
+                  "Al terminar, toca «Marcar como completado» y «Compartir checklist».",
+                ],
+                en: [
+                  "Tap + and choose the property (or “Other” for a place you haven't saved).",
+                  "Pick the type: apartment, villa, house or condo common areas. Set how many bedrooms and bathrooms it has and check its equipment (pool, generator, cistern…): the checklist is built from all of that.",
+                  "Choose the purpose and create the checklist.",
+                  "Open each space and mark each point: ✓ Good, ✗ Issue or N/A. Tap a point to add a note. Each space has its own optional notes and photos.",
+                  "Something missing? Add items inside a space or new spaces at the end. Press and hold an item or space to delete it.",
+                  "When you're done, tap “Mark as completed” and “Share checklist”.",
+                ],
+              },
+            },
+            {
+              type: "tip",
+              text: {
+                es: "Se comparte como reporte PDF (con las fallas primero, notas y fotos) o como resumen de texto para WhatsApp. En una falla puedes tocar «Crear trabajo» para que quede en el tablero.",
+                en: "Share it as a PDF report (issues first, with notes and photos) or as a text summary for WhatsApp. On an issue you can tap “Create job” so it goes on the board.",
               },
             },
           ],
@@ -979,8 +1047,15 @@ const check: AppGuide = {
         {
           id: "recordatorios",
           emoji: "🔔",
-          title: { es: "Recordatorios", en: "Reminders" },
+          title: { es: "Recordatorios dinámicos", en: "Dynamic reminders" },
           blocks: [
+            {
+              type: "p",
+              text: {
+                es: "Los recordatorios se ajustan solos: cada vez que marcas un trabajo hecho, agendas, cambias una frecuencia o agregas días de ocupación, la app vuelve a calcular qué toca y cuándo avisarte. Te llegan como notificaciones en el teléfono.",
+                en: "Reminders adjust themselves: every time you mark a job done, schedule something, change a frequency or add occupancy days, the app recalculates what's due and when to notify you. They arrive as notifications on your phone.",
+              },
+            },
             {
               type: "list",
               items: {
@@ -1018,15 +1093,15 @@ const check: AppGuide = {
               type: "list",
               items: {
                 es: [
-                  "Reporte mensual (Más): elige el mes y la propiedad y toca «Generar y compartir PDF». Incluye trabajos completados con fotos, en proceso, agendados y pendientes, con el costo total.",
+                  "Reportes (Más): elige el periodo (por mes, últimos 30 días, este año o las fechas que quieras) y la propiedad, y toca «Generar y compartir PDF». Incluye trabajos completados con fotos, en proceso, agendados y pendientes, con el costo total.",
                   "Exportar a Excel: el historial de trabajos y el plan de mantenimiento salen como tablas que abren en Excel o Google Sheets.",
-                  "Respaldo: «Exportar respaldo» crea un archivo con todos tus datos y fotos. Guárdalo en Drive o envíatelo.",
+                  "Respaldo: «Exportar respaldo» crea un archivo con todos tus datos, checklists y fotos. Guárdalo en Drive o envíatelo.",
                   "Restaurar: en otro teléfono (o después de reinstalar) toca «Restaurar un respaldo» y elige ese archivo.",
                 ],
                 en: [
-                  "Monthly report (More): pick the month and property and tap “Generate & share PDF”. It includes completed jobs with photos, in progress, scheduled and pending, with the total cost.",
+                  "Reports (More): pick the period (by month, last 30 days, this year or any dates you want) and the property, and tap “Generate & share PDF”. It includes completed jobs with photos, in progress, scheduled and pending, with the total cost.",
                   "Excel export: the job history and the maintenance plan come out as tables that open in Excel or Google Sheets.",
-                  "Backup: “Export backup” creates a file with all your data and photos. Keep it in Drive or send it to yourself.",
+                  "Backup: “Export backup” creates a file with all your data, checklists and photos. Keep it in Drive or send it to yourself.",
                   "Restore: on another phone (or after reinstalling) tap “Restore a backup” and pick that file.",
                 ],
               },
@@ -1058,8 +1133,8 @@ const check: AppGuide = {
                 {
                   q: { es: "¿El administrador y el técnico ven lo mismo?", en: "Do the manager and the technician see the same data?" },
                   a: {
-                    es: "Por ahora cada teléfono tiene sus propios datos. Para pasar la información, comparte el reporte PDF, el Excel, el resumen de un trabajo o un respaldo.",
-                    en: "For now each phone has its own data. To pass information along, share the PDF report, the Excel file, a job summary or a backup.",
+                    es: "Por ahora cada teléfono tiene sus propios datos. Para pasar la información, comparte el reporte PDF, el Excel, un trabajo con fotos, un checklist o un respaldo.",
+                    en: "For now each phone has its own data. To pass information along, share the PDF report, the Excel file, a job with photos, a checklist or a backup.",
                   },
                 },
                 {

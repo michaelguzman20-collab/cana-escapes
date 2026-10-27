@@ -450,15 +450,15 @@ const check: AppPolicy = {
         {
           type: "p",
           text: {
-            es: "Datos de mantenimiento: las propiedades (nombre, tipo, ubicación, propietario y equipos), los días de ocupación, los trabajos (fechas, a quién se asignaron, quién los hizo, costos y notas) se guardan en el almacenamiento privado de la app en tu teléfono. Nosotros no tenemos copia ni acceso a ellos.",
-            en: "Maintenance data: properties (name, type, location, owner and equipment), occupancy days and jobs (dates, who they were assigned to, who did them, costs and notes) are saved in the app's private storage on your phone. We have no copy of them and no access to them.",
+            es: "Datos de mantenimiento: las propiedades (nombre, tipo, ubicación, propietario y equipos), los días de ocupación, los trabajos (fechas, a quién se asignaron, quién los hizo, costos y notas) y los checklists de inspección se guardan en el almacenamiento privado de la app en tu teléfono. Nosotros no tenemos copia ni acceso a ellos.",
+            en: "Maintenance data: properties (name, type, location, owner and equipment), occupancy days, jobs (dates, who they were assigned to, who did them, costs and notes) and inspection checklists are saved in the app's private storage on your phone. We have no copy of them and no access to them.",
           },
         },
         {
           type: "p",
           text: {
-            es: "Cámara y fotos: la app pide permiso de cámara solo para tomar fotos de los trabajos. Si eliges una foto de la galería, se abre el selector de fotos de Android y la app solo recibe la foto que escoges. Las fotos se guardan reducidas dentro de la app.",
-            en: "Camera and photos: the app asks for camera permission only to take photos of jobs. If you pick a photo from the gallery, Android's photo picker opens and the app only receives the photo you choose. Photos are stored, resized, inside the app.",
+            es: "Cámara y fotos: la app pide permiso de cámara solo para tomar fotos de los trabajos y los checklists. Si eliges una foto de la galería, se abre el selector de fotos de Android y la app solo recibe la foto que escoges. Las fotos se guardan reducidas dentro de la app.",
+            en: "Camera and photos: the app asks for camera permission only to take photos of jobs and checklists. If you pick a photo from the gallery, Android's photo picker opens and the app only receives the photo you choose. Photos are stored, resized, inside the app.",
           },
         },
         {
@@ -471,8 +471,8 @@ const check: AppPolicy = {
         {
           type: "p",
           text: {
-            es: "Compartir y respaldos: el reporte PDF, las tablas de Excel, el resumen de un trabajo o el respaldo solo salen del teléfono cuando tú tocas Compartir y eliges a dónde enviarlos (WhatsApp, correo, Drive…). Desde ahí aplica la política de esa app o servicio. El botón «¿Necesitas un técnico?» abre WhatsApp con un mensaje que tú decides si envías.",
-            en: "Sharing and backups: the PDF report, Excel tables, a job summary or a backup only leave the phone when you tap Share and pick where to send them (WhatsApp, email, Drive…). From then on, that app's or service's policy applies. The “Need a technician?” button opens WhatsApp with a message you decide whether to send.",
+            es: "Compartir y respaldos: los reportes PDF, las tablas de Excel, un trabajo con sus fotos, un checklist o el respaldo solo salen del teléfono cuando tú tocas Compartir y eliges a dónde enviarlos (WhatsApp, correo, Drive…). Desde ahí aplica la política de esa app o servicio.",
+            en: "Sharing and backups: PDF reports, Excel tables, a job with its photos, a checklist or a backup only leave the phone when you tap Share and pick where to send them (WhatsApp, email, Drive…). From then on, that app's or service's policy applies.",
           },
         },
         updatesBlock("Cana Check"),

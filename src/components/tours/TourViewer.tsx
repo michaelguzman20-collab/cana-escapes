@@ -136,9 +136,13 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
     };
     // Precarga (caché de red, sin decodificar: una foto 8K decodificada pesa 128 MB) de las fotos a las que se puede ir desde la escena actual
     const preload = (s: TourScene) => {
-      addonsForScene(full.hotspots, s.id).forEach((h) => {
-        const t = h.action === "scene" && h.target_scene_id ? sceneById.get(h.target_scene_id) : null;
-        if (t) fetch(mediaUrl(t.image_url)).then((r) => r.arrayBuffer()).catch(() => undefined); // solo calienta la caché de red, sin decodificar la foto
+      // Máximo 3 por escena: con muchos botones no se descargan decenas de fotos (3 MB cada una) de golpe
+      const targets = addonsForScene(full.hotspots, s.id)
+        .map((h) => (h.action === "scene" && h.target_scene_id ? sceneById.get(h.target_scene_id) : null))
+        .filter((t): t is TourScene => !!t)
+        .slice(0, 3);
+      targets.forEach((t) => {
+        fetch(mediaUrl(t.image_url)).then((r) => r.arrayBuffer()).catch(() => undefined); // solo calienta la caché de red, sin decodificar la foto
       });
     };
 

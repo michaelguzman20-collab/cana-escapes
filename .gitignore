@@ -48,3 +48,6 @@ dist-ssr/
 BACKUP_COMPLETO.md
 scripts/
 .claude/settings.local.json
+
+# Caché de TypeScript (se genera al compilar)
+*.tsbuildinfo

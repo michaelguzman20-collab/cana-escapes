@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Crosshair, GalleryHorizontal, Smartphone, X } from "lucide-react";
-import { Viewer } from "@photo-sphere-viewer/core";
+import { SYSTEM, Viewer } from "@photo-sphere-viewer/core";
 import { MarkersPlugin, type MarkerConfig } from "@photo-sphere-viewer/markers-plugin";
 import { VirtualTourPlugin, type VirtualTourNode } from "@photo-sphere-viewer/virtual-tour-plugin";
 import { AutorotatePlugin } from "@photo-sphere-viewer/autorotate-plugin";
@@ -206,7 +206,15 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
         wanted = id;
         tour.setCurrentNode(id).catch(() => undefined);
       };
-      viewer.addEventListener("panorama-error", () => {
+      viewer.addEventListener("panorama-error", (e) => {
+        // Diagnóstico: abrir el tour con ?debug=1 muestra el error real en pantalla
+        if (new URLSearchParams(location.search).has("debug")) {
+          const sc = sceneById.get(wanted);
+          const box = document.getElementById("tour-debug") ?? Object.assign(document.createElement("pre"), { id: "tour-debug" });
+          box.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#000c;color:#fff;font:11px monospace;padding:8px;white-space:pre-wrap;max-height:50vh;overflow:auto";
+          box.textContent += `${e.error?.name}: ${e.error?.message}\n${String(e.panorama?.panorama ?? sc?.image_url)}\nUA: ${navigator.userAgent}\nmaxTex: ${SYSTEM.maxTextureWidth} canvas: ${(SYSTEM as unknown as { __maxCanvasWidth: number }).__maxCanvasWidth}\n\n`;
+          document.body.appendChild(box);
+        }
         const id = wanted;
         const n = (fails.get(id) ?? 0) + 1;
         fails.set(id, n);

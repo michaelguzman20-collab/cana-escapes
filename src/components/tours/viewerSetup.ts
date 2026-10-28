@@ -1,12 +1,12 @@
-import { SYSTEM } from "@photo-sphere-viewer/core";
+import { Cache, SYSTEM } from "@photo-sphere-viewer/core";
 
 // Ajustes comunes de Photo Sphere Viewer para el visor público y el del editor.
 
 /**
- * En teléfonos la foto 8K (8192x4096 ≈ 128 MB en la tarjeta gráfica) se reduce a 5760 px de ancho:
+ * En teléfonos la foto 8K (8192x4096 ≈ 128 MB en la tarjeta gráfica) se reduce a 4096 px de ancho (33 MB):
  * se ve casi igual en pantalla, carga más rápido y no agota la memoria al pasar de una foto a otra
  * (en iPhone, durante la transición conviven dos fotos y Safari terminaba sin poder cargar la siguiente).
- * 5760x2880 queda bajo el límite de lienzo de iOS (16,7 MP).
+ * Al pasar de foto conviven varias texturas y el teléfono se quedaba sin memoria hacia la 3.ª o 4.ª foto.
  */
 export function limitTexturesOnPhones() {
   const phone = window.matchMedia("(pointer: coarse)").matches && Math.min(screen.width, screen.height) < 768;
@@ -16,8 +16,10 @@ export function limitTexturesOnPhones() {
   } catch {
     return; // sin WebGL: el visor mostrará su propio error
   }
-  const MAX = 5760;
+  const MAX = 4096;
   if (SYSTEM.maxTextureWidth > MAX) SYSTEM.maxTextureWidth = MAX;
+  // El visor guarda en memoria las últimas 10 fotos descargadas: en el teléfono basta con las 2 últimas
+  Cache.maxItems = 2;
   // El visor reduce las fotos más anchas que el tope con un lienzo; su prueba de tamaño máximo crea lienzos
   // enormes y en algunos teléfonos falla ("No se pudo cargar la foto"). Se fija el tope sin hacer esa prueba.
   (SYSTEM as unknown as { __maxCanvasWidth: number | null }).__maxCanvasWidth = SYSTEM.maxTextureWidth;

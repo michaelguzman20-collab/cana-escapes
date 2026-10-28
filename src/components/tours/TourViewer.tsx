@@ -134,11 +134,11 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
       currentScene = s;
       created?.setOptions({ minFov: Math.min(s.fov_min, s.fov_max), maxFov: Math.max(s.fov_min, s.fov_max) });
     };
-    // Precarga (caché del navegador) de las fotos a las que se puede ir desde la escena actual
+    // Precarga (caché de red, sin decodificar: una foto 8K decodificada pesa 128 MB) de las fotos a las que se puede ir desde la escena actual
     const preload = (s: TourScene) => {
       addonsForScene(full.hotspots, s.id).forEach((h) => {
         const t = h.action === "scene" && h.target_scene_id ? sceneById.get(h.target_scene_id) : null;
-        if (t) new Image().src = mediaUrl(t.image_url);
+        if (t) fetch(mediaUrl(t.image_url)).then((r) => r.arrayBuffer()).catch(() => undefined); // solo calienta la caché de red, sin decodificar la foto
       });
     };
 

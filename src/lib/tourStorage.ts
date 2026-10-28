@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { fetchRetry, withTimeout } from "@/lib/tours";
 
 // Almacenamiento de fotos 360 de Tours 360, detrás de un adaptador para poder cambiar de proveedor.
 // · Cloudflare R2 (bucket cana-media, prefijo tours/): se usa cuando existe VITE_R2_PUBLIC_URL. El navegador
@@ -21,11 +22,11 @@ const BUCKET = "tours-dev";
 const supabaseDevStorage: TourStorage = {
   name: "Supabase (tours-dev, temporal)",
   async upload(path, blob) {
-    const { error } = await supabase.storage.from(BUCKET).upload(path, blob, {
-      contentType: blob.type,
-      cacheControl: "31536000",
-      upsert: false,
-    });
+    const { error } = await withTimeout(
+      supabase.storage.from(BUCKET).upload(path, blob, { contentType: blob.type, cacheControl: "31536000", upsert: false }),
+      180000,
+      "La subida tardó demasiado. Revisa la conexión e inténtalo de nuevo."
+    );
     if (error) throw error;
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
     return { path, url: data.publicUrl };
@@ -40,12 +41,12 @@ const supabaseDevStorage: TourStorage = {
 const R2_PUBLIC_URL = (import.meta.env.VITE_R2_PUBLIC_URL as string | undefined)?.replace(/\/+$/, "");
 
 async function toursApi<T>(action: "sign" | "delete", paths: string[]): Promise<T> {
-  const { data } = await supabase.auth.getSession();
-  const res = await fetch("/api/tours-upload", {
+  const { data } = await withTimeout(supabase.auth.getSession(), 15000, "No se pudo comprobar la sesión. Recarga la página.");
+  const res = await fetchRetry("/api/tours-upload", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` },
     body: JSON.stringify({ action, paths }),
-  });
+  }, 2, 20000);
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error || `Error ${res.status} en /api/tours-upload`);
   return json as T;
@@ -56,7 +57,8 @@ const r2Storage: TourStorage = {
   async upload(path, blob) {
     const key = `tours/${path}`;
     const { urls } = await toursApi<{ urls: { url: string }[] }>("sign", [key]);
-    const res = await fetch(urls[0].url, { method: "PUT", body: blob, headers: { "Content-Type": blob.type } });
+    // Hasta 3 intentos y 3 min cada uno: si la red se corta, el botón no se queda "guardando" para siempre
+    const res = await fetchRetry(urls[0].url, { method: "PUT", body: blob, headers: { "Content-Type": blob.type } }, 3, 180000);
     if (!res.ok) throw new Error(`R2 rechazó la subida (${res.status})`);
     return { path: key, url: `${R2_PUBLIC_URL}/${key}` };
   },

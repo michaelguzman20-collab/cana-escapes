@@ -52,5 +52,13 @@ export default defineConfig({
   server: {
     host: true, // listen on all network interfaces (0.0.0.0)
     port: 5173,
+    // Igual que vercel.json en producción: las fotos 360 de R2 se piden por /media (mismo dominio)
+    proxy: {
+      "/media": {
+        target: "https://pub-2e57023c6a964827a3db293f200f241f.r2.dev",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/media/, ""),
+      },
+    },
   },
 });

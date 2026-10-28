@@ -8,6 +8,7 @@ export interface Tour {
   slug: string;
   title: string;
   description: string | null;
+  description_en: string | null;
   cover_url: string | null;
   published: boolean;
   property_name: string | null;
@@ -29,6 +30,7 @@ export interface TourScene {
   tour_id: string;
   title: string; // normalmente el nombre del tour
   area: string | null; // Entrada, Comedor, Habitación… → se muestra "Título (Área)"
+  area_en: string | null; // área en inglés (si falta se traduce sola con translateArea)
   image_url: string;
   thumb_url: string | null;
   storage_path: string | null;
@@ -145,11 +147,22 @@ export interface FullTour {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const db = supabase as any;
 
+// Tour + fotos + addons en una sola consulta (antes eran 3 viajes seguidos al servidor)
 export async function fetchTourBySlug(slug: string): Promise<FullTour | null> {
-  const { data: tour, error } = await db.from("tours").select("*").eq("slug", slug).maybeSingle();
+  const { data, error } = await db
+    .from("tours")
+    .select("*, scenes:tour_scenes!tour_scenes_tour_id_fkey(*, hotspots:tour_hotspots!tour_hotspots_scene_id_fkey(*))")
+    .eq("slug", slug)
+    .maybeSingle();
   if (error) throw error;
-  if (!tour) return null;
-  return fetchTourContent(tour as Tour);
+  if (!data) return null;
+  const { scenes = [], ...tour } = data as Tour & { scenes?: (TourScene & { hotspots?: TourHotspot[] })[] };
+  scenes.sort((a, b) => a.sort_order - b.sort_order);
+  return {
+    tour: tour as Tour,
+    scenes: scenes.map(({ hotspots: _h, ...s }) => s as TourScene),
+    hotspots: scenes.flatMap((s) => s.hotspots ?? []),
+  };
 }
 
 export async function fetchTourContent(tour: Tour): Promise<FullTour> {
@@ -183,10 +196,134 @@ export async function fetchPublishedTours(): Promise<TourCard[]> {
   return data ?? [];
 }
 
-/** Nombre visible de una foto: "Cocotal (Entrada)" */
-export function sceneLabel(s: Pick<TourScene, "title" | "area">) {
+/** Nombre visible de una foto: "Cocotal (Entrada)"; en inglés usa el área traducida */
+export function sceneLabel(s: Pick<TourScene, "title" | "area"> & { area_en?: string | null }, lang: Lang = "es") {
   const t = s.title?.trim() || "Escena";
-  return s.area?.trim() ? `${t} (${s.area.trim()})` : t;
+  const a = areaIn(s, lang);
+  return a ? `${t} (${a})` : t;
+}
+
+type Lang = string; // "es" | "en" (LangContext)
+
+// Áreas en inglés para el botón ES/EN del tour. Se compara sin acentos ni mayúsculas,
+// así "Entrada principal" → "Main entrance" y "Habitación 2" → "Bedroom 2".
+const AREA_EN: Record<string, string> = {
+  "entrada principal": "Main entrance", "entrada": "Entrance", "fachada": "Facade", "recibidor": "Foyer",
+  "vestibulo": "Foyer", "sala de estar": "Living room", "sala": "Living room", "living": "Living room",
+  "comedor": "Dining room", "cocina": "Kitchen", "area comun": "Common area", "areas comunes": "Common areas",
+  "habitacion principal": "Master bedroom", "dormitorio principal": "Master bedroom", "habitacion": "Bedroom",
+  "dormitorio": "Bedroom", "recamara": "Bedroom", "cuarto": "Room", "bano principal": "Master bathroom",
+  "medio bano": "Half bathroom", "bano de visitas": "Guest bathroom", "bano": "Bathroom", "terraza": "Terrace",
+  "balcon": "Balcony", "piscina": "Pool", "jacuzzi": "Hot tub", "jardin": "Garden", "patio": "Patio",
+  "patio trasero": "Backyard", "lobby": "Lobby", "pasillo": "Hallway", "lavanderia": "Laundry room",
+  "parqueo": "Parking", "estacionamiento": "Parking", "garaje": "Garage", "marquesina": "Carport",
+  "escalera": "Stairs", "escaleras": "Stairs", "oficina": "Office", "estudio": "Studio", "gimnasio": "Gym",
+  "rooftop": "Rooftop", "azotea": "Rooftop", "bbq": "BBQ area", "area de bbq": "BBQ area", "gazebo": "Gazebo",
+  "playa": "Beach", "vista": "View", "vista al mar": "Ocean view", "closet": "Closet", "vestidor": "Walk-in closet",
+  "deposito": "Storage", "cuarto de servicio": "Service room", "area de servicio": "Service area",
+  "recepcion": "Reception", "primer piso": "First floor", "segundo piso": "Second floor", "planta alta": "Upstairs",
+  "planta baja": "Downstairs", "exterior": "Exterior", "interior": "Interior", "frente": "Front",
+};
+const ADJ_EN: Record<string, string> = {
+  principal: "main", secundaria: "second", secundario: "second", superior: "upper", inferior: "lower",
+  exterior: "outdoor", interior: "indoor", trasera: "back", trasero: "back", frontal: "front",
+};
+const fold = (x: string) => x.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+const AREA_KEYS = Object.keys(AREA_EN).sort((x, y) => y.length - x.length);
+
+/** Traducción automática de un área (null si no se reconoce) */
+export function translateArea(area: string): string | null {
+  const a = fold(area);
+  if (!a) return null;
+  if (AREA_EN[a]) return AREA_EN[a];
+  // "Habitación 2", "Baño #3"…
+  const num = a.match(/^(.*?)\s*(#?\d+)$/);
+  if (num && AREA_EN[num[1]]) return `${AREA_EN[num[1]]} ${num[2]}`;
+  // Área conocida + adjetivo ("Terraza superior" → "Upper terrace")
+  const k = AREA_KEYS.find((key) => a.startsWith(key + " "));
+  const adj = k ? ADJ_EN[a.slice(k.length).trim()] : undefined;
+  if (k && adj) return `${adj[0].toUpperCase()}${adj.slice(1)} ${AREA_EN[k].toLowerCase()}`;
+  return null;
+}
+
+/** Área de la foto en el idioma pedido (en inglés: la escrita a mano o la traducción automática) */
+export function areaIn(s: { area?: string | null; area_en?: string | null }, lang: Lang) {
+  const es = s.area?.trim() || "";
+  if (lang !== "en" || !es) return es;
+  return s.area_en?.trim() || translateArea(es) || es;
+}
+
+/** Descripción del tour en el idioma pedido */
+export function descriptionIn(t: Pick<Tour, "description" | "description_en">, lang: Lang) {
+  return (lang === "en" ? t.description_en?.trim() || t.description?.trim() : t.description?.trim()) || "";
+}
+
+/** Descripción genérica (español e inglés) para empezar y luego ajustar los detalles */
+export function genericDescription(t: Pick<Tour, "title" | "property_name" | "location" | "bedrooms" | "bathrooms">, areas: string[]) {
+  const name = t.property_name?.trim() || t.title.trim();
+  const where = t.location?.trim() || "Punta Cana";
+  const uniq = [...new Set(areas.map((a) => a.trim()).filter(Boolean))].slice(0, 6);
+  const list = (xs: string[], and: string) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} ${and} ${xs[xs.length - 1]}` : xs[0] ?? "");
+  const n = (v: number | null, one: string, many: string) => (v != null ? `${v} ${v === 1 ? one : many}` : "");
+  const roomsEs = [n(t.bedrooms, "habitación", "habitaciones"), n(t.bathrooms, "baño", "baños")].filter(Boolean);
+  const roomsEn = [n(t.bedrooms, "bedroom", "bedrooms"), n(t.bathrooms, "bathroom", "bathrooms")].filter(Boolean);
+  const es = [
+    `Recorre ${name} en ${where} con este tour virtual 360°, como si estuvieras allí.`,
+    roomsEs.length
+      ? `Cuenta con ${list(roomsEs, "y")}, con espacios cómodos y luminosos para disfrutar del Caribe.`
+      : "Espacios cómodos y luminosos para disfrutar del Caribe.",
+    uniq.length ? `En el recorrido verás: ${list(uniq.map((a) => a.toLowerCase()), "y")}.` : "",
+    "Gestionada por Cana Escapes: reserva o escríbenos por WhatsApp para más información.",
+  ].filter(Boolean).join(" ");
+  const enAreas = uniq.map((a) => (translateArea(a) ?? a).toLowerCase());
+  const en = [
+    `Walk through ${name} in ${where} with this 360° virtual tour, as if you were there.`,
+    roomsEn.length
+      ? `It features ${list(roomsEn, "and")}, with comfortable, bright spaces to enjoy the Caribbean.`
+      : "Comfortable, bright spaces to enjoy the Caribbean.",
+    enAreas.length ? `In the tour you will see: ${list(enAreas, "and")}.` : "",
+    "Managed by Cana Escapes: book now or message us on WhatsApp for more information.",
+  ].filter(Boolean).join(" ");
+  return { es, en };
+}
+
+// ── Entrega de fotos ─────────────────────────────────────────────────────────
+// El enlace público r2.dev de Cloudflare está limitado y corta conexiones al azar (por eso una foto
+// "no se pudo cargar"). En producción las fotos se piden a canaescapes.com/media/…, que Vercel reenvía
+// a R2 y guarda en su caché (ver vercel.json; en local, el proxy de vite.config.ts). Además evita el CORS
+// de R2, que solo acepta https://canaescapes.com. En la BD se sigue guardando la URL original.
+const R2_DEV = /^https:\/\/pub-[a-f0-9]+\.r2\.dev\//;
+
+export function mediaUrl<T extends string | null | undefined>(url: T): T {
+  if (!url) return url;
+  return url.replace(R2_DEV, "/media/") as T;
+}
+
+/** fetch con tiempo máximo y reintentos (la red del teléfono o el almacenamiento pueden fallar un momento) */
+export async function fetchRetry(url: string, init: RequestInit = {}, tries = 3, timeoutMs = 60000): Promise<Response> {
+  let last: unknown;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const res = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+      if (res.ok || (res.status < 500 && res.status !== 429)) return res;
+      last = new Error(`Error ${res.status}`);
+    } catch (e) {
+      last = e;
+    }
+    if (i < tries - 1) await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+  }
+  throw last instanceof Error && last.name === "TimeoutError" ? new Error("La conexión tardó demasiado. Inténtalo de nuevo.") : last;
+}
+
+/** Corta una espera que no termina, para que un botón no se quede "cargando" para siempre */
+export function withTimeout<T>(p: PromiseLike<T>, ms: number, msg = "Tardó demasiado. Revisa la conexión e inténtalo de nuevo."): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(msg)), ms);
+    Promise.resolve(p).then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); }
+    );
+  });
 }
 
 /** Áreas sugeridas al nombrar las fotos */

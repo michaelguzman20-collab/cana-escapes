@@ -1,5 +1,6 @@
 import type { MarkerConfig } from "@photo-sphere-viewer/markers-plugin";
 import type { AddonStyle, TourHotspot } from "@/lib/tours";
+import { mediaUrl } from "@/lib/tours";
 import { escapeHtml } from "./markerHtml";
 
 // Addons del tour 360 (como en Kuula): ícono, texto o imagen, en 2D (siempre de frente) o pegados en
@@ -80,9 +81,9 @@ export function addonElement(h: TourHotspot, opts: { label?: string; selected?: 
   if (h.kind === "text") {
     body = `<div class="ce-addon-text" style="${rot}${shadow}font-size:${(s.fontSize ?? 22) * k}px;color:${s.color ?? "#fff"};${s.labelBg ? `background:${s.labelBg};` : ""}${s.bold ? "font-weight:700;" : ""}">${escapeHtml(s.label || "Texto").replace(/\n/g, "<br>")}</div>`;
   } else if (h.kind === "image" && h.image_url) {
-    body = `<img class="ce-addon-img" src="${escapeHtml(h.image_url)}" style="width:${size}px;${rot}${shadow}" draggable="false" alt="">`;
+    body = `<img class="ce-addon-img" src="${escapeHtml(mediaUrl(h.image_url))}" style="width:${size}px;${rot}${shadow}" draggable="false" alt="">`;
   } else if (h.image_url) {
-    body = `<img class="ce-addon-icon" src="${escapeHtml(h.image_url)}" style="width:${size}px;height:${size}px;object-fit:contain;${rot}${shadow}" draggable="false" alt="">`;
+    body = `<img class="ce-addon-icon" src="${escapeHtml(mediaUrl(h.image_url))}" style="width:${size}px;height:${size}px;object-fit:contain;${rot}${shadow}" draggable="false" alt="">`;
   } else {
     const pad = s.bg ? size * 0.2 : 0;
     body = `<div class="ce-addon-icon" style="width:${size}px;height:${size}px;padding:${pad}px;${s.bg ? `background:${s.bg};border-radius:9999px;` : ""}${rot}${shadow}">${iconSvg(h.icon ?? "target", s.tint ?? "#fff")}</div>`;

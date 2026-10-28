@@ -7,7 +7,7 @@ import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useS
 import { CSS } from "@dnd-kit/utilities";
 import {
   Rotate3d, Plus, ArrowLeft, ExternalLink, Copy, Save, Trash2, UploadCloud, Star, LayoutGrid, Pencil,
-  Navigation, Info, Crosshair, Eye, Loader2, Settings2, Image as ImageIcon, X, GripVertical, RefreshCw, Download, MoveRight, Type,
+  Navigation, Info, Crosshair, Eye, Loader2, Settings2, Image as ImageIcon, X, GripVertical, RefreshCw, Download, MoveRight, Type, Wand2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ import { tourStorage, processPanorama, extOf } from "@/lib/tourStorage";
 import { PanoThumb } from "@/components/tours/PanoThumb";
 import { applyFilters as renderFilters, canvasToBlob, cssPreview, thumbFrom } from "@/lib/panoFilters";
 import {
-  db, fetchTourContent, slugify, tourUrl, hasFilters, FILTER_KEYS,
+  db, fetchTourContent, slugify, tourUrl, hasFilters, FILTER_KEYS, mediaUrl, fetchRetry, withTimeout, translateArea, genericDescription,
   addonsForScene, sceneLabel, AREA_SUGGESTIONS, type Tour, type TourScene, type TourHotspot, type PanoFilters,
 } from "@/lib/tours";
 import { AddonPanel } from "@/components/tours/AddonPanel";
@@ -36,6 +36,8 @@ import type { EditorViewerApi } from "@/components/tours/TourEditorViewer";
 const TourEditorViewer = lazy(() => import("@/components/tours/TourEditorViewer"));
 
 const DEG = 180 / Math.PI;
+// Tiempo máximo de una escritura en la BD antes de avisar (para que "Guardar" no quede colgado)
+const DB_TIMEOUT = 20000;
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
 function errMsg(e: unknown) {
@@ -220,7 +222,14 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
   }, [tour.id]);
 
   async function patchTour(patch: Partial<Tour>) {
-    const { data, error } = await db.from("tours").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", tour.id).select().single();
+    let res: { data: Tour; error: unknown };
+    try {
+      res = await withTimeout(db.from("tours").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", tour.id).select().single(), DB_TIMEOUT);
+    } catch (e) {
+      fail("No se pudo guardar", e);
+      return false;
+    }
+    const { data, error } = res;
     if (error) {
       fail("No se pudo guardar", error);
       return false;
@@ -383,8 +392,12 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
       };
       return;
     }
-    const { error } = await db.from("tour_scenes").update(patch).eq("id", id);
-    if (error) fail("No se pudo guardar la escena", error);
+    try {
+      const { error } = await withTimeout<{ error: unknown }>(db.from("tour_scenes").update(patch).eq("id", id), DB_TIMEOUT);
+      if (error) fail("No se pudo guardar la escena", error);
+    } catch (e) {
+      fail("No se pudo guardar la escena", e);
+    }
   }
 
   const tourTimer = useRef<number>();
@@ -458,7 +471,7 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
   async function downloadPhoto(scene: TourScene) {
     try {
       setUploadMsg("Descargando…");
-      const blob = await (await fetch(scene.base_url ?? scene.image_url)).blob();
+      const blob = await (await fetchRetry(mediaUrl(scene.base_url ?? scene.image_url))).blob();
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = `${slugify(sceneLabel(scene)) || "escena"}.${blob.type === "image/webp" ? "webp" : "jpg"}`;
@@ -576,13 +589,33 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
         </div>
         {view === "grid" && (
           <div className="max-w-screen-2xl mx-auto mt-2">
-            <Textarea
-              value={form.description ?? ""}
-              onChange={(e) => setForm({ ...form, description: e.target.value || null })}
-              placeholder="Descripción del tour (opcional)"
-              rows={2}
-              className="max-w-2xl"
-            />
+            <div className="grid gap-2 lg:grid-cols-2 max-w-5xl">
+              <Textarea
+                value={form.description ?? ""}
+                onChange={(e) => setForm({ ...form, description: e.target.value || null })}
+                placeholder="Descripción del tour (español, opcional)"
+                rows={3}
+              />
+              <Textarea
+                value={form.description_en ?? ""}
+                onChange={(e) => setForm({ ...form, description_en: e.target.value || null })}
+                placeholder="Description (English, optional) — se muestra con el botón EN"
+                rows={3}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const hasText = !!(form.description?.trim() || form.description_en?.trim());
+                if (hasText && !confirm("¿Reemplazar las descripciones actuales por una genérica?")) return;
+                const d = genericDescription(form, scenes.map((s) => s.area ?? ""));
+                setForm({ ...form, description: d.es, description_en: d.en });
+                toast({ title: "Descripción genérica lista", description: "Ajusta los detalles y pulsa Guardar." });
+              }}
+              className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-[#b8761a] hover:underline"
+            >
+              <Wand2 size={13} /> Generar descripción genérica (ES + EN)
+            </button>
           </div>
         )}
         <div className="max-w-screen-2xl mx-auto mt-3 flex gap-1">
@@ -1104,6 +1137,8 @@ function SceneEditor({
   const [pickingStart, setPickingStart] = useState(false);
   const [area, setArea] = useState(scene.area ?? "");
   useEffect(() => setArea(scene.area ?? ""), [scene.area]);
+  const [areaEn, setAreaEn] = useState(scene.area_en ?? "");
+  useEffect(() => setAreaEn(scene.area_en ?? ""), [scene.area_en, scene.id]);
   const stripRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<"puntos" | "foto">("puntos");
   const [filters, setFilters] = useState<PanoFilters>(scene.filters ?? {});
@@ -1200,14 +1235,21 @@ function SceneEditor({
     const isNew = id === "new";
     const prev = hotspots.find((h) => h.id === id);
     const q = isNew ? db.from("tour_hotspots").insert(row) : db.from("tour_hotspots").update(row).eq("id", id);
-    const { data, error } = await q.select().single();
+    let data: TourHotspot | null = null;
+    let error: unknown = null;
+    try {
+      ({ data, error } = await withTimeout<{ data: TourHotspot | null; error: unknown }>(q.select().single(), DB_TIMEOUT));
+    } catch (e) {
+      error = e;
+    }
     setSavingAddon(false);
     if (error) {
       fail("No se pudo guardar", error);
       return false;
     }
-    setHotspots((h) => (isNew ? [...h, data] : h.map((x) => (x.id === id ? data : x))));
-    if (prev?.image_path && prev.image_path !== data.image_path) tourStorage.remove([prev.image_path]).catch(() => undefined);
+    const saved = data!;
+    setHotspots((h) => (isNew ? [...h, saved] : h.map((x) => (x.id === id ? saved : x))));
+    if (prev?.image_path && prev.image_path !== saved.image_path) tourStorage.remove([prev.image_path]).catch(() => undefined);
     setEditing(null);
     toast({ title: "Guardado" });
     return true;
@@ -1418,7 +1460,18 @@ function SceneEditor({
                 {AREA_SUGGESTIONS.map((a) => <option key={a} value={a} />)}
               </datalist>
             </div>
-            <p className="mt-1 text-[11px] text-white/40">Se verá como: <b className="text-white/70">{sceneLabel({ title, area })}</b></p>
+            <Input
+              value={areaEn}
+              onChange={(e) => setAreaEn(e.target.value)}
+              onBlur={() => areaEn.trim() !== (scene.area_en ?? "") && onUpdateScene(scene.id, { area_en: areaEn.trim() || null })}
+              onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+              placeholder={`Inglés: ${(area.trim() && translateArea(area)) || "escríbelo (ej. Living room)"}`}
+              className={cn("h-8 text-xs mt-1.5", panelInput)}
+            />
+            <p className="mt-1 text-[11px] text-white/40">
+              Se verá como: <b className="text-white/70">{sceneLabel({ title, area })}</b>
+              {area.trim() && <> · EN: <b className="text-white/70">{sceneLabel({ title, area, area_en: areaEn }, "en")}</b></>}
+            </p>
           </section>
 
           <section>
@@ -1474,7 +1527,7 @@ function SceneEditor({
               >
                 Usar el zoom actual
               </button>
-              <button onClick={() => onUpdateScene(scene.id, { fov_min: 30, fov_max: 120, fov_initial: 120 })} className="text-white/60 hover:text-white hover:underline">
+              <button onClick={() => onUpdateScene(scene.id, { fov_min: 30, fov_max: 120, fov_initial: 110 })} className="text-white/60 hover:text-white hover:underline">
                 Restablecer
               </button>
             </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState, type ComponentType } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SplashScreen } from "@/components/cana/SplashScreen";
@@ -6,40 +6,54 @@ import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { GuestLayout } from "@/components/layout/GuestLayout";
 import { LoginPage } from "@/pages/LoginPage";
-import { AdminDashboard } from "@/pages/admin/AdminDashboard";
-import { AdminCalendario } from "@/pages/admin/AdminCalendario";
-import { AdminReservas } from "@/pages/admin/AdminReservas";
-import { AdminConfiguracion } from "@/pages/admin/AdminConfiguracion";
-import { AdminHuespedes } from "@/pages/admin/AdminHuespedes";
-import { AdminPlataformas } from "@/pages/admin/AdminPlataformas";
-import { AdminPropietarios } from "@/pages/admin/AdminPropietarios";
-import { AdminCargos } from "@/pages/admin/AdminCargos";
-import { AdminCanaEscapes } from "@/pages/admin/AdminCanaEscapes";
-import { AdminContabilidad } from "@/pages/admin/AdminContabilidad";
-import { AdminCalculadora } from "@/pages/admin/AdminCalculadora";
-import { AdminMantenimiento } from "@/pages/admin/AdminMantenimiento";
-import { AdminPagosPropietarios } from "@/pages/admin/AdminPagosPropietarios";
-import { AdminWhatsapp } from "@/pages/admin/AdminWhatsapp";
-import { AdminTrack } from "@/pages/admin/AdminTrack";
-import { AdminCanaDna } from "@/pages/admin/AdminCanaDna";
-import { AdminTours } from "@/pages/admin/AdminTours";
-import { TrackTeamPage } from "@/pages/TrackTeamPage";
-import { GuestDashboard } from "@/pages/guest/GuestDashboard";
-import { ShareView } from "@/pages/share/ShareView";
-import { UpdatePassword } from "@/pages/UpdatePassword";
 import { Toaster } from "@/components/ui/toaster";
 import { supabaseConfigured } from "@/lib/supabase";
 import { HomePage } from "@/pages/HomePage";
-import { PropietariosPage } from "@/pages/PropietariosPage";
-import { ServiciosPage } from "@/pages/ServiciosPage";
-import { AppsPage } from "@/pages/AppsPage";
-import { CanaDnaPage } from "@/pages/CanaDnaPage";
-import { ToursPage } from "@/pages/ToursPage";
-import { TourPage } from "@/pages/TourPage";
-import { AppGuidePage } from "@/pages/AppGuidePage";
-import { AppPrivacyPage } from "@/pages/AppPrivacyPage";
-import { TrackDeleteAccountPage } from "@/pages/TrackDeleteAccountPage";
 import { Logo } from "@/components/layout/Logo";
+
+// Páginas que se descargan solo al abrirlas (paneles y páginas públicas secundarias): así cada página
+// —por ejemplo un tour 360 abierto desde WhatsApp— carga mucho menos código en el teléfono.
+function lazyPage<K extends string>(load: () => Promise<Record<K, ComponentType>>, name: K) {
+  return lazy(() => load().then((m) => ({ default: m[name] })));
+}
+const AdminDashboard = lazyPage(() => import("@/pages/admin/AdminDashboard"), "AdminDashboard");
+const AdminCalendario = lazyPage(() => import("@/pages/admin/AdminCalendario"), "AdminCalendario");
+const AdminReservas = lazyPage(() => import("@/pages/admin/AdminReservas"), "AdminReservas");
+const AdminConfiguracion = lazyPage(() => import("@/pages/admin/AdminConfiguracion"), "AdminConfiguracion");
+const AdminHuespedes = lazyPage(() => import("@/pages/admin/AdminHuespedes"), "AdminHuespedes");
+const AdminPlataformas = lazyPage(() => import("@/pages/admin/AdminPlataformas"), "AdminPlataformas");
+const AdminPropietarios = lazyPage(() => import("@/pages/admin/AdminPropietarios"), "AdminPropietarios");
+const AdminCargos = lazyPage(() => import("@/pages/admin/AdminCargos"), "AdminCargos");
+const AdminCanaEscapes = lazyPage(() => import("@/pages/admin/AdminCanaEscapes"), "AdminCanaEscapes");
+const AdminContabilidad = lazyPage(() => import("@/pages/admin/AdminContabilidad"), "AdminContabilidad");
+const AdminCalculadora = lazyPage(() => import("@/pages/admin/AdminCalculadora"), "AdminCalculadora");
+const AdminMantenimiento = lazyPage(() => import("@/pages/admin/AdminMantenimiento"), "AdminMantenimiento");
+const AdminPagosPropietarios = lazyPage(() => import("@/pages/admin/AdminPagosPropietarios"), "AdminPagosPropietarios");
+const AdminWhatsapp = lazyPage(() => import("@/pages/admin/AdminWhatsapp"), "AdminWhatsapp");
+const AdminTrack = lazyPage(() => import("@/pages/admin/AdminTrack"), "AdminTrack");
+const AdminCanaDna = lazyPage(() => import("@/pages/admin/AdminCanaDna"), "AdminCanaDna");
+const AdminTours = lazyPage(() => import("@/pages/admin/AdminTours"), "AdminTours");
+const TrackTeamPage = lazyPage(() => import("@/pages/TrackTeamPage"), "TrackTeamPage");
+const GuestDashboard = lazyPage(() => import("@/pages/guest/GuestDashboard"), "GuestDashboard");
+const ShareView = lazyPage(() => import("@/pages/share/ShareView"), "ShareView");
+const UpdatePassword = lazyPage(() => import("@/pages/UpdatePassword"), "UpdatePassword");
+const PropietariosPage = lazyPage(() => import("@/pages/PropietariosPage"), "PropietariosPage");
+const ServiciosPage = lazyPage(() => import("@/pages/ServiciosPage"), "ServiciosPage");
+const AppsPage = lazyPage(() => import("@/pages/AppsPage"), "AppsPage");
+const CanaDnaPage = lazyPage(() => import("@/pages/CanaDnaPage"), "CanaDnaPage");
+const ToursPage = lazyPage(() => import("@/pages/ToursPage"), "ToursPage");
+const TourPage = lazyPage(() => import("@/pages/TourPage"), "TourPage");
+const AppGuidePage = lazyPage(() => import("@/pages/AppGuidePage"), "AppGuidePage");
+const AppPrivacyPage = lazyPage(() => import("@/pages/AppPrivacyPage"), "AppPrivacyPage");
+const TrackDeleteAccountPage = lazyPage(() => import("@/pages/TrackDeleteAccountPage"), "TrackDeleteAccountPage");
+
+function PageLoader() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <div className="w-8 h-8 rounded-full border-2 border-[#F0A030] border-t-transparent animate-spin" />
+    </div>
+  );
+}
 
 function SetupScreen() {
   return (
@@ -102,6 +116,7 @@ export default function App() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
       <AuthProvider>
+        <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public */}
           <Route path="/login" element={<LoginPage />} />
@@ -170,6 +185,7 @@ export default function App() {
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
         <Toaster />
       </AuthProvider>
     </BrowserRouter>

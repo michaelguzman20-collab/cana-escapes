@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { GuestNav } from "./GuestNav";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,7 +25,10 @@ export function GuestLayout() {
     <div className="min-h-screen bg-gradient-to-br from-[#eef3f9] via-[#f0f6ff] to-[#e8f0f8]">
       <GuestNav />
       <main className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
-        <Outlet />
+        {/* Cada página se descarga al abrirla: el menú queda visible mientras tanto */}
+          <Suspense fallback={<div className="min-h-[50vh] flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-[#F0A030] border-t-transparent animate-spin" /></div>}>
+            <Outlet />
+          </Suspense>
       </main>
     </div>
   );

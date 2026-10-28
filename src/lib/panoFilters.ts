@@ -1,4 +1,4 @@
-import type { PanoFilters } from "@/lib/tours";
+import { fetchRetry, mediaUrl, type PanoFilters } from "@/lib/tours";
 
 // Filtros de foto 360 (brillo, contraste, saturación, HDR y nitidez) aplicados en el navegador sobre la
 // foto original de la escena. El resultado se guarda como una foto nueva: así el visor no hace trabajo
@@ -34,7 +34,7 @@ function buildLut(f: PanoFilters) {
 }
 
 async function loadBitmap(url: string) {
-  const res = await fetch(url, { cache: "force-cache" });
+  const res = await fetchRetry(mediaUrl(url), { cache: "force-cache" });
   if (!res.ok) throw new Error(`No se pudo descargar la foto (${res.status})`);
   return createImageBitmap(await res.blob());
 }

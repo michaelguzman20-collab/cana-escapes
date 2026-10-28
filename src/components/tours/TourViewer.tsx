@@ -12,8 +12,9 @@ import "./tours.css";
 import { LOADER_IMG, nadirLogoUrl, nadirMarker } from "./markerHtml";
 import { addonElement, addonMarker } from "./tourAddons";
 import { PanoThumb } from "./PanoThumb";
+import { limitTexturesOnPhones, PSV_LANG_EN, PSV_LANG_ES } from "./viewerSetup";
 import {
-  addonsForScene, clampPitch, sceneLabel, sphereCorrection, startScene, zoomLevelFor, type FullTour, type TourHotspot, type TourScene,
+  addonsForScene, areaIn, clampPitch, mediaUrl, sceneLabel, sphereCorrection, startScene, zoomLevelFor, type FullTour, type TourHotspot, type TourScene,
 } from "@/lib/tours";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,8 @@ interface Props {
   loadingText?: string;
   /** Texto del botón para volver a la vista inicial de la foto */
   startLabel?: string;
+  /** Idioma del botón ES/EN: cambia el nombre de las áreas y los botones del visor */
+  lang?: string;
 }
 
 const levelOf = (s: TourScene) => zoomLevelFor(s.fov_initial, s.fov_min, s.fov_max);
@@ -66,17 +69,20 @@ function Card({ addon, onClose }: { addon: TourHotspot; onClose(): void }) {
   );
 }
 
-export default function TourViewer({ full, loadingText, startLabel }: Props) {
+export default function TourViewer({ full, loadingText, startLabel, lang = "es" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tourRef = useRef<VirtualTourPlugin | null>(null);
   const viewerRef = useRef<Viewer | null>(null);
+  const goRef = useRef<(id: string) => void>(() => undefined);
+  const langRef = useRef(lang);
+  langRef.current = lang;
   const first = startScene(full);
   const [current, setCurrent] = useState(first?.id ?? "");
   const [card, setCard] = useState<TourHotspot | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || !first) return;
-    const titles = new Map(full.scenes.map((s) => [s.id, s.area?.trim() || s.title]));
+    const titles = new Map(full.scenes.map((s) => [s.id, areaIn(s, langRef.current) || s.title]));
     const sceneById = new Map(full.scenes.map((s) => [s.id, s]));
     const addonById = new Map(full.hotspots.map((h) => [h.id, h]));
 
@@ -88,10 +94,10 @@ export default function TourViewer({ full, loadingText, startLabel }: Props) {
         if (logo && full.tour.nadir_logo) markers.push(nadirMarker(logo, full.tour.nadir_size, full.tour.nadir_opacity));
         return {
           id: s.id,
-          panorama: s.image_url,
+          panorama: mediaUrl(s.image_url),
           name: s.title,
-          caption: sceneLabel(s),
-          thumbnail: s.thumb_url ?? undefined,
+          caption: sceneLabel(s, langRef.current),
+          thumbnail: mediaUrl(s.thumb_url) ?? undefined,
           sphereCorrection: sphereCorrection(s),
           links: [],
           markers: markers as VirtualTourNode["markers"],
@@ -112,13 +118,14 @@ export default function TourViewer({ full, loadingText, startLabel }: Props) {
     const preload = (s: TourScene) => {
       addonsForScene(full.hotspots, s.id).forEach((h) => {
         const t = h.action === "scene" && h.target_scene_id ? sceneById.get(h.target_scene_id) : null;
-        if (t) new Image().src = t.image_url;
+        if (t) new Image().src = mediaUrl(t.image_url);
       });
     };
 
     const timer = setTimeout(async () => {
       const logo = full.tour.nadir_logo ? await nadirLogoUrl() : null;
       if (cancelled) return;
+      limitTexturesOnPhones();
       const viewer = (created = new Viewer({
         container: containerRef.current!,
         defaultYaw: first.initial_yaw,
@@ -128,6 +135,7 @@ export default function TourViewer({ full, loadingText, startLabel }: Props) {
         defaultZoomLvl: levelOf(first),
         loadingImg: LOADER_IMG,
         loadingTxt: loadingText ?? "Cargando…",
+        lang: langRef.current === "en" ? PSV_LANG_EN : PSV_LANG_ES,
         touchmoveTwoFingers: false,
         mousewheelCtrlKey: false,
         navbar: ["autorotate", "zoom", "caption", "gyroscope", "fullscreen"],
@@ -166,7 +174,23 @@ export default function TourViewer({ full, loadingText, startLabel }: Props) {
       tour.addEventListener("node-changed", ({ node }) => {
         setCurrent(node.id);
         const s = sceneById.get(node.id);
-        if (s) preload(s);
+        if (s) {
+          preload(s);
+          viewer.setOption("caption", sceneLabel(s, langRef.current));
+        }
+      });
+      // Si una foto falla (red del teléfono, almacenamiento lento) se reintenta sola 2 veces
+      let wanted = first.id;
+      const fails = new Map<string, number>();
+      goRef.current = (id) => {
+        wanted = id;
+        tour.setCurrentNode(id).catch(() => undefined);
+      };
+      viewer.addEventListener("panorama-error", () => {
+        const id = wanted;
+        const n = (fails.get(id) ?? 0) + 1;
+        fails.set(id, n);
+        if (n <= 2) setTimeout(() => !cancelled && wanted === id && tour.setCurrentNode(id, { forceUpdate: true }).catch(() => undefined), 1200 * n);
       });
       preload(first);
       // Límite vertical de la escena actual
@@ -178,7 +202,7 @@ export default function TourViewer({ full, loadingText, startLabel }: Props) {
       markers.addEventListener("select-marker", ({ marker }) => {
         const h = addonById.get(marker.id);
         if (!h) return;
-        if (h.action === "scene" && h.target_scene_id) tour.setCurrentNode(h.target_scene_id);
+        if (h.action === "scene" && h.target_scene_id) goRef.current(h.target_scene_id);
         else if (h.action === "card") setCard(h);
         else if (h.action === "url" && h.url) window.open(h.url, "_blank", "noopener");
       });
@@ -188,11 +212,21 @@ export default function TourViewer({ full, loadingText, startLabel }: Props) {
       clearTimeout(timer);
       tourRef.current = null;
       viewerRef.current = null;
+      goRef.current = () => undefined;
       (created as Viewer | null)?.destroy();
     };
     // El tour no cambia mientras la página está abierta
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Cambio de idioma: botones del visor y nombre de la foto actual
+  useEffect(() => {
+    const v = viewerRef.current;
+    const s = full.scenes.find((x) => x.id === current);
+    if (!v) return;
+    v.setOption("lang", lang === "en" ? PSV_LANG_EN : PSV_LANG_ES);
+    if (s) v.setOption("caption", sceneLabel(s, lang));
+  }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="absolute inset-0">
@@ -214,14 +248,14 @@ export default function TourViewer({ full, loadingText, startLabel }: Props) {
             {full.scenes.map((s) => (
               <button
                 key={s.id}
-                onClick={() => s.id !== current && tourRef.current?.setCurrentNode(s.id)}
+                onClick={() => s.id !== current && goRef.current(s.id)}
                 className={cn(
                   "shrink-0 w-16 sm:w-20 rounded-lg overflow-hidden border-2 text-left transition-colors",
                   s.id === current ? "border-[#F0A030]" : "border-transparent opacity-80 hover:opacity-100"
                 )}
               >
                 <PanoThumb src={s.thumb_url} yaw={s.initial_yaw} pitch={s.initial_pitch} fov={s.fov_initial} className="bg-black/40" />
-                <div className="px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium text-white truncate bg-black/50">{s.area?.trim() || s.title || "—"}</div>
+                <div className="px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium text-white truncate bg-black/50">{areaIn(s, lang) || s.title || "—"}</div>
               </button>
             ))}
           </div>

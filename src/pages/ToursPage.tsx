@@ -5,12 +5,12 @@ import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { LandingFooter } from "@/components/cana/LandingFooter";
-import { fetchPublishedTours, type TourCard } from "@/lib/tours";
+import { descriptionIn, fetchPublishedTours, type TourCard } from "@/lib/tours";
 import { PanoThumb } from "@/components/tours/PanoThumb";
 
 // Galería pública de recorridos 360: canaescapes.com/tours
 function ToursContent() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [tours, setTours] = useState<TourCard[] | null>(null);
 
   useEffect(() => {
@@ -70,7 +70,7 @@ function ToursContent() {
                     {tour.location && <span className="inline-flex items-center gap-1"><MapPin size={14} /> {tour.location}</span>}
                     {tour.bedrooms != null && <span className="inline-flex items-center gap-1"><BedDouble size={14} /> {tour.bedrooms} {t("tours_bedrooms")}</span>}
                   </div>
-                  {tour.description && <p className="mt-2 text-sm text-gray-600 line-clamp-2">{tour.description}</p>}
+                  {descriptionIn(tour, lang) && <p className="mt-2 text-sm text-gray-600 line-clamp-2">{descriptionIn(tour, lang)}</p>}
                   <span className="mt-4 inline-block text-sm font-semibold text-[#b8761a] group-hover:underline">{t("tours_open")} →</span>
                 </div>
               </Link>

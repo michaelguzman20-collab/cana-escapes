@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { AdminNav } from "./AdminNav";
 import { PropertyProvider } from "@/contexts/PropertyContext";
@@ -9,7 +10,10 @@ export function AdminLayout() {
         <AdminNav />
         {/* pt-24 covers mobile top header (~96px); pb-20 covers mobile bottom nav with scroll */}
         <main className="flex-1 overflow-x-hidden pt-24 pb-20 md:pt-0 md:pb-0">
-          <Outlet />
+          {/* Cada página se descarga al abrirla: el menú queda visible mientras tanto */}
+          <Suspense fallback={<div className="min-h-[50vh] flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-[#F0A030] border-t-transparent animate-spin" /></div>}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </PropertyProvider>

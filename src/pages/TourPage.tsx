@@ -1,16 +1,21 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Link2, Rotate3d } from "lucide-react";
+import { Info, Link2, Music, Rotate3d, VolumeX, X } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
 import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
-import { fetchTourBySlug, tourUrl, type FullTour } from "@/lib/tours";
+import { descriptionIn, fetchTourBySlug, mediaUrl, startScene, tourUrl, type FullTour } from "@/lib/tours";
+import { AmbientMusic } from "@/components/tours/ambientMusic";
 import { LOADER_IMG } from "@/components/tours/markerHtml";
 import "@/components/tours/tours.css";
 
 // Recorrido 360 público a pantalla completa: canaescapes.com/tour/:slug
 // El visor (three.js) se descarga solo aquí.
-const TourViewer = lazy(() => import("@/components/tours/TourViewer"));
+// El código del visor se empieza a descargar a la vez que los datos del tour (no después)
+const loadViewer = () => import("@/components/tours/TourViewer");
+const TourViewer = lazy(loadViewer);
+
+const MUSIC_KEY = "ce-tour-music";
 
 // Misma pantalla de carga que el visor: círculo de Cana Escapes con el ícono 360 girando
 function Tours360Loader({ text }: { text: string }) {
@@ -29,16 +34,55 @@ function TourContent() {
   const { t, lang, setLang } = useLang();
   const [full, setFull] = useState<FullTour | null | undefined>(undefined);
   const [copied, setCopied] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+  const music = useRef<AmbientMusic | null>(null);
+  const [musicOn, setMusicOn] = useState(false);
 
   useEffect(() => {
+    loadViewer();
     fetchTourBySlug(slug)
-      .then(setFull)
+      .then((f) => {
+        // La primera foto se pide ya, mientras se prepara el visor
+        const first = f && startScene(f);
+        if (first) new Image().src = mediaUrl(first.image_url);
+        setFull(f);
+      })
       .catch(() => setFull(null));
   }, [slug]);
 
+  useEffect(() => () => music.current?.stop(), []);
+
+  function toggleMusic() {
+    if (musicOn) {
+      music.current?.stop();
+      setMusicOn(false);
+      try { localStorage.setItem(MUSIC_KEY, "off"); } catch { /* sin almacenamiento */ }
+      return;
+    }
+    music.current ??= new AmbientMusic();
+    music.current.start().catch(() => setMusicOn(false));
+    setMusicOn(true);
+    try { localStorage.setItem(MUSIC_KEY, "on"); } catch { /* sin almacenamiento */ }
+  }
+
+  // Si la persona dejó la música encendida la vez anterior, suena al primer toque en la pantalla
+  // (los navegadores no dejan reproducir sonido sin un toque)
+  useEffect(() => {
+    let wanted = false;
+    try { wanted = localStorage.getItem(MUSIC_KEY) === "on"; } catch { /* sin almacenamiento */ }
+    if (!wanted) return;
+    const onFirst = () => {
+      if (music.current?.playing) return;
+      music.current ??= new AmbientMusic();
+      music.current.start().then(() => setMusicOn(true)).catch(() => undefined);
+    };
+    window.addEventListener("pointerdown", onFirst, { once: true });
+    return () => window.removeEventListener("pointerdown", onFirst);
+  }, []);
+
   useSeo({
     title: full ? `${full.tour.title} — Tour 360 | Cana Escapes` : "Tour 360 | Cana Escapes",
-    description: full?.tour.description || t("tours_seo_desc"),
+    description: (full && descriptionIn(full.tour, lang)) || t("tours_seo_desc"),
     path: `/tour/${slug}`,
   });
 
@@ -71,7 +115,7 @@ function TourContent() {
           </div>
         }
       >
-        <TourViewer full={full} loadingText={t("tours_loading")} startLabel={t("tours_start_view")} />
+        <TourViewer full={full} loadingText={t("tours_loading")} startLabel={t("tours_start_view")} lang={lang} />
       </Suspense>
 
       {/* Logo + título */}
@@ -106,6 +150,25 @@ function TourContent() {
             {lang === "es" ? "EN" : "ES"}
           </button>
           <button
+            onClick={toggleMusic}
+            aria-label={musicOn ? t("tours_music_off") : t("tours_music_on")}
+            title={musicOn ? t("tours_music_off") : t("tours_music_on")}
+            aria-pressed={musicOn}
+            className={`h-9 w-9 rounded-full flex items-center justify-center ${musicOn ? "bg-[#F0A030] text-[#0F2B4C] hover:brightness-110" : "bg-black/40 text-white hover:bg-black/60"}`}
+          >
+            {musicOn ? <Music size={16} /> : <VolumeX size={16} />}
+          </button>
+          {descriptionIn(full.tour, lang) && (
+            <button
+              onClick={() => setShowInfo((v) => !v)}
+              aria-label={t("tours_info")}
+              title={t("tours_info")}
+              className="h-9 w-9 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60"
+            >
+              <Info size={16} />
+            </button>
+          )}
+          <button
             onClick={async () => {
               try {
                 await navigator.clipboard.writeText(url);
@@ -132,6 +195,15 @@ function TourContent() {
           </a>
         </div>
       </div>
+      {showInfo && (
+        <div className="absolute top-20 sm:top-24 right-3 left-3 sm:left-auto sm:w-96 z-20 rounded-2xl bg-white/95 backdrop-blur p-4 pr-10 shadow-2xl text-sm text-gray-700">
+          <button onClick={() => setShowInfo(false)} className="absolute top-2 right-2 w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center" aria-label="Cerrar">
+            <X size={15} />
+          </button>
+          <h2 className="font-serif font-bold text-[#0F2B4C] mb-1">{full.tour.title}</h2>
+          <p className="whitespace-pre-line">{descriptionIn(full.tour, lang)}</p>
+        </div>
+      )}
     </div>
   );
 }

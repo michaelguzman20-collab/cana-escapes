@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { mediaUrl } from "@/lib/tours";
 
 // Miniatura cuadrada de una foto 360: en vez de la panorámica entera (2:1, deformada) muestra solo
 // el trozo que se ve al entrar — centrado en la vista inicial (yaw/pitch) y con su campo de visión.
@@ -29,7 +30,7 @@ export function PanoThumb({ src, yaw = 0, pitch = 0, fov = 100, alt = "", classN
       style={
         src
           ? {
-              backgroundImage: `url("${src}")`,
+              backgroundImage: `url("${mediaUrl(src)}")`,
               backgroundSize: `${k * 100}% auto`,
               backgroundPosition: `${x}% ${y}%`,
               backgroundRepeat: "repeat-x", // la panorámica da la vuelta: el recorte puede cruzar el borde

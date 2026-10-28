@@ -6,7 +6,8 @@ import "@photo-sphere-viewer/markers-plugin/index.css";
 import "./tours.css";
 import { LOADER_IMG, nadirLogoUrl, nadirMarker } from "./markerHtml";
 import { addonElement, addonMarker } from "./tourAddons";
-import { clampPitch, fovForLevel, sphereCorrection, zoomLevelFor, type TourHotspot, type TourScene } from "@/lib/tours";
+import { clampPitch, fovForLevel, mediaUrl, sphereCorrection, zoomLevelFor, type TourHotspot, type TourScene } from "@/lib/tours";
+import { limitTexturesOnPhones } from "./viewerSetup";
 
 // Visor del editor de /admin/tours: muestra una escena con sus addons, avisa dónde se hizo clic
 // (para colocar uno nuevo) y deja arrastrar el addon seleccionado para moverlo. Aplica en vivo
@@ -100,9 +101,10 @@ export default function TourEditorViewer(props: Props) {
 
     const timer = setTimeout(() => {
       const s = cb.current.scene;
+      limitTexturesOnPhones();
       const v = new Viewer({
         container,
-        panorama: s.image_url,
+        panorama: mediaUrl(s.image_url),
         sphereCorrection: sphereCorrection(s),
         defaultYaw: s.initial_yaw,
         defaultPitch: s.initial_pitch,
@@ -120,6 +122,20 @@ export default function TourEditorViewer(props: Props) {
       loadedUrl.current = s.image_url;
       loadedScene.current = s.id;
       viewerRef.current = v;
+      // Si la foto falla al cargar (red o almacenamiento lento) se reintenta sola 2 veces
+      let fails = 0;
+      let failedUrl: string | null = null;
+      v.addEventListener("panorama-error", () => {
+        const url = loadedUrl.current;
+        if (url !== failedUrl) (failedUrl = url), (fails = 0);
+        if (!url || ++fails > 2) return;
+        setTimeout(() => {
+          if (viewerRef.current !== v || loadedUrl.current !== url) return;
+          const sc = cb.current.scene;
+          v.hideError();
+          v.setPanorama(mediaUrl(url), { sphereCorrection: sphereCorrection(sc), transition: false, showLoader: true }).catch(() => undefined);
+        }, 1200 * fails);
+      });
       v.addEventListener("click", ({ data }) => {
         if (data.rightclick || data.marker) return;
         cb.current.onPanoClick({ yaw: data.yaw, pitch: data.pitch });
@@ -174,13 +190,13 @@ export default function TourEditorViewer(props: Props) {
     loadedUrl.current = scene.image_url;
     loadedScene.current = scene.id;
     v.setOptions({ minFov: Math.min(scene.fov_min, scene.fov_max), maxFov: Math.max(scene.fov_min, scene.fov_max) });
-    v.setPanorama(scene.image_url, {
+    v.setPanorama(mediaUrl(scene.image_url), {
       position: sameScene ? v.getPosition() : { yaw: scene.initial_yaw, pitch: scene.initial_pitch },
       zoom: sameScene ? v.getZoomLevel() : levelOf(scene),
       sphereCorrection: sphereCorrection(scene),
       transition: false,
       showLoader: true,
-    });
+    }).catch(() => undefined); // el error se muestra en el visor y se reintenta (panorama-error)
   }, [ready, scene.id, scene.image_url]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Nivelación y límites de zoom en vivo (manteniendo el campo de visión actual)

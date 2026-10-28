@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { fetchRetry, withTimeout } from "@/lib/tours";
+import { fetchRetry, mediaUrl, withTimeout } from "@/lib/tours";
 
 // Almacenamiento de fotos 360 de Tours 360, detrás de un adaptador para poder cambiar de proveedor.
 // · Cloudflare R2 (bucket cana-media, prefijo tours/): se usa cuando existe VITE_R2_PUBLIC_URL. El navegador
@@ -60,7 +60,10 @@ const r2Storage: TourStorage = {
     // Hasta 3 intentos y 3 min cada uno: si la red se corta, el botón no se queda "guardando" para siempre
     const res = await fetchRetry(urls[0].url, { method: "PUT", body: blob, headers: { "Content-Type": blob.type } }, 3, 180000);
     if (!res.ok) throw new Error(`R2 rechazó la subida (${res.status})`);
-    return { path: key, url: `${R2_PUBLIC_URL}/${key}` };
+    const url = `${R2_PUBLIC_URL}/${key}`;
+    // Precalienta la caché de canaescapes.com/media: así quien abra el tour no depende de r2.dev
+    fetchRetry(mediaUrl(url), {}, 4, 60000).then((r) => r.arrayBuffer()).catch(() => undefined);
+    return { path: key, url };
   },
   async remove(paths) {
     // Fotos subidas antes de activar R2 siguen en tours-dev

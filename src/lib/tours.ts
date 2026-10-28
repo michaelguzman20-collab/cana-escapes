@@ -20,9 +20,36 @@ export interface Tour {
   nadir_logo: boolean;
   nadir_size: number; // grados desde el suelo
   nadir_opacity: number; // 10-100
+  brand_logo_url: string | null; // logo del propietario (marca de agua en todas las fotos)
+  brand_logo_path: string | null;
+  brand_link: string | null; // al tocar el logo se abre esta página
+  brand_position: BrandPosition;
+  brand_size: number; // ancho en px
+  whatsapp: string | null; // WhatsApp del propietario (el botón verde le escribe)
   sort_order: number;
   created_at: string;
   updated_at: string;
+}
+
+export type BrandPosition = "bottom-right" | "bottom-left" | "top-right" | "top-left";
+
+/** Solo dígitos, con código de país. Números dominicanos de 10 dígitos (809/829/849) → 1 delante */
+export function normalizeWhatsapp(raw: string | null | undefined) {
+  const d = (raw ?? "").replace(/\D/g, "");
+  if (d.length === 10 && /^(809|829|849)/.test(d)) return "1" + d;
+  return d.length >= 8 ? d : "";
+}
+
+/** Enlace para escribir por WhatsApp a un número con un mensaje ya escrito */
+export function whatsappLink(phone: string, text: string) {
+  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+}
+
+/** Enlace externo seguro (añade https:// si falta) */
+export function externalUrl(raw: string | null | undefined) {
+  const u = (raw ?? "").trim();
+  if (!u) return "";
+  return /^https?:\/\//i.test(u) ? u : `https://${u}`;
 }
 
 export interface TourScene {

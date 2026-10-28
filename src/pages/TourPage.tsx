@@ -4,7 +4,8 @@ import { Info, Link2, Music, Rotate3d, VolumeX, X } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
 import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
-import { descriptionIn, fetchTourBySlug, mediaUrl, startScene, tourUrl, type FullTour } from "@/lib/tours";
+import { descriptionIn, fetchTourBySlug, mediaUrl, normalizeWhatsapp, startScene, tourUrl, whatsappLink, type FullTour } from "@/lib/tours";
+import { BrandLogo } from "@/components/tours/BrandLogo";
 import { AmbientMusic } from "@/components/tours/ambientMusic";
 import { LOADER_IMG } from "@/components/tours/markerHtml";
 import "@/components/tours/tours.css";
@@ -104,7 +105,12 @@ function TourContent() {
   }
 
   const url = tourUrl(full.tour.slug);
-  const waText = encodeURIComponent(`${full.tour.title} — ${t("tours_wa_text")} ${url}`);
+  // Con WhatsApp del propietario, el botón le escribe a él; si no, sirve para compartir el tour
+  const ownerWa = normalizeWhatsapp(full.tour.whatsapp);
+  const waHref = ownerWa
+    ? whatsappLink(ownerWa, `${t("tours_wa_owner")} ${full.tour.title}: ${url}`)
+    : `https://wa.me/?text=${encodeURIComponent(`${full.tour.title} — ${t("tours_wa_text")} ${url}`)}`;
+  const waLabel = ownerWa ? t("tours_contact") : t("tours_share_wa");
 
   return (
     <div className="fixed inset-0 bg-black overflow-hidden">
@@ -185,16 +191,19 @@ function TourContent() {
             <Link2 size={15} /> <span className="hidden sm:inline">{copied ? t("tours_copied") : t("tours_copy")}</span>
           </button>
           <a
-            href={`https://wa.me/?text=${waText}`}
+            href={waHref}
             target="_blank"
             rel="noreferrer"
-            aria-label={t("tours_share_wa")}
+            aria-label={waLabel}
+            title={waLabel}
             className="h-9 px-3 rounded-full bg-[#25D366] text-white flex items-center gap-1.5 text-xs font-semibold hover:brightness-110"
           >
-            <WhatsAppIcon size={16} /> <span className="hidden sm:inline">{t("tours_share_wa")}</span>
+            <WhatsAppIcon size={16} /> <span className="hidden sm:inline">{waLabel}</span>
           </a>
         </div>
       </div>
+      <BrandLogo tour={full.tour} />
+
       {showInfo && (
         <div className="absolute top-20 sm:top-24 right-3 left-3 sm:left-auto sm:w-96 z-20 rounded-2xl bg-white/95 backdrop-blur p-4 pr-10 shadow-2xl text-sm text-gray-700">
           <button onClick={() => setShowInfo(false)} className="absolute top-2 right-2 w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center" aria-label="Cerrar">

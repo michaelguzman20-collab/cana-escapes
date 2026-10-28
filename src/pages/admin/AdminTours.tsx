@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core";
-import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, horizontalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
   Rotate3d, Plus, ArrowLeft, ExternalLink, Copy, Save, Trash2, UploadCloud, Star, LayoutGrid, Pencil,
@@ -20,6 +20,7 @@ import { tourStorage, processPanorama, extOf } from "@/lib/tourStorage";
 import { PanoThumb } from "@/components/tours/PanoThumb";
 import { applyFilters as renderFilters, canvasToBlob, cssPreview, thumbFrom } from "@/lib/panoFilters";
 import {
+  normalizeWhatsapp, type BrandPosition,
   db, fetchTourContent, slugify, tourUrl, hasFilters, FILTER_KEYS, mediaUrl, fetchRetry, withTimeout, translateArea, genericDescription,
   addonsForScene, sceneLabel, AREA_SUGGESTIONS, type Tour, type TourScene, type TourHotspot, type PanoFilters,
 } from "@/lib/tours";
@@ -718,6 +719,7 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
           onStart={setStart}
           onUpdateScene={updateScene}
           onDelete={(id) => deleteScenes([id])}
+          onReorder={reorder}
           busy={!!uploadMsg}
           otherTours={allTours.filter((t) => t.id !== tour.id)}
           nadir={{ enabled: form.nadir_logo, size: form.nadir_size, opacity: form.nadir_opacity }}
@@ -732,7 +734,7 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
           registerGuard={(g) => (sceneGuard.current = g)}
         />
       )}
-      {view === "settings" && <TourSettings form={form} setForm={setForm} onSave={saveForm} dirty={dirty} onDelete={deleteTour} />}
+      {view === "settings" && <TourSettings form={form} setForm={setForm} onSave={saveForm} dirty={dirty} onDelete={deleteTour} cover={scenes.find((s) => s.id === form.start_scene_id) ?? scenes[0]} />}
     </div>
   );
 }
@@ -1100,8 +1102,9 @@ function addonSummary(h: TourHotspot, titles: Map<string, string>) {
 
 function SceneEditor({
   scenes, hotspots, setHotspots, currentId, setCurrentId, startId, onStart, onUpdateScene, onDelete, onGrid,
-  busy, otherTours, nadir, onNadir, onReplace, onApplyFilters, onClearFilters, onDownload, onMove, guard, registerGuard,
+  busy, otherTours, nadir, onNadir, onReplace, onApplyFilters, onClearFilters, onDownload, onMove, guard, registerGuard, onReorder,
 }: {
+  onReorder(next: TourScene[]): void;
   guard(action: () => void): void;
   registerGuard(g: SceneGuard | null): void;
   busy: boolean;
@@ -1140,6 +1143,16 @@ function SceneEditor({
   const [areaEn, setAreaEn] = useState(scene.area_en ?? "");
   useEffect(() => setAreaEn(scene.area_en ?? ""), [scene.area_en, scene.id]);
   const stripRef = useRef<HTMLDivElement>(null);
+  const stripSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  function onStripDragEnd(e: DragEndEvent) {
+    if (!e.over || e.active.id === e.over.id) return;
+    const from = scenes.findIndex((s) => s.id === e.active.id);
+    const to = scenes.findIndex((s) => s.id === e.over!.id);
+    onReorder(arrayMove(scenes, from, to));
+  }
   const [tab, setTab] = useState<"puntos" | "foto">("puntos");
   const [filters, setFilters] = useState<PanoFilters>(scene.filters ?? {});
   const filtersDirty = JSON.stringify(normFilters(filters)) !== JSON.stringify(normFilters(scene.filters));
@@ -1652,34 +1665,91 @@ function SceneEditor({
         </aside>
       </div>
 
-      {/* Tira de miniaturas */}
-      <div ref={stripRef} className="flex gap-2 overflow-x-auto px-3 py-2 bg-black/60 border-t border-white/10" style={{ scrollbarWidth: "thin" }}>
-        {scenes.map((s) => (
-          <button
-            key={s.id}
-            data-id={s.id}
-            onClick={() => s.id !== scene.id && guard(() => setCurrentId(s.id))}
-            title={sceneLabel(s)}
-            className={cn("relative shrink-0 w-16 rounded overflow-hidden border-2", s.id === scene.id ? "border-[#F0A030]" : "border-transparent opacity-70 hover:opacity-100")}
-          >
-            <PanoThumb src={s.thumb_url} yaw={s.initial_yaw} pitch={s.initial_pitch} fov={s.fov_initial} />
-            {s.id === startId && <Star size={11} className="absolute top-0.5 left-0.5 text-[#F0A030]" fill="currentColor" />}
-          </button>
-        ))}
-      </div>
+      {/* Tira de miniaturas: tocar = abrir la foto; arrastrar = cambiar el orden del tour */}
+      <DndContext sensors={stripSensors} collisionDetection={closestCenter} onDragEnd={onStripDragEnd}>
+        <SortableContext items={scenes.map((s) => s.id)} strategy={horizontalListSortingStrategy}>
+          <div ref={stripRef} className="flex gap-2 overflow-x-auto px-3 py-2 bg-black/60 border-t border-white/10" style={{ scrollbarWidth: "thin" }}>
+            {scenes.map((s, i) => (
+              <StripThumb
+                key={s.id}
+                scene={s}
+                index={i}
+                active={s.id === scene.id}
+                isStart={s.id === startId}
+                onOpen={() => s.id !== scene.id && guard(() => setCurrentId(s.id))}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }
 
+// Miniatura del carrete del editor: número de orden, foto y nombre; se puede arrastrar
+function StripThumb({ scene: s, index, active, isStart, onOpen }: {
+  scene: TourScene;
+  index: number;
+  active: boolean;
+  isStart: boolean;
+  onOpen(): void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: s.id });
+  return (
+    <button
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      data-id={s.id}
+      onClick={onOpen}
+      title={`${index + 1}. ${sceneLabel(s)} — arrastra para cambiar el orden`}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        "relative shrink-0 w-20 rounded overflow-hidden border-2 text-left touch-none cursor-grab active:cursor-grabbing",
+        active ? "border-[#F0A030]" : "border-transparent opacity-70 hover:opacity-100",
+        isDragging && "z-10 opacity-100 ring-2 ring-[#F0A030] shadow-xl"
+      )}
+    >
+      <PanoThumb src={s.thumb_url} yaw={s.initial_yaw} pitch={s.initial_pitch} fov={s.fov_initial} />
+      <span className="absolute top-0.5 left-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-black/70 text-white text-[10px] font-bold flex items-center justify-center gap-0.5">
+        {isStart && <Star size={9} className="text-[#F0A030]" fill="currentColor" />}
+        {index + 1}
+      </span>
+      {/* Nombre de la foto para identificarla cuando hay muchas */}
+      <div className={cn("px-1 py-0.5 text-[10px] leading-tight font-medium truncate", active ? "bg-[#F0A030] text-[#0F2B4C]" : "bg-black/70 text-white")}>
+        {s.area?.trim() || s.title || "Sin nombre"}
+      </div>
+    </button>
+  );
+}
+
 // ── Ajustes del tour ─────────────────────────────────────────────────────────
-function TourSettings({ form, setForm, onSave, dirty, onDelete }: {
+function TourSettings({ form, setForm, onSave, dirty, onDelete, cover }: {
   form: Tour;
   setForm(t: Tour): void;
   onSave(): void;
   dirty: boolean;
   onDelete(): void;
+  cover?: TourScene;
 }) {
   const field = "block text-xs font-semibold text-gray-600 mb-1";
+  const logoRef = useRef<HTMLInputElement>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const wa = normalizeWhatsapp(form.whatsapp);
+
+  async function uploadLogo(file: File) {
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return toast({ title: "Usa un logo PNG, JPG o WebP (mejor PNG con fondo transparente)", variant: "destructive" });
+    setUploadingLogo(true);
+    try {
+      const blob = await prepareAddonImage(file);
+      const up = await tourStorage.upload(`${form.id}/brand-${crypto.randomUUID()}.${extOf(blob)}`, blob);
+      setForm({ ...form, brand_logo_url: up.url, brand_logo_path: up.path });
+      toast({ title: "Logo listo", description: "Pulsa \"Guardar ajustes\" para publicarlo en el tour." });
+    } catch (e) {
+      fail("No se pudo subir el logo", e);
+    }
+    setUploadingLogo(false);
+  }
   return (
     <div className="px-3 sm:px-6 py-5 max-w-2xl mx-auto space-y-5">
       <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
@@ -1713,6 +1783,88 @@ function TourSettings({ form, setForm, onSave, dirty, onDelete }: {
           <Switch checked={form.autorotate} onCheckedChange={(v) => setForm({ ...form, autorotate: v })} />
           Girar solo cuando nadie lo toca (autorrotación)
         </label>
+        <div>
+          <label className={field}>WhatsApp del propietario</label>
+          <Input
+            value={form.whatsapp ?? ""}
+            onChange={(e) => setForm({ ...form, whatsapp: e.target.value || null })}
+            placeholder="ej. 809 555 1234 o +1 305 555 1234"
+            inputMode="tel"
+          />
+          <p className="mt-1 text-[11px] text-gray-400">
+            {form.whatsapp?.trim()
+              ? wa
+                ? <>El botón verde del tour escribirá a <b>+{wa}</b> con el enlace del recorrido. <a href={`https://wa.me/${wa}`} target="_blank" rel="noreferrer" className="text-[#b8761a] hover:underline">Probar</a></>
+                : <span className="text-red-500">Número incompleto: incluye el código de país.</span>
+              : "Vacío = el botón verde sirve para compartir el tour."}
+          </p>
+        </div>
+        <Button onClick={onSave} disabled={!dirty} className="bg-green-600 hover:bg-green-700 text-white">
+          <Save size={14} className="mr-1.5" /> Guardar ajustes
+        </Button>
+      </div>
+
+      {/* Logo del propietario: marca de agua fija en todas las fotos, con enlace opcional */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+        <div>
+          <p className="font-semibold text-[#0F2B4C]">Logo del propietario (marca de agua)</p>
+          <p className="text-xs text-gray-500">Se ve en todas las fotos del tour. Si pones un enlace, al tocarlo abre su página.</p>
+        </div>
+        <input ref={logoRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) uploadLogo(f); }} />
+        <div className="relative aspect-video rounded-lg overflow-hidden bg-gray-800">
+          {cover && <PanoThumb src={cover.thumb_url} yaw={cover.initial_yaw} pitch={cover.initial_pitch} fov={cover.fov_initial} className="!aspect-auto absolute inset-0 opacity-80" />}
+          {form.brand_logo_url ? (
+            <img
+              src={mediaUrl(form.brand_logo_url)}
+              alt=""
+              className={cn("absolute drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)]", {
+                "bottom-3 right-3": form.brand_position === "bottom-right",
+                "bottom-3 left-3": form.brand_position === "bottom-left",
+                "top-3 right-3": form.brand_position === "top-right",
+                "top-3 left-3": form.brand_position === "top-left",
+              })}
+              style={{ width: Math.round(form.brand_size * 0.6) }}
+            />
+          ) : (
+            <span className="absolute inset-0 flex items-center justify-center text-xs text-white/70">Sin logo</span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" disabled={uploadingLogo} onClick={() => logoRef.current?.click()}>
+            {uploadingLogo ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <UploadCloud size={14} className="mr-1.5" />}
+            {form.brand_logo_url ? "Cambiar logo" : "Subir logo"}
+          </Button>
+          {form.brand_logo_url && (
+            <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setForm({ ...form, brand_logo_url: null, brand_logo_path: null })}>
+              <X size={14} className="mr-1" /> Quitar
+            </Button>
+          )}
+        </div>
+        {form.brand_logo_url && (
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <label className={field}>Enlace al tocar el logo (opcional)</label>
+              <Input value={form.brand_link ?? ""} onChange={(e) => setForm({ ...form, brand_link: e.target.value || null })} placeholder="ej. www.paginadelpropietario.com" />
+            </div>
+            <div>
+              <label className={field}>Posición</label>
+              <select
+                value={form.brand_position}
+                onChange={(e) => setForm({ ...form, brand_position: e.target.value as BrandPosition })}
+                className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="bottom-right">Abajo a la derecha</option>
+                <option value="bottom-left">Abajo a la izquierda</option>
+                <option value="top-right">Arriba a la derecha</option>
+                <option value="top-left">Arriba a la izquierda</option>
+              </select>
+            </div>
+            <div>
+              <label className={field}>Tamaño: {form.brand_size}px</label>
+              <input type="range" min={50} max={240} step={5} value={form.brand_size} onChange={(e) => setForm({ ...form, brand_size: Number(e.target.value) })} className="w-full accent-[#F0A030]" />
+            </div>
+          </div>
+        )}
         <Button onClick={onSave} disabled={!dirty} className="bg-green-600 hover:bg-green-700 text-white">
           <Save size={14} className="mr-1.5" /> Guardar ajustes
         </Button>

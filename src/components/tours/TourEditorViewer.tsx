@@ -122,13 +122,13 @@ export default function TourEditorViewer(props: Props) {
       loadedUrl.current = s.image_url;
       loadedScene.current = s.id;
       viewerRef.current = v;
-      // Si la foto falla al cargar (red o almacenamiento lento) se reintenta sola 2 veces
+      // Si la foto falla al cargar (red o almacenamiento lento) se reintenta sola 3 veces
       let fails = 0;
       let failedUrl: string | null = null;
       v.addEventListener("panorama-error", () => {
         const url = loadedUrl.current;
         if (url !== failedUrl) (failedUrl = url), (fails = 0);
-        if (!url || ++fails > 2) return;
+        if (!url || ++fails > 3) return;
         setTimeout(() => {
           if (viewerRef.current !== v || loadedUrl.current !== url) return;
           const sc = cb.current.scene;

@@ -88,13 +88,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // This MUST be registered before getSession() so we never miss an event.
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       // Only handle post-init events here; INITIAL_SESSION is handled by getSession() below.
       // TOKEN_REFRESHED, SIGNED_IN, SIGNED_OUT, etc.
       if (_event === "INITIAL_SESSION") return;
+      // Supabase llama a este aviso con el candado de sesión tomado: si aquí se espera otra consulta
+      // (fetchProfile), esa consulta espera al mismo candado y todo se traba. Pasaba al renovarse la
+      // sesión (~cada hora o al volver a la pestaña): los "Guardar" se quedaban esperando y fallaban.
+      // Por eso el trabajo se hace en el siguiente tick, ya fuera del candado.
+      setTimeout(() => handleAuthChange(_event, session), 0);
+    });
 
+    async function handleAuthChange(_event: string, session: Session | null) {
       setSession(session);
       if (session?.user) {
+        // Renovar el token no cambia el perfil: no hace falta volver a pedirlo
+        if (_event === "TOKEN_REFRESHED") return;
         const p = await fetchProfile(session.user.id, session.user.email);
         setProfile(p);
         setProfileReady(true);
@@ -124,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(null);
         }
       }
-    });
+    }
 
     // ── Step 2: getSession() validates + refreshes the stored token.
     // We ALWAYS call this (no hasStoredSession shortcut) so the Supabase client

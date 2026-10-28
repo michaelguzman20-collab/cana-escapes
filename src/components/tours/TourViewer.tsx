@@ -206,19 +206,20 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
       // Si una foto falla (red del teléfono, almacenamiento lento) se reintenta sola 2 veces
       let wanted = first.id;
       const fails = new Map<string, number>();
+      // Diagnóstico: abrir el tour con ?debug=1 muestra el error real en pantalla
+      const debug = (msg: string) => {
+        if (!new URLSearchParams(location.search).has("debug")) return;
+        const box = document.getElementById("tour-debug") ?? Object.assign(document.createElement("pre"), { id: "tour-debug" });
+        box.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#000c;color:#fff;font:11px monospace;padding:8px;white-space:pre-wrap;max-height:50vh;overflow:auto";
+        box.textContent += `${msg}\nUA: ${navigator.userAgent}\nmaxTex: ${SYSTEM.maxTextureWidth} canvas: ${(SYSTEM as unknown as { __maxCanvasWidth: number }).__maxCanvasWidth}\n\n`;
+        document.body.appendChild(box);
+      };
       goRef.current = (id) => {
         wanted = id;
-        tour.setCurrentNode(id).catch(() => undefined);
+        tour.setCurrentNode(id).catch((err) => debug(`Error al ir a "${sceneById.get(id)?.area ?? id}": ${err?.name}: ${err?.message}\n${String(err?.stack ?? "").split("\n").slice(0, 4).join("\n")}`));
       };
       viewer.addEventListener("panorama-error", (e) => {
-        // Diagnóstico: abrir el tour con ?debug=1 muestra el error real en pantalla
-        if (new URLSearchParams(location.search).has("debug")) {
-          const sc = sceneById.get(wanted);
-          const box = document.getElementById("tour-debug") ?? Object.assign(document.createElement("pre"), { id: "tour-debug" });
-          box.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:99999;background:#000c;color:#fff;font:11px monospace;padding:8px;white-space:pre-wrap;max-height:50vh;overflow:auto";
-          box.textContent += `${e.error?.name}: ${e.error?.message}\n${String(e.panorama?.panorama ?? sc?.image_url)}\nUA: ${navigator.userAgent}\nmaxTex: ${SYSTEM.maxTextureWidth} canvas: ${(SYSTEM as unknown as { __maxCanvasWidth: number }).__maxCanvasWidth}\n\n`;
-          document.body.appendChild(box);
-        }
+        debug(`Foto no cargada: ${e.error?.name}: ${e.error?.message}\n${String(e.panorama?.panorama ?? sceneById.get(wanted)?.image_url)}`);
         const id = wanted;
         const n = (fails.get(id) ?? 0) + 1;
         fails.set(id, n);

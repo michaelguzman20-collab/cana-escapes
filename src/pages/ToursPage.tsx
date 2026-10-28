@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Rotate3d, MapPin, BedDouble, Loader2 } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
+import { SEO_PAGES } from "@/lib/seoPages";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { LandingFooter } from "@/components/cana/LandingFooter";
 import { descriptionIn, fetchPublishedTours, type TourCard } from "@/lib/tours";
@@ -85,9 +86,7 @@ function ToursContent() {
 
 export function ToursPage() {
   useSeo({
-    title: "Tours 360 — Recorridos virtuales de propiedades en Punta Cana | Cana Escapes",
-    description:
-      "Recorre en 360° villas y apartamentos de Punta Cana y Bávaro gestionados por Cana Escapes, desde tu teléfono o computadora.",
+    ...SEO_PAGES["/tours"],
     path: "/tours",
   });
   return (

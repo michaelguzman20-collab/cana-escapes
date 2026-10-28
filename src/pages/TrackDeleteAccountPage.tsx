@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Mail, MessageCircle, ShieldCheck, UserX } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
+import { SEO_PAGES } from "@/lib/seoPages";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { LandingFooter } from "@/components/cana/LandingFooter";
 import { GuideBlockView } from "@/components/cana/GuideBlockView";
@@ -192,9 +193,7 @@ function DeleteContent() {
 
 export function TrackDeleteAccountPage() {
   useSeo({
-    title: "Borrar cuenta de Cana Track — Cana Escapes",
-    description:
-      "Cómo pedir que borremos tu cuenta de Cana Track y todos tus datos: ubicación, recorridos, batería e historial.",
+    ...SEO_PAGES["/apps/cana-track/borrar-cuenta"],
     path: "/apps/cana-track/borrar-cuenta",
   });
 

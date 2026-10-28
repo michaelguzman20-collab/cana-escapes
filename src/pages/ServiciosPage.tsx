@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
+import { SEO_PAGES } from "@/lib/seoPages";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { LandingFooter } from "@/components/cana/LandingFooter";
 import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
@@ -377,9 +378,7 @@ function ServiciosContent() {
 
 export function ServiciosPage() {
   useSeo({
-    title: "Servicios & Mantenimiento para Condominios en Punta Cana — Cana Escapes",
-    description:
-      "Soluciones Integrales de Mantenimiento y Servicios Generales para áreas comunes de condominios en Bávaro y Punta Cana: eléctrico, plomería, HVAC, obra civil, domótica y más.",
+    ...SEO_PAGES["/servicios"],
     path: "/servicios",
   });
 

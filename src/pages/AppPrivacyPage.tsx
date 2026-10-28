@@ -3,6 +3,8 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { ArrowLeft, BookOpen, ShieldCheck, UserX } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
+import { SEO_PAGES } from "@/lib/seoPages";
+import { privacySeo } from "@/lib/seoAppPages";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { LandingFooter } from "@/components/cana/LandingFooter";
 import { GuideBlockView } from "@/components/cana/GuideBlockView";
@@ -129,10 +131,7 @@ export function AppPrivacyPage() {
   const name = APP_GUIDES[slug]?.name;
 
   useSeo({
-    title: policy ? `Política de privacidad de ${name} — Cana Escapes` : "Apps — Cana Escapes",
-    description: policy
-      ? `Qué datos usa ${name}, quién los ve, cuánto tiempo se guardan y cómo borrarlos.`
-      : "Apps de Cana Escapes para Android.",
+    ...(privacySeo(slug) ?? SEO_PAGES["/apps"]),
     path: policy ? `/apps/${slug}/privacidad` : "/apps",
   });
 

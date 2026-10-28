@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
+import { SEO_PAGES } from "@/lib/seoPages";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { LandingFooter } from "@/components/cana/LandingFooter";
 import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
@@ -1371,9 +1372,7 @@ function Shell({ tx, l, lastRun, children }: { tx: Tx; l: "es" | "en"; lastRun?:
 
 export function CanaDnaPage() {
   useSeo({
-    title: "Cana DNA — Datos del mercado de renta corta en Punta Cana y Bávaro",
-    description:
-      "Ocupación, precio por noche, ingresos, temporadas y proyecciones de alquiler vacacional por zona en Bávaro, Punta Cana, Cap Cana, Cana Bay y Bayahibe. Actualizado cada semana.",
+    ...SEO_PAGES["/cana-dna"],
     path: "/cana-dna",
   });
 

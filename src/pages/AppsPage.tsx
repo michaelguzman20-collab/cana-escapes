@@ -4,6 +4,7 @@ import { Download, Smartphone, ChevronDown, ShieldCheck, Sparkles, CheckCircle2,
 import { APP_GUIDES } from "@/content/appGuides";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
+import { SEO_PAGES } from "@/lib/seoPages";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { LandingFooter } from "@/components/cana/LandingFooter";
 import type { Database } from "@/types/database";
@@ -318,9 +319,7 @@ function AppsContent() {
 
 export function AppsPage() {
   useSeo({
-    title: "Apps para Android — Cana Escapes",
-    description:
-      "Descarga gratis las apps de Cana Escapes para Android: Cana Scanner convierte tu cámara en un escáner de documentos a PDF y Cana Track comparte la ubicación de tu equipo en tiempo real.",
+    ...SEO_PAGES["/apps"],
     path: "/apps",
   });
 

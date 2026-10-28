@@ -3,6 +3,8 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { ArrowLeft, BookOpen, Download, ShieldCheck, Smartphone, UserX } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
+import { SEO_PAGES } from "@/lib/seoPages";
+import { guideSeo } from "@/lib/seoAppPages";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { LandingFooter } from "@/components/cana/LandingFooter";
 import { APP_GUIDES, guidePdfUrl, type AppGuide } from "@/content/appGuides";
@@ -188,10 +190,7 @@ export function AppGuidePage() {
   const guide = APP_GUIDES[slug];
 
   useSeo({
-    title: guide ? `Guía de uso de ${guide.name} — Cana Escapes` : "Apps — Cana Escapes",
-    description: guide
-      ? `Cómo usar ${guide.name} paso a paso: ${guide.tagline.es} Disponible también en PDF.`
-      : "Apps de Cana Escapes para Android.",
+    ...(guideSeo(slug) ?? SEO_PAGES["/apps"]),
     path: guide ? `/apps/${guide.slug}/guia` : "/apps",
   });
 

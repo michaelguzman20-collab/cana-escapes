@@ -1,6 +1,9 @@
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import fs from "fs";
+import { injectSeo } from "./api/_seo";
+import { allSeoRoutes } from "./src/lib/seoAppPages";
 
 // En local, vite no ejecuta las funciones de /api (eso lo hace Vercel). Este middleware sirve
 // /api/tours-upload (firma de subidas a Cloudflare R2) durante `npm run dev`.
@@ -38,8 +41,34 @@ function localApi(): Plugin {
   };
 }
 
+// Al compilar: un index.html por cada página pública fija (dist/propietarios/index.html, …) con su
+// propio título, descripción y dirección. Vercel lo sirve antes que el index.html general, así
+// WhatsApp/Facebook/buscadores ven el SEO correcto sin ejecutar JavaScript. También deja
+// dist/seo-routes.json, que /api/sitemap usa para armar el mapa del sitio junto con los tours.
+function seoHtmlPages(): Plugin {
+  const SITE = "https://canaescapes.com";
+  return {
+    name: "seo-html-pages",
+    apply: "build",
+    closeBundle() {
+      const dist = path.resolve(__dirname, "dist");
+      const base = fs.readFileSync(path.join(dist, "index.html"), "utf8");
+      const routes = allSeoRoutes();
+      for (const r of routes) {
+        if (r.path === "/") continue; // la portada ya es el index.html general
+        const html = injectSeo(base, { title: r.title, description: r.description, url: SITE + r.path });
+        const dir = path.join(dist, ...r.path.split("/").filter(Boolean));
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, "index.html"), html);
+      }
+      fs.writeFileSync(path.join(dist, "seo-routes.json"), JSON.stringify(routes.map((r) => r.path)));
+      console.log(`SEO: ${routes.length - 1} páginas con su propio HTML`);
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), localApi()],
+  plugins: [react(), localApi(), seoHtmlPages()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

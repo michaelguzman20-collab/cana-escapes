@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { LangProvider } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
+import { SEO_PAGES } from "@/lib/seoPages";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { GuestHero } from "@/components/cana/GuestHero";
 import { PasarelaPlayas } from "@/components/cana/PasarelaPlayas";
@@ -14,9 +15,7 @@ export function HomePage() {
   const ref = useRef<HTMLDivElement>(null);
 
   useSeo({
-    title: "Cana Escapes | Alquiler Vacacional y Gestión de Propiedades en Punta Cana",
-    description:
-      "Villas y apartamentos para tus vacaciones en Bávaro y Punta Cana, y gestión integral de propiedades para propietarios. Reserva tu escapada o maximiza los retornos de tu inversión.",
+    ...SEO_PAGES["/"],
     path: "/",
   });
 

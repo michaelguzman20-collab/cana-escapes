@@ -41,6 +41,14 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Freno contra registros masivos con un script: máximo 20 usuarios nuevos por hora en total
+    const hourAgo = new Date(Date.now() - 3600_000).toISOString();
+    const { count: recent } = await admin
+      .from("fleet_drivers")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", hourAgo);
+    if ((recent ?? 0) >= 20) return json({ error: "Demasiados registros en este momento. Inténtalo en un rato." }, 429);
+
     const email = `${crypto.randomUUID()}@track.canaescapes.com`;
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email,

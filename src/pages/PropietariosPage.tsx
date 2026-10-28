@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { LangProvider } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
+import { SEO_PAGES } from "@/lib/seoPages";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { Hero } from "@/components/cana/Hero";
 import { MarketGrowth } from "@/components/cana/MarketGrowth";
@@ -16,9 +17,7 @@ export function PropietariosPage() {
   const ref = useRef<HTMLDivElement>(null);
 
   useSeo({
-    title: "Para Propietarios | Gestión de Propiedades en Punta Cana — Cana Escapes",
-    description:
-      "Gestionamos tu propiedad en Punta Cana con tecnología, transparencia y máximos retornos: comisiones progresivas, mantenimiento preventivo y reportes financieros claros.",
+    ...SEO_PAGES["/propietarios"],
     path: "/propietarios",
   });
 

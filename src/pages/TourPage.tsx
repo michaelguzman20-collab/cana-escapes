@@ -38,6 +38,8 @@ function TourContent() {
   const [showInfo, setShowInfo] = useState(false);
   const music = useRef<AmbientMusic | null>(null);
   const [musicOn, setMusicOn] = useState(false);
+  const fullRef = useRef(full);
+  fullRef.current = full;
 
   useEffect(() => {
     loadViewer();
@@ -60,7 +62,7 @@ function TourContent() {
       try { localStorage.setItem(MUSIC_KEY, "off"); } catch { /* sin almacenamiento */ }
       return;
     }
-    music.current ??= new AmbientMusic();
+    music.current ??= new AmbientMusic(full?.tour.music_style);
     music.current.start().catch(() => setMusicOn(false));
     setMusicOn(true);
     try { localStorage.setItem(MUSIC_KEY, "on"); } catch { /* sin almacenamiento */ }
@@ -74,7 +76,7 @@ function TourContent() {
     if (!wanted) return;
     const onFirst = () => {
       if (music.current?.playing) return;
-      music.current ??= new AmbientMusic();
+      music.current ??= new AmbientMusic(fullRef.current?.tour.music_style);
       music.current.start().then(() => setMusicOn(true)).catch(() => undefined);
     };
     window.addEventListener("pointerdown", onFirst, { once: true });
@@ -121,7 +123,7 @@ function TourContent() {
           </div>
         }
       >
-        <TourViewer full={full} loadingText={t("tours_loading")} startLabel={t("tours_start_view")} lang={lang} />
+        <TourViewer full={full} loadingText={t("tours_loading")} startLabel={t("tours_start_view")} gyroLabel={t("tours_gyro")} lang={lang} />
       </Suspense>
 
       {/* Logo + título */}
@@ -137,7 +139,8 @@ function TourContent() {
             <p className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#F0A030] leading-none mb-1">
               <span className="font-serif italic normal-case tracking-normal font-semibold text-white">Cana Escapes</span> · Tours 360°
             </p>
-            <h1 className="font-serif font-bold text-base sm:text-xl leading-tight truncate">{full.tour.title}</h1>
+            {/* Nombre completo (hasta 2 líneas): en el teléfono los botones van en columna a la derecha */}
+            <h1 className="font-serif font-bold text-[15px] sm:text-xl leading-tight line-clamp-2 break-words">{full.tour.title}</h1>
             {(full.tour.location || full.tour.bedrooms != null) && (
               <p className="text-[11px] sm:text-xs text-white/80 truncate">
                 {[full.tour.location, full.tour.bedrooms != null ? `${full.tour.bedrooms} ${t("tours_bedrooms")}` : null, full.tour.bathrooms != null ? `${full.tour.bathrooms} ${t("tours_bathrooms")}` : null]
@@ -148,7 +151,7 @@ function TourContent() {
             {!full.tour.published && <span className="inline-block mt-1 text-[10px] font-bold uppercase bg-amber-400 text-black px-2 rounded">{t("tours_draft")}</span>}
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0 pointer-events-auto">
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 shrink-0 pointer-events-auto">
           <button
             onClick={() => setLang(lang === "es" ? "en" : "es")}
             className="h-9 px-2.5 rounded-full bg-black/40 text-white text-xs font-semibold uppercase hover:bg-black/60"
@@ -205,7 +208,7 @@ function TourContent() {
       <BrandLogo tour={full.tour} />
 
       {showInfo && (
-        <div className="absolute top-20 sm:top-24 right-3 left-3 sm:left-auto sm:w-96 z-20 rounded-2xl bg-white/95 backdrop-blur p-4 pr-10 shadow-2xl text-sm text-gray-700">
+        <div className="absolute top-24 right-14 left-3 sm:right-3 sm:left-auto sm:w-96 z-20 rounded-2xl bg-white/95 backdrop-blur p-4 pr-10 shadow-2xl text-sm text-gray-700">
           <button onClick={() => setShowInfo(false)} className="absolute top-2 right-2 w-7 h-7 rounded-full hover:bg-gray-100 flex items-center justify-center" aria-label="Cerrar">
             <X size={15} />
           </button>

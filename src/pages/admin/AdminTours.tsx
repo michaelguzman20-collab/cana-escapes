@@ -7,8 +7,9 @@ import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, hori
 import { CSS } from "@dnd-kit/utilities";
 import {
   Rotate3d, Plus, ArrowLeft, ExternalLink, Copy, Save, Trash2, UploadCloud, Star, LayoutGrid, Pencil,
-  Navigation, Info, Crosshair, Eye, Loader2, Settings2, Image as ImageIcon, X, GripVertical, RefreshCw, Download, MoveRight, Type, Wand2,
+  Navigation, Info, Crosshair, Eye, Loader2, Settings2, Image as ImageIcon, X, GripVertical, RefreshCw, Download, MoveRight, Type, Wand2, Play, Square,
 } from "lucide-react";
+import { AmbientMusic, MUSIC_STYLES, type MusicStyle } from "@/components/tours/ambientMusic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +19,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { tourStorage, processPanorama, extOf } from "@/lib/tourStorage";
 import { PanoThumb } from "@/components/tours/PanoThumb";
+import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
 import { applyFilters as renderFilters, canvasToBlob, cssPreview, thumbFrom } from "@/lib/panoFilters";
 import {
   normalizeWhatsapp, type BrandPosition,
@@ -67,12 +69,31 @@ async function copyLink(slug: string) {
   }
 }
 
+// WhatsApp del propietario: el botón verde del tour le escribe a este número
+function WhatsappInput({ value, onChange, className }: { value: string; onChange(v: string): void; className?: string }) {
+  const wa = normalizeWhatsapp(value);
+  const bad = !!value.trim() && !wa;
+  return (
+    <div className={cn("relative", className)} title={wa ? `El botón de WhatsApp del tour escribirá a +${wa}` : "WhatsApp del propietario (opcional)"}>
+      <WhatsAppIcon size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#25D366] pointer-events-none" />
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="WhatsApp del propietario"
+        inputMode="tel"
+        className={cn("pl-8", bad && "!border-red-400")}
+      />
+    </div>
+  );
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 export function AdminTours() {
   const [tours, setTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState("");
+  const [newWhatsapp, setNewWhatsapp] = useState("");
   const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
@@ -92,10 +113,11 @@ export function AdminTours() {
     setCreating(true);
     let slug = slugify(title) || "tour";
     if (tours.some((t) => t.slug === slug)) slug = `${slug}-${Math.random().toString(36).slice(2, 6)}`;
-    const { data, error } = await db.from("tours").insert({ title, slug }).select().single();
+    const { data, error } = await db.from("tours").insert({ title, slug, whatsapp: newWhatsapp.trim() || null }).select().single();
     setCreating(false);
     if (error) return fail("No se pudo crear el tour", error);
     setNewTitle("");
+    setNewWhatsapp("");
     setTours((t) => [data, ...t]);
     setOpenId(data.id);
   }
@@ -145,6 +167,7 @@ export function AdminTours() {
           className="flex flex-wrap gap-2 bg-white rounded-xl border border-gray-200 p-3"
         >
           <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Nombre del tour nuevo, ej. Villa Cocotal" className="flex-1 min-w-[200px]" />
+          <WhatsappInput value={newWhatsapp} onChange={setNewWhatsapp} className="w-full sm:w-60" />
           <Button type="submit" disabled={creating || !newTitle.trim()} className="bg-[#0F2B4C] hover:bg-[#173a63]">
             {creating ? <Loader2 size={15} className="animate-spin mr-1.5" /> : <Plus size={15} className="mr-1.5" />}
             Crear tour
@@ -163,7 +186,7 @@ export function AdminTours() {
             {tours.map((t) => (
               <button key={t.id} onClick={() => setOpenId(t.id)} className="text-left bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
                 <div className="aspect-[2/1] bg-gray-100 flex items-center justify-center">
-                  {t.cover_url ? <img src={t.cover_url} alt="" className="w-full h-full object-cover" /> : <ImageIcon size={28} className="text-gray-300" />}
+                  {t.cover_url ? <img src={mediaUrl(t.cover_url)} alt="" loading="lazy" className="w-full h-full object-cover" /> : <ImageIcon size={28} className="text-gray-300" />}
                 </div>
                 <div className="p-3">
                   <div className="flex items-center justify-between gap-2">
@@ -560,6 +583,11 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
             className={cn("flex-1 min-w-[180px] max-w-md font-semibold", isEditor && "bg-white/10 border-white/15 text-white")}
+          />
+          <WhatsappInput
+            value={form.whatsapp ?? ""}
+            onChange={(v) => setForm({ ...form, whatsapp: v || null })}
+            className={cn("w-full sm:w-52", isEditor && "[&_input]:bg-white/10 [&_input]:border-white/15 [&_input]:text-white")}
           />
           <div className="flex items-center gap-2 ml-auto flex-wrap">
             <label className={cn("flex items-center gap-2 px-2 text-xs font-semibold", isEditor ? "text-white/80" : "text-gray-600")}>
@@ -1723,6 +1751,57 @@ function StripThumb({ scene: s, index, active, isStart, onOpen }: {
   );
 }
 
+// Música de fondo: se puede escuchar cada estilo antes de elegirlo
+function MusicPicker({ value, onChange, onSave, dirty }: { value: MusicStyle; onChange(v: MusicStyle): void; onSave(): void; dirty: boolean }) {
+  const player = useRef<AmbientMusic | null>(null);
+  const [playing, setPlaying] = useState<MusicStyle | null>(null);
+  useEffect(() => () => player.current?.stop(), []);
+  function toggle(id: MusicStyle) {
+    player.current?.stop();
+    player.current = null;
+    if (playing === id) return setPlaying(null);
+    player.current = new AmbientMusic(id);
+    player.current.start().catch(() => setPlaying(null));
+    setPlaying(id);
+  }
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+      <div>
+        <p className="font-semibold text-[#0F2B4C]">Música del tour</p>
+        <p className="text-xs text-gray-500">Escucha cada estilo con ▶ y elige el que sonará cuando el visitante active la música.</p>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-2">
+        {MUSIC_STYLES.map((m) => (
+          <div
+            key={m.id}
+            className={cn("flex items-start gap-3 rounded-lg border p-3 cursor-pointer", value === m.id ? "border-[#F0A030] bg-amber-50" : "border-gray-200 hover:bg-gray-50")}
+            onClick={() => onChange(m.id)}
+          >
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); toggle(m.id); }}
+              className={cn("shrink-0 w-9 h-9 rounded-full flex items-center justify-center", playing === m.id ? "bg-[#0F2B4C] text-white" : "bg-gray-100 text-[#0F2B4C] hover:bg-gray-200")}
+              aria-label={playing === m.id ? `Parar ${m.name}` : `Escuchar ${m.name}`}
+            >
+              {playing === m.id ? <Square size={13} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+            </button>
+            <div className="min-w-0">
+              <p className="font-semibold text-sm flex items-center gap-1.5">
+                {m.name}
+                {value === m.id && <span className="text-[10px] font-bold uppercase text-[#b8761a]">Elegida</span>}
+              </p>
+              <p className="text-xs text-gray-500">{m.desc}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <Button onClick={onSave} disabled={!dirty} className="bg-green-600 hover:bg-green-700 text-white">
+        <Save size={14} className="mr-1.5" /> Guardar ajustes
+      </Button>
+    </div>
+  );
+}
+
 // ── Ajustes del tour ─────────────────────────────────────────────────────────
 function TourSettings({ form, setForm, onSave, dirty, onDelete, cover }: {
   form: Tour;
@@ -1803,6 +1882,8 @@ function TourSettings({ form, setForm, onSave, dirty, onDelete, cover }: {
           <Save size={14} className="mr-1.5" /> Guardar ajustes
         </Button>
       </div>
+
+      <MusicPicker value={form.music_style} onChange={(music_style) => setForm({ ...form, music_style })} onSave={onSave} dirty={dirty} />
 
       {/* Logo del propietario: marca de agua fija en todas las fotos, con enlace opcional */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">

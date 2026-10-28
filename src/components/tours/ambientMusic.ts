@@ -1,26 +1,132 @@
-// Música de fondo suave para los Tours 360, generada en el navegador con Web Audio:
-// acordes de pad cálidos + notas de campana sueltas + un bajo muy suave, con reverberación.
-// No hay archivo de audio (no pesa nada, sin derechos de autor) y suena en bucle sin cortes.
+// Música de fondo para los Tours 360, generada en el navegador con Web Audio (sin archivos de audio:
+// no pesa nada, sin derechos de autor y suena en bucle sin cortes). Varios estilos para elegir por tour:
+//   · zen      — pads cálidos + campanitas sueltas (relajado, sin ritmo)
+//   · lounge   — piano eléctrico jazzy, bajo, bombo suave y hi-hat con swing (bar de hotel)
+//   · tropical — marimba con ritmo de tresillo, shaker, bajo y bombo suave (tropical house)
+//   · bossa    — piano eléctrico y bajo con clave de bossa nova, rim y shaker (terraza al atardecer)
 // Los navegadores solo permiten sonido después de que la persona toca un botón.
 
-const PROGRESSION = [
-  // Cmaj9, Am9, Fmaj9, G6/9 — frecuencias en notas MIDI
-  { bass: 36, pad: [48, 52, 55, 59, 62] },
-  { bass: 33, pad: [45, 48, 52, 55, 59] },
-  { bass: 29, pad: [41, 45, 48, 52, 55] },
-  { bass: 31, pad: [43, 47, 50, 52, 57] },
+export type MusicStyle = "zen" | "lounge" | "tropical" | "bossa";
+
+export const MUSIC_STYLES: { id: MusicStyle; name: string; desc: string }[] = [
+  { id: "lounge", name: "Lounge", desc: "Piano eléctrico jazzy, bajo y ritmo suave. Elegante, de bar de hotel." },
+  { id: "tropical", name: "Tropical", desc: "Marimba con ritmo caribeño, shaker y bajo. Alegre y fresco." },
+  { id: "bossa", name: "Bossa nova", desc: "Acordes suaves con clave de bossa. Relajado, de terraza al atardecer." },
+  { id: "zen", name: "Zen", desc: "Pads y campanitas sin ritmo. Muy tranquilo (la de antes)." },
 ];
-const BELL_NOTES = [72, 74, 76, 79, 81, 84, 86, 88]; // pentatónica de do, registro alto
-const CHORD_SECONDS = 8;
 
 const hz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
 
+interface GrooveChord {
+  bass: number; // nota MIDI de la raíz (registro grave)
+  notes: number[]; // acorde (registro medio)
+}
+
+interface Groove {
+  bpm: number;
+  stepsPerChord: number; // pasos de 1/16 (o 1/8 en bossa) que dura cada acorde
+  chords: GrooveChord[];
+  swing: number; // 0..0.4 retraso de los pasos impares (fracción de paso)
+  play(m: AmbientMusic, step: number, t: number, chord: GrooveChord, stepDur: number): void;
+}
+
+const R = Math.random;
+
+const GROOVES: Record<Exclude<MusicStyle, "zen">, Groove> = {
+  // ii–V–I–vi en do: Dm9, G13, Cmaj9, Am9 — 1 compás cada uno
+  lounge: {
+    bpm: 86,
+    stepsPerChord: 16,
+    swing: 0.28,
+    chords: [
+      { bass: 38, notes: [53, 57, 60, 64] },
+      { bass: 43, notes: [53, 57, 59, 64] },
+      { bass: 36, notes: [52, 55, 59, 62] },
+      { bass: 33, notes: [55, 60, 64, 67] },
+    ],
+    play(m, s, t, c, d) {
+      if (s === 0 || s === 8) m.kick(t, s === 0 ? 0.5 : 0.38);
+      if (s === 10 && R() < 0.4) m.kick(t, 0.25);
+      if (s === 4 || s === 12) m.rim(t, 0.22);
+      if (s % 2 === 0) m.hat(t, s % 4 === 0 ? 0.11 : 0.07);
+      if (s === 0) m.ep(c.notes, t, d * 9, 0.55);
+      if (s === 7) m.ep(c.notes, t, d * 3, 0.32);
+      if (s === 10 && R() < 0.5) m.ep(c.notes.slice(1), t, d * 4, 0.25);
+      if (s === 0) m.bass(hz(c.bass), t, d * 5, 0.6);
+      if (s === 6) m.bass(hz(c.bass + 7), t, d * 3, 0.45);
+      if (s === 10) m.bass(hz(c.bass + 12), t, d * 3, 0.4);
+      if (s === 14 && R() < 0.6) m.bass(hz(c.bass + 10), t, d * 2, 0.35);
+      // Notita de melodía de vez en cuando
+      if ((s === 12 || s === 3) && R() < 0.3) m.ep([c.notes[c.notes.length - 1] + 12], t, d * 4, 0.22);
+    },
+  },
+  // vi–IV–I–V en do (Am, F, C, G) — 1 compás cada uno, ritmo de tresillo (3+3+2)
+  tropical: {
+    bpm: 102,
+    stepsPerChord: 16,
+    swing: 0.08,
+    chords: [
+      { bass: 33, notes: [69, 72, 76] },
+      { bass: 29, notes: [69, 72, 77] },
+      { bass: 36, notes: [67, 72, 76] },
+      { bass: 31, notes: [67, 71, 74] },
+    ],
+    play(m, s, t, c, d) {
+      if (s % 4 === 0) m.kick(t, 0.42);
+      if (s === 4 || s === 12) m.clap(t, 0.2);
+      m.shaker(t, s % 2 ? 0.11 : 0.06);
+      // Marimba en tresillo, arpegiando el acorde (a veces sube una octava)
+      const pattern = [0, 3, 6, 8, 11, 14];
+      const i = pattern.indexOf(s);
+      if (i >= 0) {
+        const n = c.notes[i % c.notes.length] + (i >= 3 && R() < 0.35 ? 12 : 0);
+        m.marimba(hz(n), t, i === 0 ? 0.5 : 0.36);
+      }
+      if (s === 0 || s === 3 || s === 6) m.bass(hz(c.bass), t, d * 2.5, 0.55);
+      if (s === 8 || s === 11) m.bass(hz(c.bass + 12), t, d * 2.5, 0.4);
+      if (s === 14) m.bass(hz(c.bass + 7), t, d * 2, 0.4);
+      if (s === 0) m.pad(c.notes.map((n) => hz(n - 12)), t, d * 16, 0.018);
+    },
+  },
+  // I–VI–ii–V en do (Cmaj7, A7, Dm9, G7) — pasos de corchea, 2 compases por acorde
+  bossa: {
+    bpm: 66, // cada paso dura 1/16 a 66 = una corchea de bossa a ~132
+    stepsPerChord: 16,
+    swing: 0.05,
+    chords: [
+      { bass: 36, notes: [52, 55, 59, 64] },
+      { bass: 33, notes: [52, 55, 61, 64] },
+      { bass: 38, notes: [53, 57, 60, 64] },
+      { bass: 31, notes: [53, 59, 62, 65] },
+    ],
+    play(m, s, t, c, d) {
+      // Bajo de bossa: raíz y quinta con puntillo
+      if (s === 0 || s === 8) m.bass(hz(c.bass), t, d * 2.6, 0.55);
+      if (s === 3 || s === 11) m.bass(hz(c.bass + 7), t, d * 1.2, 0.42);
+      if (s === 4 || s === 12) m.bass(hz(c.bass + 7), t, d * 3, 0.4);
+      // Clave de bossa (rim) y acordes en los mismos golpes
+      const clave = [0, 3, 6, 10, 13];
+      if (clave.includes(s)) {
+        m.rim(t, 0.16);
+        m.ep(c.notes, t, d * 2.2, s === 0 ? 0.42 : 0.3);
+      }
+      m.shaker(t, s % 2 ? 0.05 : 0.08);
+      if (s === 0 || s === 8) m.kick(t, 0.22);
+      if (s === 14 && R() < 0.35) m.ep([c.notes[c.notes.length - 1] + 12], t, d * 3, 0.2);
+    },
+  },
+};
+
 export class AmbientMusic {
+  readonly style: MusicStyle;
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private bus: GainNode | null = null;
+  private dry: GainNode | null = null; // percusión: menos reverberación
+  private noise: AudioBuffer | null = null;
   private timer: number | undefined;
-  private nextChordAt = 0;
+  private nextAt = 0;
+  private step = 0;
   private chord = 0;
   private nextBellAt = 0;
   private onVisibility = () => {
@@ -28,6 +134,10 @@ export class AmbientMusic {
     if (document.hidden) this.ctx.suspend();
     else this.ctx.resume();
   };
+
+  constructor(style: MusicStyle = "zen") {
+    this.style = MUSIC_STYLES.some((s) => s.id === style) ? style : "zen";
+  }
 
   get playing() {
     return !!this.ctx;
@@ -42,13 +152,18 @@ export class AmbientMusic {
 
     const master = ctx.createGain();
     master.gain.setValueAtTime(0, ctx.currentTime);
-    master.gain.linearRampToValueAtTime(volume, ctx.currentTime + 3);
-    master.connect(ctx.destination);
+    master.gain.linearRampToValueAtTime(volume, ctx.currentTime + 2.5);
+    // Un filtro general quita brillo áspero: el sonido queda "de fondo"
+    const tone = ctx.createBiquadFilter();
+    tone.type = "lowpass";
+    tone.frequency.value = this.style === "tropical" ? 9000 : 7000;
+    master.connect(tone).connect(ctx.destination);
     this.master = master;
 
-    // Reverberación: respuesta de ruido que se apaga en ~4 s
+    // Reverberación: respuesta de ruido que se apaga
     const reverb = ctx.createConvolver();
-    const len = Math.floor(ctx.sampleRate * 4);
+    const secs = this.style === "zen" ? 4 : 2.2;
+    const len = Math.floor(ctx.sampleRate * secs);
     const ir = ctx.createBuffer(2, len, ctx.sampleRate);
     for (let ch = 0; ch < 2; ch++) {
       const d = ir.getChannelData(ch);
@@ -56,7 +171,7 @@ export class AmbientMusic {
     }
     reverb.buffer = ir;
     const wet = ctx.createGain();
-    wet.gain.value = 0.55;
+    wet.gain.value = this.style === "zen" ? 0.55 : 0.3;
     reverb.connect(wet).connect(master);
 
     const bus = ctx.createGain();
@@ -64,12 +179,24 @@ export class AmbientMusic {
     bus.connect(master);
     bus.connect(reverb);
     this.bus = bus;
+    const dry = ctx.createGain();
+    dry.gain.value = 0.7;
+    dry.connect(master);
+    const drySend = ctx.createGain();
+    drySend.gain.value = 0.15;
+    dry.connect(drySend).connect(reverb);
+    this.dry = dry;
 
-    this.nextChordAt = ctx.currentTime + 0.1;
+    const nb = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const nd = nb.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    this.noise = nb;
+
+    this.nextAt = ctx.currentTime + 0.15;
     this.nextBellAt = ctx.currentTime + 2.5;
-    this.chord = 0;
+    this.step = this.chord = 0;
     this.schedule();
-    this.timer = window.setInterval(() => this.schedule(), 500);
+    this.timer = window.setInterval(() => this.schedule(), 100);
     document.addEventListener("visibilitychange", this.onVisibility);
   }
 
@@ -80,85 +207,174 @@ export class AmbientMusic {
     document.removeEventListener("visibilitychange", this.onVisibility);
     this.master?.gain.cancelScheduledValues(ctx.currentTime);
     this.master?.gain.setValueAtTime(this.master.gain.value, ctx.currentTime);
-    this.master?.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.8);
-    this.ctx = this.master = this.bus = null;
-    setTimeout(() => ctx.close().catch(() => undefined), 1000);
+    this.master?.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.6);
+    this.ctx = this.master = this.bus = this.dry = null;
+    setTimeout(() => ctx.close().catch(() => undefined), 800);
   }
 
-  // Programa los sonidos de los próximos segundos
+  // Programa los sonidos de los próximos instantes
   private schedule() {
     const ctx = this.ctx;
-    if (!ctx || !this.bus) return;
+    if (!ctx) return;
+    if (this.style === "zen") return this.scheduleZen(ctx);
+    const g = GROOVES[this.style];
+    const stepDur = 60 / g.bpm / 4;
+    const horizon = ctx.currentTime + 0.35;
+    while (this.nextAt < horizon) {
+      const s = this.step % g.stepsPerChord;
+      const chord = g.chords[this.chord % g.chords.length];
+      const t = this.nextAt + (this.step % 2 ? g.swing * stepDur : 0);
+      g.play(this, s, t, chord, stepDur);
+      this.step++;
+      if (this.step % g.stepsPerChord === 0) this.chord++;
+      this.nextAt += stepDur;
+    }
+  }
+
+  private scheduleZen(ctx: AudioContext) {
+    const ZEN = [
+      { bass: 36, pad: [48, 52, 55, 59, 62] },
+      { bass: 33, pad: [45, 48, 52, 55, 59] },
+      { bass: 29, pad: [41, 45, 48, 52, 55] },
+      { bass: 31, pad: [43, 47, 50, 52, 57] },
+    ];
+    const BELLS = [72, 74, 76, 79, 81, 84, 86, 88];
+    const CHORD = 8;
     const horizon = ctx.currentTime + 2;
-    while (this.nextChordAt < horizon) {
-      const c = PROGRESSION[this.chord % PROGRESSION.length];
-      const t = this.nextChordAt;
-      c.pad.forEach((n, i) => this.pad(hz(n), t + i * 0.12, CHORD_SECONDS + 2.5));
-      this.bassNote(hz(c.bass), t, CHORD_SECONDS);
-      this.chord++;
-      this.nextChordAt += CHORD_SECONDS;
+    while (this.nextAt < horizon) {
+      const c = ZEN[this.chord++ % ZEN.length];
+      c.pad.forEach((n, i) => this.pad([hz(n)], this.nextAt + i * 0.12, CHORD + 2.5, 0.05));
+      this.bass(hz(c.bass), this.nextAt, CHORD, 0.5, 1.5);
+      this.nextAt += CHORD;
     }
     while (this.nextBellAt < horizon) {
-      if (Math.random() < 0.55) this.bell(hz(BELL_NOTES[Math.floor(Math.random() * BELL_NOTES.length)]), this.nextBellAt);
+      if (Math.random() < 0.55) this.bell(hz(BELLS[Math.floor(Math.random() * BELLS.length)]), this.nextBellAt);
       this.nextBellAt += 1.1 + Math.random() * 1.6;
     }
   }
 
-  private pad(freq: number, t: number, dur: number) {
+  // ── Instrumentos ──────────────────────────────────────────────────────────
+  private env(t: number, peak: number, attack: number, decay: number, out: AudioNode) {
+    const g = this.ctx!.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(peak, t + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
+    g.connect(out);
+    return g;
+  }
+
+  private osc(type: OscillatorType, freq: number, t: number, dur: number, out: AudioNode, detune = 0) {
+    const o = this.ctx!.createOscillator();
+    o.type = type;
+    o.frequency.value = freq;
+    o.detune.value = detune;
+    o.connect(out);
+    o.start(t);
+    o.stop(t + dur + 0.05);
+    return o;
+  }
+
+  /** Colchón de acordes suave */
+  pad(freqs: number[], t: number, dur: number, level = 0.03) {
     const ctx = this.ctx!;
-    const env = ctx.createGain();
-    env.gain.setValueAtTime(0, t);
-    env.gain.linearRampToValueAtTime(0.05, t + 2.5);
-    env.gain.setValueAtTime(0.05, t + dur - 3);
-    env.gain.linearRampToValueAtTime(0, t + dur);
-    const lp = ctx.createBiquadFilter();
-    lp.type = "lowpass";
-    lp.frequency.value = 1100;
-    lp.Q.value = 0.3;
-    lp.connect(env).connect(this.bus!);
-    for (const [type, detune] of [["sine", -6], ["triangle", 6]] as const) {
-      const o = ctx.createOscillator();
-      o.type = type;
-      o.frequency.value = freq;
-      o.detune.value = detune;
-      o.connect(lp);
-      o.start(t);
-      o.stop(t + dur + 0.1);
+    for (const f of freqs) {
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(level, t + Math.min(2.5, dur / 3));
+      env.gain.setValueAtTime(level, t + dur * 0.7);
+      env.gain.linearRampToValueAtTime(0, t + dur);
+      const lp = ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = 1100;
+      lp.connect(env).connect(this.bus!);
+      this.osc("sine", f, t, dur, lp, -6);
+      this.osc("triangle", f, t, dur, lp, 6);
     }
   }
 
-  private bassNote(freq: number, t: number, dur: number) {
+  /** Piano eléctrico (tipo Rhodes): FM suave con brillo que se apaga */
+  ep(notes: number[], t: number, dur: number, vel: number) {
     const ctx = this.ctx!;
-    const env = ctx.createGain();
-    env.gain.setValueAtTime(0, t);
-    env.gain.linearRampToValueAtTime(0.07, t + 1.5);
-    env.gain.linearRampToValueAtTime(0, t + dur);
-    env.connect(this.bus!);
-    const o = ctx.createOscillator();
-    o.type = "sine";
-    o.frequency.value = freq;
-    o.connect(env);
-    o.start(t);
-    o.stop(t + dur + 0.1);
+    for (const n of notes) {
+      const f = hz(n);
+      const amp = this.env(t, 0.06 * vel, 0.005, Math.max(0.4, dur), this.bus!);
+      const car = this.osc("sine", f, t, dur + 0.5, amp);
+      const mod = ctx.createOscillator();
+      mod.frequency.value = f;
+      const idx = ctx.createGain();
+      idx.gain.setValueAtTime(f * 1.4 * vel, t);
+      idx.gain.exponentialRampToValueAtTime(f * 0.08, t + 0.6);
+      mod.connect(idx).connect(car.frequency);
+      mod.start(t);
+      mod.stop(t + dur + 0.55);
+    }
   }
 
-  private bell(freq: number, t: number) {
-    const ctx = this.ctx!;
-    const env = ctx.createGain();
-    env.gain.setValueAtTime(0, t);
-    env.gain.linearRampToValueAtTime(0.035, t + 0.02);
-    env.gain.exponentialRampToValueAtTime(0.0001, t + 3);
-    env.connect(this.bus!);
+  /** Marimba: tono redondo + armónico agudo muy corto */
+  marimba(f: number, t: number, vel: number) {
+    const a = this.env(t, 0.09 * vel, 0.003, 0.9, this.bus!);
+    this.osc("sine", f, t, 1, a);
+    const b = this.env(t, 0.03 * vel, 0.002, 0.12, this.bus!);
+    this.osc("sine", f * 4, t, 0.2, b);
+  }
+
+  bell(f: number, t: number) {
+    const env = this.env(t, 0.035, 0.02, 3, this.bus!);
     for (const [mult, gain] of [[1, 1], [2.01, 0.25], [3, 0.08]]) {
-      const g = ctx.createGain();
+      const g = this.ctx!.createGain();
       g.gain.value = gain;
       g.connect(env);
-      const o = ctx.createOscillator();
-      o.type = "sine";
-      o.frequency.value = freq * mult;
-      o.connect(g);
-      o.start(t);
-      o.stop(t + 3.1);
+      this.osc("sine", f * mult, t, 3.1, g);
     }
+  }
+
+  bass(f: number, t: number, dur: number, vel: number, attack = 0.01) {
+    const ctx = this.ctx!;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 420;
+    const g = this.env(t, 0.16 * vel, attack, dur, this.dry!);
+    lp.connect(g);
+    this.osc("triangle", f, t, dur + attack, lp);
+    this.osc("sine", f, t, dur + attack, lp);
+  }
+
+  kick(t: number, vel: number) {
+    const g = this.env(t, 0.5 * vel, 0.002, 0.3, this.dry!);
+    const o = this.osc("sine", 110, t, 0.35, g);
+    o.frequency.setValueAtTime(110, t);
+    o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+  }
+
+  private noiseHit(t: number, peak: number, decay: number, type: BiquadFilterType, freq: number, q = 1) {
+    const ctx = this.ctx!;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise;
+    const f = ctx.createBiquadFilter();
+    f.type = type;
+    f.frequency.value = freq;
+    f.Q.value = q;
+    const g = this.env(t, peak, 0.002, decay, this.dry!);
+    src.connect(f).connect(g);
+    src.start(t, Math.random() * 0.5);
+    src.stop(t + decay + 0.05);
+  }
+
+  hat(t: number, vel: number) {
+    this.noiseHit(t, 0.25 * vel, 0.045, "highpass", 7500);
+  }
+
+  shaker(t: number, vel: number) {
+    this.noiseHit(t, 0.22 * vel, 0.06, "bandpass", 6500, 0.8);
+  }
+
+  rim(t: number, vel: number) {
+    this.noiseHit(t, 0.5 * vel, 0.05, "bandpass", 1900, 6);
+    const g = this.env(t, 0.06 * vel, 0.001, 0.04, this.dry!);
+    this.osc("triangle", 820, t, 0.06, g);
+  }
+
+  clap(t: number, vel: number) {
+    for (const dt of [0, 0.012, 0.024]) this.noiseHit(t + dt, 0.35 * vel, 0.09, "bandpass", 1500, 1.2);
   }
 }

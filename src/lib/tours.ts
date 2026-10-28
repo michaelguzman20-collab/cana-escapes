@@ -26,6 +26,7 @@ export interface Tour {
   brand_position: BrandPosition;
   brand_size: number; // ancho en px
   whatsapp: string | null; // WhatsApp del propietario (el botón verde le escribe)
+  music_style: "zen" | "lounge" | "tropical" | "bossa"; // música de fondo (ambientMusic.ts)
   sort_order: number;
   created_at: string;
   updated_at: string;

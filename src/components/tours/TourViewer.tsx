@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Crosshair, X } from "lucide-react";
+import { Crosshair, Smartphone, X } from "lucide-react";
 import { Viewer } from "@photo-sphere-viewer/core";
 import { MarkersPlugin, type MarkerConfig } from "@photo-sphere-viewer/markers-plugin";
 import { VirtualTourPlugin, type VirtualTourNode } from "@photo-sphere-viewer/virtual-tour-plugin";
@@ -14,7 +14,7 @@ import { addonElement, addonMarker } from "./tourAddons";
 import { PanoThumb } from "./PanoThumb";
 import { limitTexturesOnPhones, PSV_LANG_EN, PSV_LANG_ES } from "./viewerSetup";
 import {
-  addonsForScene, areaIn, clampPitch, mediaUrl, sceneLabel, sphereCorrection, startScene, zoomLevelFor, type FullTour, type TourHotspot, type TourScene,
+  addonsForScene, areaIn, clampPitch, mediaUrl, sphereCorrection, startScene, zoomLevelFor, type FullTour, type TourHotspot, type TourScene,
 } from "@/lib/tours";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +29,12 @@ interface Props {
   startLabel?: string;
   /** Idioma del botón ES/EN: cambia el nombre de las áreas y los botones del visor */
   lang?: string;
+  /** Texto del botón del giroscopio (mover la vista girando el teléfono) */
+  gyroLabel?: string;
 }
+
+// Pie de foto: solo el área (Sala, Cocina…); el nombre del tour ya está arriba
+const captionOf = (s: TourScene, lang: string) => areaIn(s, lang) || s.title;
 
 const levelOf = (s: TourScene) => zoomLevelFor(s.fov_initial, s.fov_min, s.fov_max);
 
@@ -69,7 +74,7 @@ function Card({ addon, onClose }: { addon: TourHotspot; onClose(): void }) {
   );
 }
 
-export default function TourViewer({ full, loadingText, startLabel, lang = "es" }: Props) {
+export default function TourViewer({ full, loadingText, startLabel, lang = "es", gyroLabel }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tourRef = useRef<VirtualTourPlugin | null>(null);
   const viewerRef = useRef<Viewer | null>(null);
@@ -79,6 +84,10 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es" 
   const first = startScene(full);
   const [current, setCurrent] = useState(first?.id ?? "");
   const [card, setCard] = useState<TourHotspot | null>(null);
+  // Giroscopio: el botón solo aparece en teléfonos/tabletas que lo tienen
+  const gyroRef = useRef<GyroscopePlugin | null>(null);
+  const [gyroSupported, setGyroSupported] = useState(false);
+  const [gyroOn, setGyroOn] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current || !first) return;
@@ -96,7 +105,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es" 
           id: s.id,
           panorama: mediaUrl(s.image_url),
           name: s.title,
-          caption: sceneLabel(s, langRef.current),
+          caption: captionOf(s, langRef.current),
           thumbnail: mediaUrl(s.thumb_url) ?? undefined,
           sphereCorrection: sphereCorrection(s),
           links: [],
@@ -138,7 +147,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es" 
         lang: langRef.current === "en" ? PSV_LANG_EN : PSV_LANG_ES,
         touchmoveTwoFingers: false,
         mousewheelCtrlKey: false,
-        navbar: ["autorotate", "zoom", "caption", "gyroscope", "fullscreen"],
+        navbar: ["autorotate", "zoom", "caption", "fullscreen"], // el giroscopio tiene su botón propio
         plugins: [
           MarkersPlugin,
           GyroscopePlugin,
@@ -176,7 +185,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es" 
         const s = sceneById.get(node.id);
         if (s) {
           preload(s);
-          viewer.setOption("caption", sceneLabel(s, langRef.current));
+          viewer.setOption("caption", captionOf(s, langRef.current));
         }
       });
       // Si una foto falla (red del teléfono, almacenamiento lento) se reintenta sola 2 veces
@@ -193,6 +202,10 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es" 
         if (n <= 2) setTimeout(() => !cancelled && wanted === id && tour.setCurrentNode(id, { forceUpdate: true }).catch(() => undefined), 1200 * n);
       });
       preload(first);
+      const gyro = viewer.getPlugin(GyroscopePlugin) as GyroscopePlugin;
+      gyroRef.current = gyro;
+      gyro.isSupported().then((ok) => !cancelled && setGyroSupported(ok));
+      gyro.addEventListener("gyroscope-updated", ({ gyroscopeEnabled }) => setGyroOn(gyroscopeEnabled));
       // Límite vertical de la escena actual
       viewer.addEventListener("before-rotate", (e) => {
         e.position.pitch = clampPitch(e.position.pitch, currentScene.pitch_limit);
@@ -212,6 +225,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es" 
       clearTimeout(timer);
       tourRef.current = null;
       viewerRef.current = null;
+      gyroRef.current = null;
       goRef.current = () => undefined;
       (created as Viewer | null)?.destroy();
     };
@@ -225,23 +239,46 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es" 
     const s = full.scenes.find((x) => x.id === current);
     if (!v) return;
     v.setOption("lang", lang === "en" ? PSV_LANG_EN : PSV_LANG_ES);
-    if (s) v.setOption("caption", sceneLabel(s, lang));
+    if (s) v.setOption("caption", captionOf(s, lang));
   }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="absolute inset-0">
       <div ref={containerRef} className="absolute inset-0" />
       {card && <Card addon={card} onClose={() => setCard(null)} />}
-      <button
-        onClick={() => {
-          const s = full.scenes.find((x) => x.id === current);
-          if (s) viewerRef.current?.animate({ yaw: s.initial_yaw, pitch: s.initial_pitch, zoom: levelOf(s), speed: "4rpm" });
-        }}
-        className="absolute left-3 bottom-[8.5rem] z-10 flex items-center gap-1.5 h-9 px-3 rounded-full bg-black/45 backdrop-blur-sm text-white text-xs font-semibold hover:bg-black/65"
-        title={startLabel ?? "Punto de inicio"}
-      >
-        <Crosshair size={15} /> <span className="hidden sm:inline">{startLabel ?? "Punto de inicio"}</span>
-      </button>
+      <div className="absolute left-3 bottom-[8.5rem] z-10 flex items-center gap-2">
+        <button
+          onClick={() => {
+            const s = full.scenes.find((x) => x.id === current);
+            if (gyroRef.current?.isEnabled()) gyroRef.current.stop();
+            if (s) viewerRef.current?.animate({ yaw: s.initial_yaw, pitch: s.initial_pitch, zoom: levelOf(s), speed: "4rpm" });
+          }}
+          className="flex items-center gap-1.5 h-9 px-3 rounded-full bg-black/45 backdrop-blur-sm text-white text-xs font-semibold hover:bg-black/65"
+          title={startLabel ?? "Punto de inicio"}
+        >
+          <Crosshair size={15} /> <span className="hidden sm:inline">{startLabel ?? "Punto de inicio"}</span>
+        </button>
+        {/* Giroscopio: al activarlo, la vista se mueve girando el teléfono (en iPhone pide permiso) */}
+        {gyroSupported && (
+          <button
+            onClick={() => {
+              const g = gyroRef.current;
+              if (!g) return;
+              if (g.isEnabled()) g.stop();
+              else g.start().catch(() => setGyroOn(false));
+            }}
+            aria-pressed={gyroOn}
+            aria-label={gyroLabel ?? "Mover con el teléfono"}
+            title={gyroLabel ?? "Mover con el teléfono"}
+            className={cn(
+              "flex items-center justify-center h-9 w-9 rounded-full backdrop-blur-sm",
+              gyroOn ? "bg-[#F0A030] text-[#0F2B4C]" : "bg-black/45 text-white hover:bg-black/65"
+            )}
+          >
+            <Smartphone size={16} className={cn(gyroOn && "animate-pulse")} />
+          </button>
+        )}
+      </div>
       {full.scenes.length > 1 && (
         <div className="absolute left-0 right-0 bottom-12 z-10 flex justify-center px-3 pointer-events-none">
           <div className="flex gap-2 overflow-x-auto max-w-full p-1.5 rounded-xl bg-black/35 backdrop-blur-sm pointer-events-auto" style={{ scrollbarWidth: "none" }}>

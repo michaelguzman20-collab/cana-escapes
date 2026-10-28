@@ -10,8 +10,8 @@ type Brand = Pick<Tour, "brand_logo_url" | "brand_link" | "brand_position" | "br
 const POSITION: Record<Tour["brand_position"], string> = {
   "bottom-right": "right-3 bottom-[10rem] sm:bottom-[11rem]",
   "bottom-left": "left-3 bottom-[11.5rem]", // sobre el botón "Punto de inicio"
-  "top-right": "right-3 top-20 sm:top-24",
-  "top-left": "left-3 top-20 sm:top-24",
+  "top-right": "right-14 top-24 sm:right-3", // en el teléfono, al lado de la columna de botones
+  "top-left": "left-3 top-24",
 };
 
 export function BrandLogo({ tour, className }: { tour: Brand; className?: string }) {

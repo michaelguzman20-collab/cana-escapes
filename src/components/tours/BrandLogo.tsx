@@ -14,7 +14,13 @@ const POSITION: Record<Tour["brand_position"], string> = {
   "top-left": "left-3 top-24",
 };
 
-export function BrandLogo({ tour, className }: { tour: Brand; className?: string }) {
+// Con la tira de fotos oculta (teléfono) el logo de abajo baja hasta la barra del visor
+const POSITION_NO_STRIP: Partial<Record<Tour["brand_position"], string>> = {
+  "bottom-right": "right-3 bottom-14 sm:bottom-[11rem]",
+  "bottom-left": "left-3 bottom-28 sm:bottom-[11.5rem]",
+};
+
+export function BrandLogo({ tour, className, stripHidden }: { tour: Brand; className?: string; stripHidden?: boolean }) {
   if (!tour.brand_logo_url) return null;
   const href = externalUrl(tour.brand_link);
   const img = (
@@ -26,7 +32,8 @@ export function BrandLogo({ tour, className }: { tour: Brand; className?: string
       style={{ width: tour.brand_size }}
     />
   );
-  const pos = cn("absolute z-10", POSITION[tour.brand_position] ?? POSITION["bottom-right"], className);
+  const place = (stripHidden && POSITION_NO_STRIP[tour.brand_position]) || POSITION[tour.brand_position] || POSITION["bottom-right"];
+  const pos = cn("absolute z-10", place, className);
   return href ? (
     <a href={href} target="_blank" rel="noopener noreferrer" className={cn(pos, "hover:scale-105 transition-transform")} title={href}>
       {img}

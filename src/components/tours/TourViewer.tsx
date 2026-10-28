@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Crosshair, Smartphone, X } from "lucide-react";
+import { ChevronDown, Crosshair, GalleryHorizontal, Smartphone, X } from "lucide-react";
 import { Viewer } from "@photo-sphere-viewer/core";
 import { MarkersPlugin, type MarkerConfig } from "@photo-sphere-viewer/markers-plugin";
 import { VirtualTourPlugin, type VirtualTourNode } from "@photo-sphere-viewer/virtual-tour-plugin";
@@ -31,6 +31,10 @@ interface Props {
   lang?: string;
   /** Texto del botón del giroscopio (mover la vista girando el teléfono) */
   gyroLabel?: string;
+  /** Textos de los botones para ocultar / mostrar la tira de fotos (teléfono) */
+  stripLabels?: { hide: string; show: string };
+  /** Avisa cuando la tira de fotos se oculta o se muestra (para recolocar el logo) */
+  onStripToggle?(open: boolean): void;
 }
 
 // Pie de foto: solo el área (Sala, Cocina…); el nombre del tour ya está arriba
@@ -74,7 +78,7 @@ function Card({ addon, onClose }: { addon: TourHotspot; onClose(): void }) {
   );
 }
 
-export default function TourViewer({ full, loadingText, startLabel, lang = "es", gyroLabel }: Props) {
+export default function TourViewer({ full, loadingText, startLabel, lang = "es", gyroLabel, stripLabels, onStripToggle }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tourRef = useRef<VirtualTourPlugin | null>(null);
   const viewerRef = useRef<Viewer | null>(null);
@@ -88,6 +92,13 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
   const gyroRef = useRef<GyroscopePlugin | null>(null);
   const [gyroSupported, setGyroSupported] = useState(false);
   const [gyroOn, setGyroOn] = useState(false);
+  // En el teléfono la tira de fotos se puede ocultar para ver más imagen (en computadora siempre se ve)
+  const [stripOpen, setStripOpen] = useState(true);
+  const hasStrip = full.scenes.length > 1;
+  const toggleStrip = (open: boolean) => {
+    setStripOpen(open);
+    onStripToggle?.(open);
+  };
 
   useEffect(() => {
     if (!containerRef.current || !first) return;
@@ -246,7 +257,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
     <div className="absolute inset-0">
       <div ref={containerRef} className="absolute inset-0" />
       {card && <Card addon={card} onClose={() => setCard(null)} />}
-      <div className="absolute left-3 bottom-[8.5rem] z-10 flex items-center gap-2">
+      <div className={cn("absolute left-3 z-10 flex items-center gap-2", hasStrip && stripOpen ? "bottom-[8.5rem]" : "bottom-14 sm:bottom-[8.5rem]")}>
         <button
           onClick={() => {
             const s = full.scenes.find((x) => x.id === current);
@@ -279,8 +290,26 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
           </button>
         )}
       </div>
-      {full.scenes.length > 1 && (
-        <div className="absolute left-0 right-0 bottom-12 z-10 flex justify-center px-3 pointer-events-none">
+      {hasStrip && !stripOpen && (
+        <button
+          onClick={() => toggleStrip(true)}
+          aria-label={stripLabels?.show ?? "Ver fotos"}
+          className="sm:hidden absolute left-1/2 -translate-x-1/2 bottom-14 z-10 flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-black/45 backdrop-blur-sm text-white text-xs font-semibold"
+        >
+          <GalleryHorizontal size={15} /> {stripLabels?.show ?? "Ver fotos"}
+        </button>
+      )}
+      {hasStrip && (
+        <div className={cn("absolute left-0 right-0 bottom-12 z-10 flex-col items-center px-3 pointer-events-none", stripOpen ? "flex" : "hidden sm:flex")}>
+          {/* Pestaña para ocultar la tira (solo teléfono) */}
+          <button
+            onClick={() => toggleStrip(false)}
+            aria-label={stripLabels?.hide ?? "Ocultar fotos"}
+            title={stripLabels?.hide ?? "Ocultar fotos"}
+            className="sm:hidden pointer-events-auto flex items-center justify-center w-12 h-5 rounded-t-lg bg-black/35 backdrop-blur-sm text-white/90"
+          >
+            <ChevronDown size={16} />
+          </button>
           <div className="flex gap-2 overflow-x-auto max-w-full p-1.5 rounded-xl bg-black/35 backdrop-blur-sm pointer-events-auto" style={{ scrollbarWidth: "none" }}>
             {full.scenes.map((s) => (
               <button

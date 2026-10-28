@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Info, Link2, Music, Rotate3d, VolumeX, X } from "lucide-react";
+import { ChevronUp, Info, Link2, MoreVertical, Music, Rotate3d, VolumeX, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
 import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
@@ -36,6 +37,9 @@ function TourContent() {
   const [full, setFull] = useState<FullTour | null | undefined>(undefined);
   const [copied, setCopied] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  // Teléfono: la tira de fotos y los botones de arriba se pueden ocultar para ver más imagen
+  const [stripOpen, setStripOpen] = useState(true);
+  const [controlsOpen, setControlsOpen] = useState(true);
   const music = useRef<AmbientMusic | null>(null);
   const [musicOn, setMusicOn] = useState(false);
   const fullRef = useRef(full);
@@ -123,7 +127,15 @@ function TourContent() {
           </div>
         }
       >
-        <TourViewer full={full} loadingText={t("tours_loading")} startLabel={t("tours_start_view")} gyroLabel={t("tours_gyro")} lang={lang} />
+        <TourViewer
+          full={full}
+          loadingText={t("tours_loading")}
+          startLabel={t("tours_start_view")}
+          gyroLabel={t("tours_gyro")}
+          stripLabels={{ hide: t("tours_hide_photos"), show: t("tours_show_photos") }}
+          onStripToggle={setStripOpen}
+          lang={lang}
+        />
       </Suspense>
 
       {/* Logo + título */}
@@ -151,7 +163,18 @@ function TourContent() {
             {!full.tour.published && <span className="inline-block mt-1 text-[10px] font-bold uppercase bg-amber-400 text-black px-2 rounded">{t("tours_draft")}</span>}
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 shrink-0 pointer-events-auto">
+        <div className="flex flex-col items-end gap-2 shrink-0 pointer-events-auto">
+          {/* Mostrar / ocultar los botones (solo teléfono) */}
+          <button
+            onClick={() => setControlsOpen((v) => !v)}
+            aria-label={controlsOpen ? t("tours_hide_buttons") : t("tours_show_buttons")}
+            aria-expanded={controlsOpen}
+            title={controlsOpen ? t("tours_hide_buttons") : t("tours_show_buttons")}
+            className="sm:hidden h-9 w-9 rounded-full bg-black/40 text-white flex items-center justify-center"
+          >
+            {controlsOpen ? <ChevronUp size={18} /> : <MoreVertical size={18} />}
+          </button>
+          <div className={cn("flex-col sm:flex-row items-end sm:items-center gap-2", controlsOpen ? "flex" : "hidden sm:flex")}>
           <button
             onClick={() => setLang(lang === "es" ? "en" : "es")}
             className="h-9 px-2.5 rounded-full bg-black/40 text-white text-xs font-semibold uppercase hover:bg-black/60"
@@ -203,9 +226,10 @@ function TourContent() {
           >
             <WhatsAppIcon size={16} /> <span className="hidden sm:inline">{waLabel}</span>
           </a>
+          </div>
         </div>
       </div>
-      <BrandLogo tour={full.tour} />
+      <BrandLogo tour={full.tour} stripHidden={!stripOpen} />
 
       {showInfo && (
         <div className="absolute top-24 right-14 left-3 sm:right-3 sm:left-auto sm:w-96 z-20 rounded-2xl bg-white/95 backdrop-blur p-4 pr-10 shadow-2xl text-sm text-gray-700">

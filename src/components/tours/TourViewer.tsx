@@ -14,7 +14,7 @@ import { addonElement, addonMarker } from "./tourAddons";
 import { PanoThumb } from "./PanoThumb";
 import { limitTexturesOnPhones, PSV_LANG_EN, PSV_LANG_ES } from "./viewerSetup";
 import {
-  addonsForScene, areaIn, clampPitch, mediaUrl, sphereCorrection, startScene, zoomLevelFor, type FullTour, type TourHotspot, type TourScene,
+  addonsForScene, areaIn, clampPitch, mediaRetryUrl, mediaUrl, sphereCorrection, startScene, zoomLevelFor, type FullTour, type TourHotspot, type TourScene,
 } from "@/lib/tours";
 import { cn } from "@/lib/utils";
 
@@ -199,7 +199,8 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
           viewer.setOption("caption", captionOf(s, langRef.current));
         }
       });
-      // Si una foto falla (red del teléfono, almacenamiento lento) se reintenta sola 2 veces
+      // Si una foto falla (red del teléfono, almacenamiento lento) se reintenta sola 2 veces, con una
+      // URL nueva: si Vercel o el navegador guardaron un error de R2, la misma URL lo seguiría devolviendo.
       let wanted = first.id;
       const fails = new Map<string, number>();
       goRef.current = (id) => {
@@ -210,7 +211,16 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
         const id = wanted;
         const n = (fails.get(id) ?? 0) + 1;
         fails.set(id, n);
-        if (n <= 2) setTimeout(() => !cancelled && wanted === id && tour.setCurrentNode(id, { forceUpdate: true }).catch(() => undefined), 1200 * n);
+        if (n > 2) return;
+        setTimeout(() => {
+          if (cancelled || wanted !== id) return;
+          const s = sceneById.get(id);
+          if (s) {
+            tour.updateNode({ id, panorama: mediaRetryUrl(s.image_url) }); // si es la escena actual, la recarga
+            if (tour.getCurrentNode()?.id === id) return;
+          }
+          tour.setCurrentNode(id, { forceUpdate: true }).catch(() => undefined);
+        }, 1200 * n);
       });
       preload(first);
       const gyro = viewer.getPlugin(GyroscopePlugin) as GyroscopePlugin;

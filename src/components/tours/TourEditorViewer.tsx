@@ -6,7 +6,7 @@ import "@photo-sphere-viewer/markers-plugin/index.css";
 import "./tours.css";
 import { LOADER_IMG, nadirLogoUrl, nadirMarker } from "./markerHtml";
 import { addonElement, addonMarker } from "./tourAddons";
-import { clampPitch, fovForLevel, mediaUrl, sphereCorrection, zoomLevelFor, type TourHotspot, type TourScene } from "@/lib/tours";
+import { clampPitch, fovForLevel, mediaRetryUrl, mediaUrl, sphereCorrection, zoomLevelFor, type TourHotspot, type TourScene } from "@/lib/tours";
 import { limitTexturesOnPhones } from "./viewerSetup";
 
 // Visor del editor de /admin/tours: muestra una escena con sus addons, avisa dónde se hizo clic
@@ -122,7 +122,8 @@ export default function TourEditorViewer(props: Props) {
       loadedUrl.current = s.image_url;
       loadedScene.current = s.id;
       viewerRef.current = v;
-      // Si la foto falla al cargar (red o almacenamiento lento) se reintenta sola 3 veces
+      // Si la foto falla al cargar (red o almacenamiento lento) se reintenta sola 3 veces, con una URL
+      // nueva (si Vercel o el navegador guardaron un error de R2, la misma URL lo seguiría devolviendo)
       let fails = 0;
       let failedUrl: string | null = null;
       v.addEventListener("panorama-error", () => {
@@ -133,7 +134,7 @@ export default function TourEditorViewer(props: Props) {
           if (viewerRef.current !== v || loadedUrl.current !== url) return;
           const sc = cb.current.scene;
           v.hideError();
-          v.setPanorama(mediaUrl(url), { sphereCorrection: sphereCorrection(sc), transition: false, showLoader: true }).catch(() => undefined);
+          v.setPanorama(mediaRetryUrl(url), { sphereCorrection: sphereCorrection(sc), transition: false, showLoader: true }).catch(() => undefined);
         }, 1200 * fails);
       });
       v.addEventListener("click", ({ data }) => {

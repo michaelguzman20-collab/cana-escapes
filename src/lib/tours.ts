@@ -327,6 +327,15 @@ export function mediaUrl<T extends string | null | undefined>(url: T): T {
   return url.replace(R2_DEV, "/media/") as T;
 }
 
+/**
+ * URL para reintentar una foto que falló. Si R2 falló un momento, Vercel y el navegador pueden haber
+ * guardado ese error (las fotos se guardan un año): con un parámetro nuevo ninguno de los dos lo reutiliza.
+ */
+export function mediaRetryUrl(url: string): string {
+  const u = mediaUrl(url);
+  return `${u}${u.includes("?") ? "&" : "?"}r=${Date.now()}`;
+}
+
 /** fetch con tiempo máximo y reintentos (la red del teléfono o el almacenamiento pueden fallar un momento) */
 export async function fetchRetry(url: string, init: RequestInit = {}, tries = 3, timeoutMs = 60000): Promise<Response> {
   let last: unknown;

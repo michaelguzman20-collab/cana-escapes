@@ -214,16 +214,24 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
         box.textContent += `${msg}\nUA: ${navigator.userAgent}\nmaxTex: ${SYSTEM.maxTextureWidth} canvas: ${(SYSTEM as unknown as { __maxCanvasWidth: number }).__maxCanvasWidth}\n\n`;
         document.body.appendChild(box);
       };
+      // El mensaje de error incluye el motivo técnico (corto) para poder diagnosticar desde un teléfono
+      const showFail = (err: unknown) => {
+        const e = err as { name?: string; message?: string } | undefined;
+        viewer.showError(`${(langRef.current === "en" ? PSV_LANG_EN : PSV_LANG_ES).loadError} (${e?.name ?? "Error"}: ${String(e?.message ?? "").slice(0, 80)})`);
+      };
       goRef.current = (id) => {
         wanted = id;
-        tour.setCurrentNode(id).catch((err) => debug(`Error al ir a "${sceneById.get(id)?.area ?? id}": ${err?.name}: ${err?.message}\n${String(err?.stack ?? "").split("\n").slice(0, 4).join("\n")}`));
+        tour.setCurrentNode(id).catch((err) => {
+          showFail(err);
+          debug(`Error al ir a "${sceneById.get(id)?.area ?? id}": ${err?.name}: ${err?.message}\n${String(err?.stack ?? "").split("\n").slice(0, 4).join("\n")}`);
+        });
       };
       viewer.addEventListener("panorama-error", (e) => {
         debug(`Foto no cargada: ${e.error?.name}: ${e.error?.message}\n${String(e.panorama?.panorama ?? sceneById.get(wanted)?.image_url)}`);
         const id = wanted;
         const n = (fails.get(id) ?? 0) + 1;
         fails.set(id, n);
-        if (n <= 2) setTimeout(() => !cancelled && wanted === id && tour.setCurrentNode(id, { forceUpdate: true }).catch(() => undefined), 1200 * n);
+        if (n <= 2) setTimeout(() => !cancelled && wanted === id && tour.setCurrentNode(id, { forceUpdate: true }).catch(showFail), 1200 * n);
       });
       preload(first);
       const gyro = viewer.getPlugin(GyroscopePlugin) as GyroscopePlugin;

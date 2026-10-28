@@ -17,9 +17,18 @@ export function limitTexturesOnPhones() {
     return; // sin WebGL: el visor mostrará su propio error
   }
   const MAX = 5760;
-  if (SYSTEM.maxTextureWidth > MAX) {
-    SYSTEM.maxTextureWidth = MAX;
-    (SYSTEM as unknown as { __maxCanvasWidth: number | null }).__maxCanvasWidth = null; // se recalcula con el nuevo tope
+  if (SYSTEM.maxTextureWidth > MAX) SYSTEM.maxTextureWidth = MAX;
+  // El visor reduce las fotos más anchas que el tope con un lienzo; su prueba de tamaño máximo crea lienzos
+  // enormes y en algunos teléfonos falla ("No se pudo cargar la foto"). Se fija el tope sin hacer esa prueba.
+  (SYSTEM as unknown as { __maxCanvasWidth: number | null }).__maxCanvasWidth = SYSTEM.maxTextureWidth;
+  // Android/Safari antiguos no tienen OffscreenCanvas: se usa un lienzo normal (three.js lo acepta igual)
+  if (typeof OffscreenCanvas === "undefined") {
+    (window as unknown as { OffscreenCanvas: unknown }).OffscreenCanvas = function (w: number, h: number) {
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      return c;
+    };
   }
 }
 

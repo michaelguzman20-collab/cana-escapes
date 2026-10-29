@@ -7,7 +7,7 @@ import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, hori
 import { CSS } from "@dnd-kit/utilities";
 import {
   Rotate3d, Plus, ArrowLeft, ExternalLink, Copy, Save, Trash2, UploadCloud, Star, LayoutGrid, Pencil,
-  Navigation, Info, Crosshair, Eye, Loader2, Settings2, Image as ImageIcon, X, GripVertical, RefreshCw, Download, MoveRight, Type, Wand2, Play, Square, Smartphone,
+  Navigation, Info, Crosshair, Eye, Loader2, Settings2, Image as ImageIcon, X, GripVertical, RefreshCw, Download, MoveRight, Type, Wand2, Play, Square, Smartphone, Route, CheckCheck, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { AmbientMusic, MUSIC_STYLES, type MusicStyle } from "@/components/tours/ambientMusic";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import {
 import { AddonPanel } from "@/components/tours/AddonPanel";
 import { ICONS, PRESETS, iconSvg } from "@/components/tours/tourAddons";
 import type { EditorViewerApi } from "@/components/tours/TourEditorViewer";
+import { AutoTourDialog } from "@/components/tours/AutoTourDialog";
 
 // Tours 360 (reemplazo de Kuula). Flujo parecido al de Kuula:
 //  · Lista de tours → abrir uno.
@@ -232,6 +233,8 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
   const [form, setForm] = useState(tour);
   const [saving, setSaving] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<string | null>(null);
+  const [autoOpen, setAutoOpen] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
   const dirty = JSON.stringify(form) !== JSON.stringify(tour);
 
   useEffect(() => {
@@ -346,6 +349,30 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
       flushPending();
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "Generar recorrido": guarda las flechas elegidas y abre la revisión foto por foto
+  async function createAutoArrows(rows: Omit<TourHotspot, "id">[]) {
+    if (!rows.length) return true;
+    let res: { data: TourHotspot[] | null; error: unknown };
+    try {
+      res = await withTimeout(db.from("tour_hotspots").insert(rows).select(), DB_TIMEOUT);
+    } catch (e) {
+      fail("No se pudieron crear las flechas", e);
+      return false;
+    }
+    if (res.error || !res.data) {
+      fail("No se pudieron crear las flechas", res.error);
+      return false;
+    }
+    const created = res.data;
+    setHotspots((h) => [...h, ...created]);
+    const firstId = scenes.find((s) => created.some((h) => h.scene_id === s.id))?.id;
+    if (firstId) setCurrentId(firstId);
+    setReviewing(true);
+    setView("editor");
+    toast({ title: `${created.length} flechas creadas`, description: "Ahora revisa cada foto: arrastra cada flecha hasta su puerta o paso." });
+    return true;
+  }
 
   async function togglePublished(v: boolean) {
     if (v && scenes.length === 0) return toast({ title: "Sube al menos una foto antes de publicar", variant: "destructive" });
@@ -750,6 +777,7 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
           busy={!!uploadMsg}
           onAdd={addFiles}
           onOptimize={optimizeForPhones}
+          onAuto={() => setAutoOpen(true)}
           onRename={(id, patch) => updateScene(id, patch)}
           onDelete={deleteScenes}
           onReorder={reorder}
@@ -781,23 +809,28 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
           onClearFilters={clearSceneFilters}
           onDownload={downloadPhoto}
           onMove={moveScene}
+          onAuto={() => guard(() => setAutoOpen(true), true)}
+          reviewing={reviewing}
+          setReviewing={setReviewing}
           onGrid={() => guard(() => setView("grid"), true)}
           guard={(fn) => guard(fn, true)}
           registerGuard={(g) => (sceneGuard.current = g)}
         />
       )}
+      <AutoTourDialog open={autoOpen} scenes={scenes} hotspots={hotspots} onClose={() => setAutoOpen(false)} onCreate={createAutoArrows} />
       {view === "settings" && <TourSettings form={form} setForm={setForm} onSave={saveForm} dirty={dirty} onDelete={deleteTour} cover={scenes.find((s) => s.id === form.start_scene_id) ?? scenes[0]} />}
     </div>
   );
 }
 
 // ── Cuadrícula de fotos ──────────────────────────────────────────────────────
-function PhotoGrid({ scenes, startId, busy, onAdd, onOptimize, onRename, onDelete, onReorder, onStart, onOpen }: {
+function PhotoGrid({ scenes, startId, busy, onAdd, onOptimize, onAuto, onRename, onDelete, onReorder, onStart, onOpen }: {
   scenes: TourScene[];
   startId: string | null;
   busy: boolean;
   onAdd(files: File[]): void;
   onOptimize(): void;
+  onAuto(): void;
   onRename(id: string, patch: Partial<TourScene>): void;
   onDelete(ids: string[]): void;
   onReorder(next: TourScene[]): void;
@@ -869,6 +902,16 @@ function PhotoGrid({ scenes, startId, busy, onAdd, onOptimize, onRename, onDelet
         <button onClick={() => fileRef.current?.click()} disabled={busy} className="flex items-center gap-1 font-semibold text-green-600 hover:text-green-700 disabled:opacity-50">
           <UploadCloud size={15} /> Añadir fotos
         </button>
+        {scenes.length > 1 && (
+          <button
+            onClick={onAuto}
+            disabled={busy}
+            title="Crea las flechas entre fotos según el área de cada una (Entrada → Sala → Cocina…). Antes de crearlas puedes ajustar la lista."
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#F0A030] font-bold text-[#0F2B4C] shadow-sm hover:bg-[#e5952a] disabled:opacity-50"
+          >
+            <Route size={15} /> Generar recorrido automático
+          </button>
+        )}
         {scenes.some((s) => !s.mobile_url) && (
           <button
             onClick={onOptimize}
@@ -1163,10 +1206,20 @@ function addonSummary(h: TourHotspot, titles: Map<string, string>) {
   return what + act;
 }
 
+/** Estilo sin la marca "por revisar" de las flechas generadas */
+function withoutAuto(style: TourHotspot["style"]) {
+  const { auto: _a, ...rest } = style ?? {};
+  return rest;
+}
+
 function SceneEditor({
   scenes, hotspots, setHotspots, currentId, setCurrentId, startId, onStart, onUpdateScene, onDelete, onGrid,
   busy, otherTours, nadir, onNadir, onReplace, onApplyFilters, onClearFilters, onDownload, onMove, guard, registerGuard, onReorder,
+  onAuto, reviewing, setReviewing,
 }: {
+  onAuto(): void;
+  reviewing: boolean;
+  setReviewing(v: boolean): void;
   onReorder(next: TourScene[]): void;
   guard(action: () => void): void;
   registerGuard(g: SceneGuard | null): void;
@@ -1278,6 +1331,7 @@ function SceneEditor({
   }
 
   function editAddon(h: TourHotspot) {
+    if (editing?.id === h.id) return; // ya abierto (p. ej. recién arrastrado): no perder la posición nueva
     setPlacing(null);
     setTab("puntos");
     setEditing({ ...h, style: { ...h.style }, hide_in: [...(h.hide_in ?? [])] });
@@ -1307,6 +1361,7 @@ function SceneEditor({
       return false;
     }
     const { id, ...row } = editing;
+    row.style = withoutAuto(row.style); // guardada = revisada
     setSavingAddon(true);
     const isNew = id === "new";
     const prev = hotspots.find((h) => h.id === id);
@@ -1364,6 +1419,42 @@ function SceneEditor({
     if (editing?.id === h.id) setEditing(null);
   }
 
+  // ── Revisión del recorrido generado ──
+  const pendingHere = sceneAddons.filter((h) => h.style?.auto);
+  const pendingTotal = hotspots.filter((h) => h.style?.auto).length;
+  const sceneIndex = scenes.findIndex((s) => s.id === scene.id);
+
+  // En la revisión, al soltar una flecha arrastrada se guarda sola (y deja de estar "por revisar")
+  async function saveMoved(id: string, pos: { yaw: number; pitch: number }) {
+    const h = hotspots.find((x) => x.id === id);
+    if (!h) return;
+    const patch = { ...pos, style: withoutAuto(h.style) };
+    const { data, error } = await db.from("tour_hotspots").update(patch).eq("id", id).select().single();
+    if (error) return fail("No se pudo guardar la flecha", error);
+    setHotspots((list) => list.map((x) => (x.id === id ? data : x)));
+    setEditing((e) => (e?.id === id ? { ...data, style: { ...data.style }, hide_in: [...(data.hide_in ?? [])] } : e));
+  }
+
+  // "Están bien": las flechas de esta foto quedan revisadas tal como están
+  async function approveScene() {
+    const list = pendingHere;
+    const results = await Promise.all(list.map((h) => db.from("tour_hotspots").update({ style: withoutAuto(h.style) }).eq("id", h.id).select().single()));
+    const bad = results.find((r) => r.error);
+    if (bad) return fail("No se pudo guardar", bad.error);
+    const saved = new Map(results.map((r) => [r.data.id, r.data as TourHotspot]));
+    setHotspots((all) => all.map((x) => saved.get(x.id) ?? x));
+    goReview(1);
+  }
+
+  function goReview(step: number) {
+    const next = scenes[sceneIndex + step];
+    if (next) guard(() => setCurrentId(next.id));
+    else if (step > 0) {
+      setReviewing(false);
+      toast({ title: "Revisión terminada", description: "Abre el tour con \"Ver\" y recórrelo para comprobarlo." });
+    }
+  }
+
   function cancelEditing() {
     // Imagen subida para un addon que no se guardó
     const saved = hotspots.find((h) => h.id === editing?.id);
@@ -1393,10 +1484,18 @@ function SceneEditor({
               editing={editing}
               onPanoClick={onPanoClick}
               onAddonClick={editAddon}
-              onAddonMoved={(pos) => setEditing((e) => (e ? { ...e, ...pos } : e))}
+              onAddonMoved={(pos, id) => {
+                setEditing((e) => (e ? { ...e, ...pos } : e));
+                if (reviewing && id !== "new") saveMoved(id, pos);
+              }}
               onApi={(a) => (apiRef.current = a)}
               nadir={nadir}
               start={{ yaw: scene.initial_yaw, pitch: scene.initial_pitch }}
+              startDraggable={pickingStart}
+              onStartMoved={(pos) => {
+                saveHeading(pos.yaw * DEG, pos.pitch * DEG);
+                toast({ title: "Punto de inicio guardado", description: "Puedes seguir moviendo la mira; pulsa ✕ cuando termines." });
+              }}
               cssFilter={filtersDirty ? relativePreview(filters, scene.filters) : undefined}
             />
           </Suspense>
@@ -1416,7 +1515,7 @@ function SceneEditor({
           </div>
           {pickingStart && (
             <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-[#F0A030] text-[#0F2B4C] font-semibold text-xs px-4 py-2 rounded-full shadow-lg">
-              <Crosshair size={14} /> Haz clic en el punto hacia donde debe mirar al entrar
+              <Crosshair size={14} /> Arrastra la mira (o haz clic) hasta donde debe mirar al entrar
               <button onClick={() => setPickingStart(false)} className="ml-1"><X size={14} /></button>
             </div>
           )}
@@ -1424,6 +1523,33 @@ function SceneEditor({
             <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-[#F0A030] text-[#0F2B4C] font-semibold text-xs px-4 py-2 rounded-full shadow-lg">
               <Crosshair size={14} /> Haz clic en la foto donde va {PLACE_LABEL[placing]}
               <button onClick={() => setPlacing(null)} className="ml-1"><X size={14} /></button>
+            </div>
+          )}
+          {reviewing && !placing && !pickingStart && (
+            <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 w-[min(560px,calc(100%-24px))] rounded-xl bg-[#0F2B4C]/95 border border-[#F0A030]/60 shadow-xl px-4 py-2.5 text-xs">
+              <div className="flex items-center gap-2">
+                <Route size={14} className="text-[#F0A030] shrink-0" />
+                <b className="truncate">Revisión · foto {sceneIndex + 1} de {scenes.length}: {scene.area?.trim() || scene.title}</b>
+                <button onClick={() => setReviewing(false)} title="Terminar la revisión" className="ml-auto text-white/60 hover:text-white"><X size={14} /></button>
+              </div>
+              <p className="mt-1 text-white/70">
+                {pendingHere.length
+                  ? <>Arrastra cada flecha <span className="text-[#F0A030] font-semibold">naranja</span> hasta la puerta o el paso hacia esa área (se guarda sola). {pendingHere.length} por revisar aquí · {pendingTotal} en total.</>
+                  : pendingTotal ? `Esta foto ya está revisada. Faltan ${pendingTotal} flechas en otras fotos.` : "¡Todas las flechas están revisadas!"}
+              </p>
+              <div className="flex items-center gap-2 mt-2">
+                <button onClick={() => goReview(-1)} disabled={sceneIndex === 0} className="flex items-center gap-1 px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-40">
+                  <ChevronLeft size={13} /> Anterior
+                </button>
+                {pendingHere.length > 0 && (
+                  <button onClick={approveScene} className="flex items-center gap-1 px-2 py-1 rounded-md bg-green-600 hover:bg-green-700 font-semibold">
+                    <CheckCheck size={13} /> Están bien, siguiente
+                  </button>
+                )}
+                <button onClick={() => goReview(1)} className="ml-auto flex items-center gap-1 px-2 py-1 rounded-md bg-[#F0A030] text-[#0F2B4C] font-semibold hover:bg-[#e5952a]">
+                  {sceneIndex === scenes.length - 1 ? "Terminar" : <>Siguiente <ChevronRight size={13} /></>}
+                </button>
+              </div>
             </div>
           )}
           <button onClick={onGrid} className="absolute bottom-14 right-3 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-black/60 text-xs font-semibold hover:bg-black/80">
@@ -1482,6 +1608,22 @@ function SceneEditor({
           </section>
 
           <section>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-white/50 mb-2">Recorrido automático</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <Button size="sm" variant="ghost" disabled={scenes.length < 2} onClick={onAuto} className="bg-white/10 text-white hover:bg-white/20 hover:text-white">
+                <Route size={14} className="mr-1.5" /> Generar
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setReviewing(!reviewing)} className={cn("bg-white/10 text-white hover:bg-white/20 hover:text-white", reviewing && "ring-2 ring-[#F0A030]")}>
+                <CheckCheck size={14} className="mr-1.5" /> {reviewing ? "Revisando" : "Revisar"}
+              </Button>
+            </div>
+            <p className="mt-1.5 text-[11px] text-white/40">
+              Crea las flechas entre fotos según el área de cada una.
+              {pendingTotal > 0 && <> Hay <b className="text-[#F0A030]">{pendingTotal}</b> flechas por revisar.</>}
+            </p>
+          </section>
+
+          <section>
             <h3 className="text-xs font-bold uppercase tracking-wider text-white/50 mb-2">En esta foto ({sceneAddons.length})</h3>
             {sceneAddons.length === 0 ? (
               <p className="text-[11px] text-white/40">Ninguno todavía.</p>
@@ -1495,6 +1637,7 @@ function SceneEditor({
                     <button onClick={() => editAddon(h)} className="flex-1 text-left truncate hover:underline">
                       {addonSummary(h, titles)}
                       {h.master && <span className="ml-1 text-[9px] font-bold text-[#F0A030]">MASTER</span>}
+                      {h.style?.auto && <span className="ml-1 text-[9px] font-bold text-[#F0A030]">POR REVISAR</span>}
                     </button>
                     {h.action === "scene" && h.target_scene_id && (
                       <button onClick={() => guard(() => setCurrentId(h.target_scene_id!))} title="Ir a esa foto" className="text-white/40 hover:text-[#F0A030]"><Navigation size={12} /></button>

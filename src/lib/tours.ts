@@ -151,6 +151,7 @@ export interface AddonStyle {
   shadow?: boolean;
   onlyHover?: boolean; // etiqueta solo al pasar el ratón
   animation?: "none" | "bounce" | "pulse" | "wave";
+  auto?: boolean; // flecha creada por "Generar recorrido" que el admin aún no ha revisado
 }
 
 export interface TourHotspot {

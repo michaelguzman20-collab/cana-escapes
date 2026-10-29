@@ -58,7 +58,7 @@ const is3D = (s: AddonStyle) => s.placement === "wall" || s.placement === "floor
 const SCALE_3D = 4;
 
 /** Elemento HTML del addon */
-export function addonElement(h: TourHotspot, opts: { label?: string; selected?: boolean } = {}) {
+export function addonElement(h: TourHotspot, opts: { label?: string; selected?: boolean; pending?: boolean } = {}) {
   const s = h.style ?? {};
   const k = is3D(s) ? SCALE_3D : 1;
   const size = (s.size ?? 44) * k;
@@ -67,8 +67,10 @@ export function addonElement(h: TourHotspot, opts: { label?: string; selected?: 
     "ce-addon",
     s.animation && s.animation !== "none" ? `ce-anim-${s.animation}` : "",
     opts.selected ? "ce-addon-selected" : "",
+    opts.pending ? "ce-addon-pending" : "", // flecha generada sin revisar (solo en el editor)
     h.action !== "none" ? "ce-addon-clickable" : "",
   ].join(" ");
+  el.dataset.addon = h.id;
   el.style.opacity = String((s.opacity ?? 100) / 100);
   const rot = !is3D(s) && s.rotation ? `transform: rotate(${s.rotation}deg);` : "";
   const shadow = s.shadow ? "filter: drop-shadow(0 3px 6px rgba(0,0,0,.45));" : "";

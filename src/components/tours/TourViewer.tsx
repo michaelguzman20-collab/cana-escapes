@@ -14,7 +14,7 @@ import { addonElement, addonMarker } from "./tourAddons";
 import { PanoThumb } from "./PanoThumb";
 import { limitTexturesOnPhones, PSV_LANG_EN, PSV_LANG_ES } from "./viewerSetup";
 import {
-  addonsForScene, areaIn, clampPitch, isPhoneWidth, mediaRetryUrl, mediaUrl, sphereCorrection, startScene, zoomLevelFor, type FullTour, type TourHotspot, type TourScene,
+  addonsForScene, areaIn, clampPitch, isPhoneWidth, mediaRetryUrl, mediaUrl, viewerImage, sphereCorrection, startScene, zoomLevelFor, type FullTour, type TourHotspot, type TourScene,
 } from "@/lib/tours";
 import { cn } from "@/lib/utils";
 
@@ -126,7 +126,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
     const buildNodes = (logo: string | null): VirtualTourNode[] =>
       full.scenes.map((s) => ({
         id: s.id,
-        panorama: mediaUrl(s.image_url),
+        panorama: mediaUrl(viewerImage(s)),
         name: s.title,
         caption: captionOf(s, langRef.current),
         thumbnail: mediaUrl(s.thumb_url) ?? undefined,
@@ -149,7 +149,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
     const preload = (s: TourScene) => {
       addonsForScene(full.hotspots, s.id).forEach((h) => {
         const t = h.action === "scene" && h.target_scene_id ? sceneById.get(h.target_scene_id) : null;
-        if (t) new Image().src = mediaUrl(t.image_url);
+        if (t) new Image().src = mediaUrl(viewerImage(t));
       });
     };
 
@@ -229,7 +229,8 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
           if (cancelled || wanted !== id) return;
           const s = sceneById.get(id);
           if (s) {
-            tour.updateNode({ id, panorama: mediaRetryUrl(s.image_url) }); // si es la escena actual, la recarga
+            // 1.er reintento: la misma foto; 2.º: la original, por si faltara la versión para teléfono
+            tour.updateNode({ id, panorama: mediaRetryUrl(n === 1 ? viewerImage(s) : s.image_url) }); // si es la escena actual, la recarga
             if (tour.getCurrentNode()?.id === id) return;
           }
           tour.setCurrentNode(id, { forceUpdate: true }).catch(() => undefined);

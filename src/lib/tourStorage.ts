@@ -77,9 +77,34 @@ export const tourStorage: TourStorage = R2_PUBLIC_URL ? r2Storage : supabaseDevS
 
 // ── Procesado en el navegador antes de subir ────────────────────────────────
 // Panorama: máx. 8192x4096 en WebP (~0.82) → normalmente 2-4 MB. Miniatura: 640x320.
+// Versión para teléfono: 5760 px de ancho (el visor del teléfono ya reduce las fotos a ese tamaño,
+// ver limitTexturesOnPhones) en WebP 0.85 → se ve igual y pesa ~37 % menos. Solo si la foto es más ancha.
 
 const PANO_MAX_W = 8192;
 const THUMB_W = 640;
+export const MOBILE_W = 5760;
+
+/** Ruta de la versión para teléfono, junto a la foto: <nombre>-m.webp */
+export function mobilePath(p: string) {
+  return p.replace(/\.(\w+)$/, "-m.$1");
+}
+
+/** Versión para teléfono de una foto de w×h, o null si la foto ya es de ese tamaño o menor */
+export function encodeMobile(src: CanvasImageSource, w: number, h: number): Promise<Blob> | null {
+  if (w <= MOBILE_W) return null;
+  return encode(src, MOBILE_W, Math.round((MOBILE_W * h) / w), 0.85);
+}
+
+/** Genera la versión para teléfono de una foto ya subida (para fotos anteriores a esta función) */
+export async function mobileFromUrl(url: string): Promise<Blob | null> {
+  const blob = await (await fetchRetry(mediaUrl(url), {}, 3, 120000)).blob();
+  const img = await createImageBitmap(blob);
+  try {
+    return await (encodeMobile(img, img.width, img.height) ?? null);
+  } finally {
+    img.close();
+  }
+}
 
 async function loadBitmap(file: File): Promise<ImageBitmap | HTMLImageElement> {
   if ("createImageBitmap" in window) {
@@ -140,6 +165,7 @@ function encodeJpeg(src: CanvasImageSource, w: number, h: number, quality: numbe
 export interface ProcessedPano {
   pano: Blob;
   thumb: Blob;
+  mobile: Blob | null;
   width: number;
   height: number;
   warning?: string;
@@ -158,8 +184,9 @@ export async function processPanorama(file: File): Promise<ProcessedPano> {
   const h = Math.round(w / ratio);
   const pano = await encode(img, w, h, 0.82);
   const thumb = await encode(img, THUMB_W, Math.round(THUMB_W / ratio), 0.75);
+  const mobile = await (encodeMobile(img, w, h) ?? null);
   if ("close" in img) img.close();
-  return { pano, thumb, width: w, height: h, warning };
+  return { pano, thumb, mobile, width: w, height: h, warning };
 }
 
 export function extOf(blob: Blob) {

@@ -62,6 +62,16 @@ export function toursSeen() {
   try { return !!localStorage.getItem(TOURS_SEEN_KEY); } catch { return false; }
 }
 
+/**
+ * Foto que carga el visor: en teléfonos, la versión de 5760 px si existe (se ve igual, porque el visor del
+ * teléfono reduce las fotos a ese tamaño, y pesa menos); en tabletas y computadoras, la original de 8K.
+ * Mismo criterio de teléfono que limitTexturesOnPhones (viewerSetup.ts).
+ */
+export function viewerImage(s: Pick<TourScene, "image_url" | "mobile_url">) {
+  const phone = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches && Math.min(screen.width, screen.height) < 768;
+  return phone && s.mobile_url ? s.mobile_url : s.image_url;
+}
+
 /** Pantalla de teléfono (por debajo del punto `sm` de Tailwind): ahí el visor empieza con los botones y las fotos ocultos */
 export function isPhoneWidth() {
   return typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches;
@@ -76,6 +86,7 @@ export interface TourScene {
   image_url: string;
   thumb_url: string | null;
   storage_path: string | null;
+  mobile_url: string | null; // versión para teléfono (5760 px); null = usar image_url
   sort_order: number;
   initial_yaw: number;
   initial_pitch: number;

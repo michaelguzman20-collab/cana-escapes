@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
 import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
-import { descriptionIn, fetchTourBySlug, isPhoneWidth, markToursSeen, mediaUrl, normalizeWhatsapp, startScene, tourUrl, whatsappLink, type FullTour } from "@/lib/tours";
+import { descriptionIn, fetchTourBySlug, isPhoneWidth, markToursSeen, mediaUrl, viewerImage, normalizeWhatsapp, startScene, tourUrl, whatsappLink, type FullTour } from "@/lib/tours";
 import { BrandLogo } from "@/components/tours/BrandLogo";
 import { recordSceneView, startPageVisit } from "@/lib/visits";
 import { AmbientMusic } from "@/components/tours/ambientMusic";
@@ -85,7 +85,7 @@ function TourContent() {
       .then((f) => {
         // La primera foto se pide ya, mientras se prepara el visor
         const first = f && startScene(f);
-        if (first) new Image().src = mediaUrl(first.image_url);
+        if (first) new Image().src = mediaUrl(viewerImage(first));
         setFull(f);
       })
       .catch(() => setFull(null));

@@ -7,7 +7,7 @@ import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, hori
 import { CSS } from "@dnd-kit/utilities";
 import {
   Rotate3d, Plus, ArrowLeft, ExternalLink, Copy, Save, Trash2, UploadCloud, Star, LayoutGrid, Pencil,
-  Navigation, Info, Crosshair, Eye, Loader2, Settings2, Image as ImageIcon, X, GripVertical, RefreshCw, Download, MoveRight, Type, Wand2, Play, Square,
+  Navigation, Info, Crosshair, Eye, Loader2, Settings2, Image as ImageIcon, X, GripVertical, RefreshCw, Download, MoveRight, Type, Wand2, Play, Square, Smartphone,
 } from "lucide-react";
 import { AmbientMusic, MUSIC_STYLES, type MusicStyle } from "@/components/tours/ambientMusic";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { tourStorage, processPanorama, extOf } from "@/lib/tourStorage";
+import { tourStorage, processPanorama, extOf, encodeMobile, mobileFromUrl, mobilePath } from "@/lib/tourStorage";
 import { PanoThumb } from "@/components/tours/PanoThumb";
 import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
 import { applyFilters as renderFilters, canvasToBlob, cssPreview, thumbFrom } from "@/lib/panoFilters";
@@ -55,9 +55,9 @@ function thumbPath(p: string) {
   return p.replace(/\.(\w+)$/, "-thumb.$1");
 }
 
-// Todos los archivos de una escena (foto, miniatura y, si tiene filtros, la original)
+// Todos los archivos de una escena (foto, miniatura, versión para teléfono y, si tiene filtros, la original)
 function scenePaths(s: TourScene) {
-  return [s.storage_path, s.base_path].flatMap((p) => (p ? [p, thumbPath(p)] : []));
+  return [s.storage_path, s.base_path].flatMap((p) => (p ? [p, thumbPath(p), mobilePath(p)] : []));
 }
 
 async function copyLink(slug: string) {
@@ -366,17 +366,13 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
         const p = await processPanorama(file);
         if (p.warning) toast({ title: file.name, description: p.warning });
         setUploadMsg(`Subiendo ${label} (${(p.pano.size / 1048576).toFixed(1)} MB)…`);
-        const path = `${tour.id}/${crypto.randomUUID()}.${extOf(p.pano)}`;
-        const pano = await tourStorage.upload(path, p.pano);
-        const thumb = await tourStorage.upload(thumbPath(path), p.thumb);
+        const up = await uploadPano(p.pano, p.thumb, p.mobile);
         const { data, error } = await db
           .from("tour_scenes")
           .insert({
             tour_id: tour.id,
             title: form.title.trim() || tour.title, // nombre del tour; el área se pone luego (Entrada, Sala…)
-            image_url: pano.url,
-            thumb_url: thumb.url,
-            storage_path: pano.path,
+            ...up,
             sort_order: order++,
           })
           .select()
@@ -431,12 +427,37 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
     tourTimer.current = window.setTimeout(() => patchTour(patch), 600);
   }
 
-  // Sube una foto ya procesada y devuelve sus datos de escena
-  async function uploadPano(pano: Blob, thumb: Blob) {
+  // Sube una foto ya procesada (con su miniatura y su versión para teléfono) y devuelve sus datos de escena
+  async function uploadPano(pano: Blob, thumb: Blob, mobile: Blob | null) {
     const path = `${tour.id}/${crypto.randomUUID()}.${extOf(pano)}`;
     const p = await tourStorage.upload(path, pano);
     const t = await tourStorage.upload(thumbPath(path), thumb);
-    return { image_url: p.url, thumb_url: t.url, storage_path: p.path };
+    const m = mobile ? await tourStorage.upload(mobilePath(path), mobile) : null;
+    return { image_url: p.url, thumb_url: t.url, storage_path: p.path, mobile_url: m?.url ?? null };
+  }
+
+  // Genera la versión para teléfono de las fotos subidas antes de que existiera (o tras quitar filtros).
+  // Si la foto ya es pequeña, el teléfono usa la misma (mobile_url = image_url) y deja de contar como pendiente.
+  async function optimizeForPhones() {
+    const pending = scenes.filter((s) => !s.mobile_url);
+    let done = 0;
+    for (const s of pending) {
+      try {
+        setUploadMsg(`Optimizando para teléfono ${done + 1}/${pending.length}…`);
+        const blob = await mobileFromUrl(s.image_url);
+        let url = s.image_url;
+        if (blob) {
+          const base = s.storage_path?.replace(/^tours\//, "") ?? `${tour.id}/${crypto.randomUUID()}.${extOf(blob)}`;
+          url = (await tourStorage.upload(mobilePath(base), blob)).url;
+        }
+        await updateScene(s.id, { mobile_url: url });
+        done++;
+      } catch (e) {
+        fail(`No se pudo optimizar "${s.area || s.title}"`, e);
+      }
+    }
+    setUploadMsg(null);
+    if (done) toast({ title: `${done} foto(s) optimizadas para teléfono` });
   }
 
   async function swapCover(oldThumb: string | null, newThumb: string | null) {
@@ -449,7 +470,7 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
       const p = await processPanorama(file);
       if (p.warning) toast({ title: file.name, description: p.warning });
       setUploadMsg(`Subiendo (${(p.pano.size / 1048576).toFixed(1)} MB)…`);
-      const up = await uploadPano(p.pano, p.thumb);
+      const up = await uploadPano(p.pano, p.thumb, p.mobile);
       await updateScene(scene.id, { ...up, base_url: null, base_path: null, filters: {} });
       await swapCover(scene.thumb_url, up.thumb_url);
       tourStorage.remove(scenePaths(scene)).catch(() => undefined);
@@ -468,13 +489,13 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
       setUploadMsg("Aplicando filtros… 0%");
       const canvas = await renderFilters(baseUrl, f, (pct) => setUploadMsg(`Aplicando filtros… ${pct}%`));
       setUploadMsg("Guardando foto con filtros…");
-      const [pano, thumb] = await Promise.all([canvasToBlob(canvas), thumbFrom(canvas)]);
+      const [pano, thumb, mobile] = await Promise.all([canvasToBlob(canvas), thumbFrom(canvas), encodeMobile(canvas, canvas.width, canvas.height)]);
       canvas.width = canvas.height = 0;
-      const up = await uploadPano(pano, thumb);
+      const up = await uploadPano(pano, thumb, mobile ?? null);
       const old = scene.base_path ? scene.storage_path : null; // versión con filtros anterior
       await updateScene(scene.id, { ...up, base_url: baseUrl, base_path: basePath, filters: f });
       await swapCover(scene.thumb_url, up.thumb_url);
-      if (old) tourStorage.remove([old, thumbPath(old)]).catch(() => undefined);
+      if (old) tourStorage.remove([old, thumbPath(old), mobilePath(old)]).catch(() => undefined);
       toast({ title: "Filtros aplicados" });
     } catch (e) {
       fail("No se pudieron aplicar los filtros", e);
@@ -486,9 +507,11 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
     if (!scene.base_url || !scene.base_path) return updateScene(scene.id, { filters: {} });
     const thumb = thumbPath(scene.base_url);
     const old = scene.storage_path;
-    await updateScene(scene.id, { image_url: scene.base_url, thumb_url: thumb, storage_path: scene.base_path, base_url: null, base_path: null, filters: {} });
+    // La original puede no tener versión para teléfono guardada: el teléfono usa la original
+    // hasta que se genere con "Optimizar para teléfono"
+    await updateScene(scene.id, { image_url: scene.base_url, thumb_url: thumb, storage_path: scene.base_path, mobile_url: null, base_url: null, base_path: null, filters: {} });
     await swapCover(scene.thumb_url, thumb);
-    if (old) tourStorage.remove([old, thumbPath(old)]).catch(() => undefined);
+    if (old) tourStorage.remove([old, thumbPath(old), mobilePath(old)]).catch(() => undefined);
     toast({ title: "Filtros quitados: foto original" });
   }
 
@@ -726,6 +749,7 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
           startId={form.start_scene_id}
           busy={!!uploadMsg}
           onAdd={addFiles}
+          onOptimize={optimizeForPhones}
           onRename={(id, patch) => updateScene(id, patch)}
           onDelete={deleteScenes}
           onReorder={reorder}
@@ -768,11 +792,12 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
 }
 
 // ── Cuadrícula de fotos ──────────────────────────────────────────────────────
-function PhotoGrid({ scenes, startId, busy, onAdd, onRename, onDelete, onReorder, onStart, onOpen }: {
+function PhotoGrid({ scenes, startId, busy, onAdd, onOptimize, onRename, onDelete, onReorder, onStart, onOpen }: {
   scenes: TourScene[];
   startId: string | null;
   busy: boolean;
   onAdd(files: File[]): void;
+  onOptimize(): void;
   onRename(id: string, patch: Partial<TourScene>): void;
   onDelete(ids: string[]): void;
   onReorder(next: TourScene[]): void;
@@ -844,6 +869,16 @@ function PhotoGrid({ scenes, startId, busy, onAdd, onRename, onDelete, onReorder
         <button onClick={() => fileRef.current?.click()} disabled={busy} className="flex items-center gap-1 font-semibold text-green-600 hover:text-green-700 disabled:opacity-50">
           <UploadCloud size={15} /> Añadir fotos
         </button>
+        {scenes.some((s) => !s.mobile_url) && (
+          <button
+            onClick={onOptimize}
+            disabled={busy}
+            title="Crea una versión de 5760 px de cada foto: en el teléfono se ve igual y carga más rápido"
+            className="flex items-center gap-1 font-semibold text-[#b8761a] hover:text-[#8f5a12] disabled:opacity-50"
+          >
+            <Smartphone size={15} /> Optimizar para teléfono ({scenes.filter((s) => !s.mobile_url).length})
+          </button>
+        )}
         {selected.length > 0 && (
           <>
             <button onClick={() => setSelected([])} className="text-gray-500 hover:text-gray-700">Quitar selección</button>

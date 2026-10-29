@@ -15,10 +15,18 @@ export interface DemoAvailability {
   min_notice_hours: number;
   max_days_ahead: number;
   blocked_dates: string[]; // "2026-11-05"
+  blocked_slots: BlockedSlot[]; // horas cerradas de un día (trabajo, compromisos)
   taken: string[]; // ISO de las horas ya reservadas
+  busy?: { start: string; minutes: number }[]; // citas activas con su duración
 }
 
-export interface DemoSettings extends Omit<DemoAvailability, "taken"> {
+export interface BlockedSlot {
+  date: string; // "2026-11-05" (RD)
+  from: string; // "10:00"
+  to: string; // "13:00"
+}
+
+export interface DemoSettings extends Omit<DemoAvailability, "taken" | "busy"> {
   id: number;
   updated_at: string;
 }
@@ -70,24 +78,45 @@ export function drTime(ms: number) {
   return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 }
 
-/** Horas libres por día (en RD), del día de hoy hasta max_days_ahead */
-export function freeSlots(av: DemoAvailability, now = Date.now()) {
-  const taken = new Set(av.taken.map((t) => new Date(t).getTime()));
+/** Instante (ms) de una hora "HH:MM" de un día de RD */
+function drMs(key: string, minutes: number) {
+  return new Date(`${key}T${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}:00${DR_OFFSET}`).getTime();
+}
+
+/** ¿La cita que empieza en `ms` cabe? (no se cruza con otra cita ni con horas bloqueadas, y respeta el aviso) */
+function fits(av: DemoAvailability, key: string, ms: number, now: number) {
+  const end = ms + av.slot_minutes * 60000;
+  if (ms < now + av.min_notice_hours * 3600 * 1000 || ms > now + av.max_days_ahead * 86400 * 1000) return false;
+  const busy = av.busy ?? av.taken.map((t) => ({ start: t, minutes: av.slot_minutes }));
+  if (busy.some((b) => { const s = new Date(b.start).getTime(); return s < end && s + b.minutes * 60000 > ms; })) return false;
+  return !(av.blocked_slots ?? []).some((b) => b.date === key && ms < drMs(key, toMin(b.to)) && end > drMs(key, toMin(b.from)));
+}
+
+/** Días abiertos (en RD) desde hoy hasta max_days_ahead */
+function openDays(av: DemoAvailability, now: number) {
   const blocked = new Set(av.blocked_dates);
-  const earliest = now + av.min_notice_hours * 3600 * 1000;
-  const latest = now + av.max_days_ahead * 86400 * 1000;
-  const start = toMin(av.start_time);
-  const end = toMin(av.end_time);
-  const out = new Map<string, number[]>(); // fecha → instantes (ms)
+  const out: string[] = [];
   for (let i = 0; i <= av.max_days_ahead; i++) {
     const key = drDateKey(now + i * 86400 * 1000);
     const [y, m, d] = key.split("-").map(Number);
-    const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
-    if (!av.days.includes(dow) || blocked.has(key)) continue;
+    if (av.days.includes(new Date(Date.UTC(y, m - 1, d)).getUTCDay()) && !blocked.has(key)) out.push(key);
+  }
+  return out;
+}
+
+/**
+ * Horas libres por día (en RD). `step` = cada cuántos minutos se ofrece una hora: por defecto la duración
+ * de la cita (las horas sugeridas); con 15 salen todas las horas posibles ("Otra hora").
+ */
+export function freeSlots(av: DemoAvailability, now = Date.now(), step = av.slot_minutes) {
+  const start = toMin(av.start_time);
+  const end = toMin(av.end_time);
+  const out = new Map<string, number[]>(); // fecha → instantes (ms)
+  for (const key of openDays(av, now)) {
     const list: number[] = [];
-    for (let t = start; t + av.slot_minutes <= end; t += av.slot_minutes) {
-      const ms = new Date(`${key}T${pad(Math.floor(t / 60))}:${pad(t % 60)}:00${DR_OFFSET}`).getTime();
-      if (ms >= earliest && ms <= latest && !taken.has(ms)) list.push(ms);
+    for (let t = start; t + av.slot_minutes <= end; t += step) {
+      const ms = drMs(key, t);
+      if (fits(av, key, ms, now)) list.push(ms);
     }
     if (list.length) out.set(key, list);
   }
@@ -111,7 +140,7 @@ const ERRORS: Record<string, { es: string; en: string }> = {
   missing_fields: { es: "Escribe tu nombre y tu WhatsApp.", en: "Please enter your name and WhatsApp." },
   too_many: { es: "Ya tienes citas pendientes con este número. Escríbenos por WhatsApp si necesitas cambiarlas.", en: "You already have pending bookings with this number. Message us on WhatsApp to change them." },
   out_of_range: { es: "Esa hora ya no está disponible. Elige otra, por favor.", en: "That time is no longer available. Please pick another one." },
-  closed: { es: "Ese día no tenemos horario disponible.", en: "We're not available on that day." },
+  closed: { es: "Ese día u hora no está disponible. Elige otra, por favor.", en: "That day or time isn't available. Please pick another one." },
   bad_slot: { es: "Esa hora no es válida. Elige otra, por favor.", en: "That time is not valid. Please pick another one." },
   too_long: { es: "Algún dato es demasiado largo.", en: "Some field is too long." },
 };

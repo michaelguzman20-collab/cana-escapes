@@ -230,6 +230,10 @@ function BookingCard({ b, onChange }: { b: DemoBooking; onChange(b: DemoBooking)
 function SettingsCard({ settings, onSaved }: { settings: DemoSettings; onSaved(s: DemoSettings): void }) {
   const [f, setF] = useState(settings);
   const [newBlock, setNewBlock] = useState("");
+  const [hourBlock, setHourBlock] = useState({ date: "", from: "", to: "" });
+  const today = drDateKey(Date.now());
+  // Bloqueos de horas: los pasados no se muestran (y se limpian al guardar)
+  const hourBlocks = (f.blocked_slots ?? []).filter((b) => b.date >= today);
   const [saving, setSaving] = useState(false);
   const label = "block text-xs font-semibold text-gray-600 mb-1";
 
@@ -238,6 +242,7 @@ function SettingsCard({ settings, onSaved }: { settings: DemoSettings; onSaved(s
     if (!f.days.length) return toast({ title: "Elige al menos un día", variant: "destructive" });
     setSaving(true);
     const { id: _id, ...rest } = f;
+    rest.blocked_slots = hourBlocks;
     const { data, error } = await db.from("tour_demo_settings").update({ ...rest, updated_at: new Date().toISOString() }).eq("id", 1).select().single();
     setSaving(false);
     if (error) return fail("No se pudo guardar el horario", error);
@@ -299,6 +304,40 @@ function SettingsCard({ settings, onSaved }: { settings: DemoSettings; onSaved(s
             <Plus size={13} className="mr-1" /> Bloquear
           </Button>
         </div>
+      </div>
+      <div>
+        <p className={label}>Horas cerradas (por ejemplo, si tienes un trabajo esas horas)</p>
+        <div className="flex flex-wrap items-center gap-2">
+          {hourBlocks.map((b, i) => (
+            <span key={`${b.date}-${b.from}-${i}`} className="inline-flex items-center gap-1 pl-3 pr-1 h-8 rounded-full bg-gray-100 text-xs font-semibold">
+              {fmtDay(b.date, "es", { weekday: "short", day: "numeric", month: "short" })} · {b.from}–{b.to}
+              <button type="button" onClick={() => setF({ ...f, blocked_slots: hourBlocks.filter((x) => x !== b) })} className="w-6 h-6 rounded-full hover:bg-gray-200 flex items-center justify-center" aria-label="Quitar">
+                <X size={12} />
+              </button>
+            </span>
+          ))}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Input type="date" min={today} value={hourBlock.date} onChange={(e) => setHourBlock({ ...hourBlock, date: e.target.value })} className="w-40 h-8" aria-label="Día" />
+          <Input type="time" step={900} value={hourBlock.from} onChange={(e) => setHourBlock({ ...hourBlock, from: e.target.value })} className="w-28 h-8" aria-label="Desde" />
+          <span className="text-xs text-gray-500">a</span>
+          <Input type="time" step={900} value={hourBlock.to} onChange={(e) => setHourBlock({ ...hourBlock, to: e.target.value })} className="w-28 h-8" aria-label="Hasta" />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8"
+            disabled={!hourBlock.date || !hourBlock.from || !hourBlock.to}
+            onClick={() => {
+              if (hourBlock.from >= hourBlock.to) return toast({ title: "La hora de inicio debe ser antes que la de fin", variant: "destructive" });
+              setF({ ...f, blocked_slots: [...hourBlocks, hourBlock].sort((a, b) => (a.date + a.from).localeCompare(b.date + b.from)) });
+              setHourBlock({ date: hourBlock.date, from: "", to: "" });
+            }}
+          >
+            <Plus size={13} className="mr-1" /> Cerrar esas horas
+          </Button>
+        </div>
+        <p className="mt-1 text-[11px] text-gray-400">Recuerda pulsar "Guardar horario" para que se apliquen.</p>
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={save} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white">

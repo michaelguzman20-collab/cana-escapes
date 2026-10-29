@@ -19,6 +19,8 @@ const T = {
     none: "Por ahora no hay horarios libres. Escríbenos por WhatsApp y lo coordinamos.",
     pickDay: "Elige un día",
     pickTime: "Elige la hora",
+    otherTime: "¿Prefieres otra hora?",
+    otherPh: "Elige la hora que te convenga",
     next: "Continuar",
     back: "Cambiar fecha",
     name: "Nombre y apellido",
@@ -51,6 +53,8 @@ const T = {
     none: "No open times right now. Message us on WhatsApp and we'll set it up.",
     pickDay: "Pick a day",
     pickTime: "Pick a time",
+    otherTime: "Prefer another time?",
+    otherPh: "Pick the time that suits you",
     next: "Continue",
     back: "Change date",
     name: "Full name",
@@ -99,7 +103,9 @@ export function DemoScheduler({ open, onOpenChange, lang, waNumber }: { open: bo
     fetchDemoAvailability().then(setAv).catch(() => setLoadError(true));
   }, [open]);
 
-  const slots = useMemo(() => (av ? freeSlots(av) : new Map<string, number[]>()), [av]);
+  // Horas sugeridas (según la duración de la cita) y todas las posibles cada 15 min ("otra hora")
+  const suggested = useMemo(() => (av ? freeSlots(av) : new Map<string, number[]>()), [av]);
+  const slots = useMemo(() => (av ? freeSlots(av, Date.now(), 15) : new Map<string, number[]>()), [av]);
   const firstDay = slots.keys().next().value as string | undefined;
   useEffect(() => {
     if (firstDay && !month) setMonth(firstDay.slice(0, 7));
@@ -220,7 +226,7 @@ export function DemoScheduler({ open, onOpenChange, lang, waNumber }: { open: bo
                         {t.pickTime} · <span className="normal-case tracking-normal font-semibold text-[#0F2B4C]">{fmtDay(day, lang)}</span>
                       </p>
                       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                        {slots.get(day)?.map((ms) => (
+                        {suggested.get(day)?.map((ms) => (
                           <button
                             key={ms}
                             type="button"
@@ -231,6 +237,17 @@ export function DemoScheduler({ open, onOpenChange, lang, waNumber }: { open: bo
                           </button>
                         ))}
                       </div>
+                      <label className="mt-3 block">
+                        <span className="text-xs font-semibold text-gray-600">{t.otherTime}</span>
+                        <select
+                          value={slot && !suggested.get(day)?.includes(slot) ? String(slot) : ""}
+                          onChange={(e) => e.target.value && setSlot(Number(e.target.value))}
+                          className={cn(input, "mt-1", slot && !suggested.get(day)?.includes(slot) && "border-[#0F2B4C] ring-2 ring-[#0F2B4C]/20 font-semibold")}
+                        >
+                          <option value="">{t.otherPh}</option>
+                          {slots.get(day)?.map((ms) => <option key={ms} value={ms}>{fmtTime(ms, lang)}</option>)}
+                        </select>
+                      </label>
                     </div>
                   )}
                   {error && <p className="text-sm text-red-600">{error}</p>}

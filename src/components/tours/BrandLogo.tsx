@@ -8,7 +8,7 @@ type Brand = Pick<Tour, "brand_logo_url" | "brand_link" | "brand_position" | "br
 
 // Abajo queda por encima de la tira de fotos y la barra del visor; arriba, debajo del título
 const POSITION: Record<Tour["brand_position"], string> = {
-  "bottom-right": "right-3 bottom-[10rem] sm:bottom-[11rem]",
+  "bottom-right": "right-3 bottom-[8.75rem]",
   "bottom-left": "left-3 bottom-[11.5rem]", // sobre el botón "Punto de inicio"
   "top-right": "right-14 top-24 sm:right-3", // en el teléfono, al lado de la columna de botones
   "top-left": "left-3 top-24",
@@ -16,7 +16,7 @@ const POSITION: Record<Tour["brand_position"], string> = {
 
 // Con la tira de fotos oculta (teléfono) el logo de abajo baja hasta la barra del visor
 const POSITION_NO_STRIP: Partial<Record<Tour["brand_position"], string>> = {
-  "bottom-right": "right-3 bottom-14 sm:bottom-[11rem]",
+  "bottom-right": "right-3 bottom-14 sm:bottom-[8.75rem]",
   "bottom-left": "left-3 bottom-28 sm:bottom-[11.5rem]",
 };
 

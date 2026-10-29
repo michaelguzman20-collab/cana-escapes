@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ChevronDown, ChevronUp, Hand, Info, Link2, Music, Rotate3d, VolumeX, X, Instagram } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Hand, Info, Link2, Music, Rotate3d, VolumeX, X, Instagram } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
@@ -53,7 +53,7 @@ function FirstVisitHint({ text }: { text: string }) {
   );
 }
 
-// Misma pantalla de carga que el visor: círculo de Cana Escapes con el ícono 360 girando
+// Misma pantalla de carga que el visor: círculo de Tours 360 con el ícono girando
 function Tours360Loader({ text }: { text: string }) {
   return (
     <div className="flex flex-col items-center gap-4">
@@ -195,16 +195,14 @@ function TourContent() {
       {/* Logo + título */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-start justify-between gap-3 p-3 sm:p-4 pointer-events-none bg-gradient-to-b from-black/55 to-transparent">
         <div className="flex items-center gap-3 min-w-0 pointer-events-auto">
-          {/* Distintivo Tours 360: promociona el servicio de recorridos 360 de Cana Escapes */}
-          <Link to="/tours" aria-label="Cana Escapes Tours 360" title="Cana Escapes · Tours 360°" className="shrink-0">
+          {/* Distintivo Tours 360: lleva a la página del servicio */}
+          <Link to="/tours" aria-label="Tours 360°" title="Tours 360°" className="shrink-0">
             <span className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#0F2B4C] border-[3px] border-[#F0A030] shadow-lg">
               <Rotate3d size={24} className="text-[#F0A030]" strokeWidth={1.8} />
             </span>
           </Link>
           <div className="min-w-0 text-white drop-shadow">
-            <p className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#F0A030] leading-none mb-1">
-              <span className="font-serif italic normal-case tracking-normal font-semibold text-white">Cana Escapes</span> · Tours 360°
-            </p>
+            <p className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#F0A030] leading-none mb-1">Tours 360°</p>
             {/* Nombre completo (hasta 2 líneas): en el teléfono los botones van en columna a la derecha */}
             <h1 className="font-serif font-bold text-[15px] sm:text-xl leading-tight line-clamp-2 break-words">{full.tour.title}</h1>
             {(full.tour.location || full.tour.bedrooms != null) && (
@@ -264,9 +262,9 @@ function TourContent() {
             }}
             aria-label={t("tours_copy")}
             title={t("tours_copy")}
-            className="h-9 px-3 rounded-full bg-black/40 text-white flex items-center gap-1.5 text-xs font-semibold hover:bg-black/60"
+            className={cn("h-9 w-9 rounded-full flex items-center justify-center transition-colors", copied ? "bg-[#F0A030] text-[#0F2B4C]" : "bg-black/40 text-white hover:bg-black/60")}
           >
-            <Link2 size={15} /> <span className="hidden sm:inline">{copied ? t("tours_copied") : t("tours_copy")}</span>
+            {copied ? <Check size={16} /> : <Link2 size={16} />}
           </button>
           <a
             href={waHref}
@@ -274,9 +272,9 @@ function TourContent() {
             rel="noreferrer"
             aria-label={waLabel}
             title={waLabel}
-            className="h-9 px-3 rounded-full bg-[#25D366] text-white flex items-center gap-1.5 text-xs font-semibold hover:brightness-110"
+            className="h-9 w-9 rounded-full bg-[#25D366] text-white flex items-center justify-center hover:brightness-110"
           >
-            <WhatsAppIcon size={16} /> <span className="hidden sm:inline">{waLabel}</span>
+            <WhatsAppIcon size={17} />
           </a>
           {ownerIg && (
             <a

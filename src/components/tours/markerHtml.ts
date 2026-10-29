@@ -6,8 +6,8 @@ export function escapeHtml(s: string) {
 }
 
 // ── Logo en el suelo (nadir) para tapar el trípode ──────────────────────────
-// Círculo azul de Cana Escapes con el ícono de Tours 360 (el mismo del menú): tapa el trípode y a la
-// vez promociona el servicio de fotos 360 a quien vea el tour.
+// Círculo azul con el ícono de Tours 360 y "TOURS 360°": tapa el trípode y a la vez promociona el
+// servicio a quien vea el tour (sin el nombre de Cana Escapes: los tours son también de otros clientes).
 
 // Ícono "rotate-3d" de lucide (viewBox 24), el de "Tours 360" en el menú
 const ROTATE_3D = [
@@ -16,7 +16,7 @@ const ROTATE_3D = [
   "M19 15.57c-1.804.885-4.274 1.43-7 1.43-5.523 0-10-2.239-10-5s4.477-5 10-5c4.838 0 8.873 1.718 9.8 4",
 ];
 
-/** Ícono 360 (naranja) para la pantalla de carga: gira dentro del círculo de Cana Escapes (tours.css) */
+/** Ícono 360 (naranja) para la pantalla de carga: gira dentro del círculo de Tours 360 (tours.css) */
 export const LOADER_IMG =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(
@@ -45,9 +45,9 @@ export function nadirLogoUrl() {
     ctx.strokeStyle = "rgba(240,160,48,0.45)";
     ctx.stroke();
     // Ícono 360
-    const icon = 300;
+    const icon = 400;
     ctx.save();
-    ctx.translate(S / 2 - icon / 2, 150);
+    ctx.translate(S / 2 - icon / 2, 190);
     ctx.scale(icon / 24, icon / 24);
     ctx.strokeStyle = "#F0A030";
     ctx.lineWidth = 1.6;
@@ -55,28 +55,12 @@ export function nadirLogoUrl() {
     ctx.lineJoin = "round";
     ROTATE_3D.forEach((d) => ctx.stroke(new Path2D(d)));
     ctx.restore();
-    // Textos
+    // Texto
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
     ctx.fillStyle = "#ffffff";
-    const cana = "Cana ";
-    ctx.font = "italic 400 92px Georgia, serif";
-    const wCana = ctx.measureText(cana).width;
-    ctx.font = "700 92px system-ui, 'Segoe UI', Arial, sans-serif";
-    const wEsc = ctx.measureText("Escapes").width;
-    const x0 = S / 2 - (wCana + wEsc) / 2;
-    ctx.textAlign = "left";
-    ctx.font = "italic 400 92px Georgia, serif";
-    ctx.fillText(cana, x0, 610);
-    ctx.font = "700 92px system-ui, 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("Escapes", x0 + wCana, 610);
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#F0A030";
-    ctx.font = "800 84px system-ui, 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("TOURS 360°", S / 2, 730);
-    ctx.fillStyle = "rgba(255,255,255,0.75)";
-    ctx.font = "500 44px system-ui, 'Segoe UI', Arial, sans-serif";
-    ctx.fillText("canaescapes.com", S / 2, 822);
+    ctx.font = "800 104px system-ui, 'Segoe UI', Arial, sans-serif";
+    ctx.fillText("TOURS 360°", S / 2, 760);
     return c.toDataURL("image/png");
   });
   return nadirLogo;

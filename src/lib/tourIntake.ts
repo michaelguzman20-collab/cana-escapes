@@ -40,7 +40,7 @@ const CANA_LOGO = "/brand/logo-light.png";
 // Tipo de propiedad marcado en la ficha → ilustración de presentación en /tours (PropertyArt)
 const CARD_BY_TYPE: Record<string, string> = {
   Villa: "villa", Apartamento: "apartamento", Casa: "casa", Penthouse: "penthouse",
-  "Local / tienda": "local", Oficina: "oficina", "Terreno / proyecto": "proyecto",
+  "Local / tienda": "local", Oficina: "oficina", "Terreno / proyecto": "proyecto", Condominio: "condominio",
 };
 
 export const text = (d: IntakeData, k: string) => (typeof d[k] === "string" ? (d[k] as string).trim() : "");

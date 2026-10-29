@@ -17,7 +17,7 @@
           "title": "2. La propiedad",
           "items": [
             { "row": [["prop_nombre", "Nombre de la propiedad", 3], ["prop_ubicacion", "Residencial / dirección", 4]] },
-            { "checks": "prop_tipo", "label": "Tipo", "cols": 4, "options": ["Villa", "Apartamento", "Casa", "Penthouse", "Local / tienda", "Oficina", "Terreno / proyecto", "Otro"] },
+            { "checks": "prop_tipo", "label": "Tipo", "cols": 5, "options": ["Villa", "Apartamento", "Condominio", "Casa", "Penthouse", "Local / tienda", "Oficina", "Terreno / proyecto", "Otro"] },
             { "row": [["prop_habitaciones", "Habitaciones", 1], ["prop_banos", "Baños", 1], ["prop_m2", "Metros² aprox.", 1], ["prop_niveles", "Niveles", 1], ["prop_precio", "Precio publicado (opcional)", 2]] },
             { "checks": "prop_uso", "label": "Uso del recorrido", "cols": 3, "options": ["Venta", "Renta corta", "Alquiler largo", "Proyecto en construcción", "Tienda / local comercial", "Proyecto comercial"] }
           ]

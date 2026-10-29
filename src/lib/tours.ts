@@ -13,7 +13,9 @@ export interface Tour {
   cover_url: string | null;
   published: boolean;
   showcase: boolean; // sale como ejemplo en /tours (los tours de clientes solo se ven por su enlace)
-  card_image: string | null; // ilustración de presentación en /tours (PropertyArt): villa, apartamento…
+  card_image: string | null; // portada en /tours: ilustración (villa, apartamento…) o "foto" / "logo" propios
+  card_image_url: string | null; // la foto o el logo cuando card_image es "foto" | "logo"
+  card_image_path: string | null;
   property_name: string | null;
   location: string | null;
   bedrooms: number | null;
@@ -334,32 +336,37 @@ export function descriptionIn(t: Pick<Tour, "description" | "description_en">, l
   return (lang === "en" ? t.description_en?.trim() || t.description?.trim() : t.description?.trim()) || "";
 }
 
-/** Descripción genérica (español e inglés) para empezar y luego ajustar los detalles */
+// Espacios que se nombran en la descripción (resumidos por tipo, nunca el nombre de cada foto)
+const SPACE_GROUPS: { re: RegExp; es: string; en: string }[] = [
+  { re: /sala|living|estar|comedor|dining|lobby|looby|recibidor|social/i, es: "áreas sociales", en: "living areas" },
+  { re: /cocina|kitchen/i, es: "cocina", en: "kitchen" },
+  { re: /habitaci|dormitorio|cuarto|master|bedroom|recámara/i, es: "habitaciones", en: "bedrooms" },
+  { re: /terraza|balc|rooftop|azotea|deck/i, es: "terraza", en: "terrace" },
+  { re: /piscina|pool|jacuzzi/i, es: "piscina", en: "pool" },
+  { re: /jard|patio|exterior|fachada|garden|playa|beach|vista|view/i, es: "exteriores", en: "outdoor areas" },
+];
+
+/** Descripción genérica breve (ES + EN) para empezar y luego ajustar: las áreas de las fotos se resumen por tipo */
 export function genericDescription(t: Pick<Tour, "title" | "property_name" | "location" | "bedrooms" | "bathrooms">, areas: string[]) {
   const name = t.property_name?.trim() || t.title.trim();
   const where = t.location?.trim() || "Punta Cana";
-  const uniq = [...new Set(areas.map((a) => a.trim()).filter(Boolean))].slice(0, 6);
+  const groups = SPACE_GROUPS.filter((g) => areas.some((a) => g.re.test(a))).slice(0, 4);
   const list = (xs: string[], and: string) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} ${and} ${xs[xs.length - 1]}` : xs[0] ?? "");
   const n = (v: number | null, one: string, many: string) => (v != null ? `${v} ${v === 1 ? one : many}` : "");
   const roomsEs = [n(t.bedrooms, "habitación", "habitaciones"), n(t.bathrooms, "baño", "baños")].filter(Boolean);
   const roomsEn = [n(t.bedrooms, "bedroom", "bedrooms"), n(t.bathrooms, "bathroom", "bathrooms")].filter(Boolean);
   const es = [
     `Recorre ${name} en ${where} con este tour virtual 360°, como si estuvieras allí.`,
-    roomsEs.length
-      ? `Cuenta con ${list(roomsEs, "y")}, con espacios cómodos y luminosos para disfrutar del Caribe.`
-      : "Espacios cómodos y luminosos para disfrutar del Caribe.",
-    uniq.length ? `En el recorrido verás: ${list(uniq.map((a) => a.toLowerCase()), "y")}.` : "",
-    "Gestionada por Cana Escapes: reserva o escríbenos por WhatsApp para más información.",
-  ].filter(Boolean).join(" ");
-  const enAreas = uniq.map((a) => (translateArea(a) ?? a).toLowerCase());
+    roomsEs.length ? `Cuenta con ${list(roomsEs, "y")}, con espacios cómodos y luminosos.` : "Espacios cómodos y luminosos para disfrutar del Caribe.",
+    groups.length ? `Muévete a tu ritmo por ${list(groups.map((g) => g.es), "y")}.` : "Muévete a tu ritmo por cada espacio.",
+    "Escríbenos por WhatsApp para más información.",
+  ].join(" ");
   const en = [
     `Walk through ${name} in ${where} with this 360° virtual tour, as if you were there.`,
-    roomsEn.length
-      ? `It features ${list(roomsEn, "and")}, with comfortable, bright spaces to enjoy the Caribbean.`
-      : "Comfortable, bright spaces to enjoy the Caribbean.",
-    enAreas.length ? `In the tour you will see: ${list(enAreas, "and")}.` : "",
-    "Managed by Cana Escapes: book now or message us on WhatsApp for more information.",
-  ].filter(Boolean).join(" ");
+    roomsEn.length ? `It features ${list(roomsEn, "and")}, with comfortable, bright spaces.` : "Comfortable, bright spaces to enjoy the Caribbean.",
+    groups.length ? `Move at your own pace through the ${list(groups.map((g) => g.en), "and")}.` : "Move at your own pace through every space.",
+    "Message us on WhatsApp for more information.",
+  ].join(" ");
   return { es, en };
 }
 

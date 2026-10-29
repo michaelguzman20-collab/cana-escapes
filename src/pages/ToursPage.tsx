@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Rotate3d, MapPin, BedDouble, Loader2, Globe, Building2, Palmtree, KeyRound, Smartphone, Layers,
-  Languages, MessageCircle, Camera, Crown, MessagesSquare, CalendarCheck, Link2, Check, Sparkles,
+  Languages, MessageCircle, Gem, Crown, CalendarDays, MessagesSquare, CalendarCheck, Link2, Check, Sparkles,
   ShieldCheck, HeartHandshake, Plane, CloudRain, Clock, BadgeCheck, ArrowRight, Music,
 } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/LangContext";
@@ -10,8 +10,9 @@ import { useSeo } from "@/lib/useSeo";
 import { SEO_PAGES } from "@/lib/seoPages";
 import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
 import { cn } from "@/lib/utils";
-import { descriptionIn, fetchPublishedTours, markToursSeen, whatsappLink, type TourCard } from "@/lib/tours";
-import { PropertyArt } from "@/components/tours/PropertyArt";
+import { descriptionIn, fetchPublishedTours, markToursSeen, mediaUrl, whatsappLink, type TourCard } from "@/lib/tours";
+import { PropertyArt, CustomCover } from "@/components/tours/PropertyArt";
+import { DemoScheduler } from "@/components/tours/DemoScheduler";
 
 // Página de Tours 360 como servicio aparte (canaescapes.com/tours): está pensada para propietarios,
 // inmobiliarias, brokers y anfitriones de renta corta. No usa el menú de Cana Escapes.
@@ -29,6 +30,7 @@ const TEXT = {
       "Que tus clientes caminen por la propiedad desde su teléfono, estén donde estén, antes de visitarla o reservar. Un enlace con tu marca para tu web, Instagram o WhatsApp.",
     seeDemo: "Ver un ejemplo",
     askDemo: "Pide una demostración",
+    schedule: "Agendar demostración",
     chips: ["Primero en Bávaro y Punta Cana", "Desde cualquier país", "Con tu marca"],
     demoKicker: "Pruébalo tú mismo",
     demoEmpty: "Te mostramos un recorrido en vivo: escríbenos y coordinamos una demostración.",
@@ -41,14 +43,14 @@ const TEXT = {
       { icon: Building2, title: "Inmobiliarias, agentes y brokers", desc: "Muestra cada propiedad completa a compradores de cualquier país sin moverte de la oficina." },
       { icon: Layers, title: "Carteras con muchas propiedades", desc: "Si manejas volumen, dale a cada propiedad más vistosidad y destácate frente a la competencia." },
       { icon: Palmtree, title: "Rentas cortas", desc: "Tus huéspedes ven exactamente lo que reservan. Más confianza, menos preguntas." },
-      { icon: KeyRound, title: "Propiedades en venta", desc: "Llega a la visita el cliente que de verdad está interesado: ya recorrió la propiedad." },
+      { icon: KeyRound, title: "Propiedades en venta", desc: "El recorrido 360° es lo que lleva al comprador a decidirse: conoce cada rincón y llega listo para cerrar la compra." },
     ],
     timeKicker: "Ahorra tiempo",
     timeTitle: "La visita llega a tu cliente, no al revés",
     time: [
       { icon: Plane, title: "Clientes en el extranjero", desc: "Recorren la propiedad desde su país, sin viajar para una visita guiada." },
       { icon: CloudRain, title: "Sin depender del clima ni la distancia", desc: "Lluvia, tráfico o kilómetros dejan de ser un problema para mostrar." },
-      { icon: Clock, title: "Menos visitas en vano", desc: "Tú y tus clientes ahorran tiempo: a la visita presencial va quien ya está convencido." },
+      { icon: Clock, title: "Tu tiempo rinde más", desc: "El recorrido presenta la propiedad por ti, las 24 horas. Tú y tus clientes ganan tiempo para lo importante: decidir y cerrar." },
     ],
     whyKicker: "Lo que recibes",
     whyTitle: "Algo propio, nuevo en la zona",
@@ -95,6 +97,7 @@ const TEXT = {
       "Let your clients walk through the property from their phone, wherever they are, before visiting or booking. A branded link for your website, Instagram or WhatsApp.",
     seeDemo: "See an example",
     askDemo: "Request a demo",
+    schedule: "Book a demo",
     chips: ["First in Bávaro & Punta Cana", "From any country", "With your brand"],
     demoKicker: "Try it yourself",
     demoEmpty: "We'll show you a live tour: message us and we'll set up a demo.",
@@ -107,14 +110,14 @@ const TEXT = {
       { icon: Building2, title: "Agencies, agents & brokers", desc: "Show every property in full to buyers anywhere in the world, from your office." },
       { icon: Layers, title: "Large portfolios", desc: "If you handle volume, make every listing stand out from the competition." },
       { icon: Palmtree, title: "Short-term rentals", desc: "Guests see exactly what they book. More trust, fewer questions." },
-      { icon: KeyRound, title: "Properties for sale", desc: "Only truly interested buyers show up: they already toured it." },
+      { icon: KeyRound, title: "Properties for sale", desc: "The 360° tour is what helps buyers decide: they know every corner and come ready to close." },
     ],
     timeKicker: "Save time",
     timeTitle: "The visit goes to your client, not the other way around",
     time: [
       { icon: Plane, title: "Clients abroad", desc: "They tour the property from their country, no trip needed for a guided visit." },
       { icon: CloudRain, title: "No weather or distance issues", desc: "Rain, traffic or miles no longer get in the way of showing." },
-      { icon: Clock, title: "Fewer wasted visits", desc: "You and your clients save time: only convinced buyers come in person." },
+      { icon: Clock, title: "Your time goes further", desc: "The tour shows the property for you, 24/7. You and your clients gain time for what matters: deciding and closing." },
     ],
     whyKicker: "What you get",
     whyTitle: "Something unique, new to the area",
@@ -156,16 +159,16 @@ const TEXT = {
   },
 };
 
-const PACK_ICONS = [Rotate3d, Camera, Crown];
+const PACK_ICONS = [Rotate3d, Gem, Crown];
 
-/** Distintivo de Tours 360: círculo azul con borde ámbar y las flechas 360 girando */
-function Tours360Mark({ size = 40 }: { size?: number }) {
+/** Distintivo de Tours 360: círculo azul con borde ámbar; con `spin` las flechas giran (solo encabezado y portada) */
+function Tours360Mark({ size = 40, spin }: { size?: number; spin?: boolean }) {
   return (
     <span
       className="flex items-center justify-center rounded-full bg-[#0F2B4C] border-[3px] border-[#F0A030] shrink-0 shadow-lg shadow-[#F0A030]/10"
       style={{ width: size, height: size }}
     >
-      <Rotate3d size={size * 0.52} className="text-[#F0A030] tours360-spin" strokeWidth={1.8} />
+      <Rotate3d size={size * 0.52} className={cn("text-[#F0A030]", spin && "tours360-spin")} strokeWidth={1.8} />
     </span>
   );
 }
@@ -225,6 +228,7 @@ function ToursContent() {
   const tx = TEXT[lang === "en" ? "en" : "es"];
   const [tours, setTours] = useState<TourCard[] | null>(null);
   const [scrolled, setScrolled] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
   const page = useRef<HTMLDivElement>(null);
   useReveal(page, [tours === null]);
 
@@ -260,15 +264,24 @@ function ToursContent() {
               e.preventDefault();
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}
-            className="group flex items-center gap-2.5 min-w-0"
+            className="flex items-center gap-2.5 min-w-0"
             aria-label="Tours 360° — inicio"
           >
-            <Tours360Mark size={38} />
+            <Tours360Mark size={38} spin />
             <span className="text-white font-serif font-bold text-lg sm:text-xl whitespace-nowrap">
               Tours <Deg360 className="text-[#F0A030]" />
             </span>
           </a>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setScheduling(true)}
+              aria-label={tx.schedule}
+              title={tx.schedule}
+              className="flex items-center gap-2 whitespace-nowrap px-3 py-2 rounded-lg border border-white/25 text-white text-sm font-semibold hover:bg-white/10"
+            >
+              <CalendarDays size={16} className="text-[#F0A030]" />
+              <span className="hidden md:inline">{tx.schedule}</span>
+            </button>
             <button
               onClick={() => setLang(lang === "es" ? "en" : "es")}
               aria-label={lang === "es" ? "View in English" : "Ver en español"}
@@ -297,7 +310,7 @@ function ToursContent() {
         <div aria-hidden className="absolute -left-40 bottom-[-240px] w-[500px] h-[500px] rounded-full border border-dashed border-[#F0A030]/15 tours360-orbit [animation-direction:reverse]" />
         <Rotate3d aria-hidden size={420} strokeWidth={0.6} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white/[0.03]" />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <div className="group inline-flex animate-slide-up"><Tours360Mark size={64} /></div>
+          <div className="inline-flex animate-slide-up"><Tours360Mark size={64} spin /></div>
           <div className="mt-6 animate-slide-up [animation-delay:80ms]">
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#F0A030]/40 bg-[#0F2B4C]/40 text-[#F0A030] text-xs font-semibold uppercase tracking-[0.18em]">
               {tx.badge}
@@ -312,7 +325,7 @@ function ToursContent() {
               href="#demo"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#F0A030] text-[#0F2B4C] font-semibold hover:bg-[#e5952a] shadow-lg shadow-[#F0A030]/25 transition-transform hover:-translate-y-0.5"
             >
-              <Rotate3d size={18} className="tours360-spin" /> {tx.seeDemo}
+              <Rotate3d size={18} /> {tx.seeDemo}
             </a>
             <a
               href={wa(tx.waGeneral)}
@@ -322,6 +335,12 @@ function ToursContent() {
             >
               <WhatsAppIcon size={18} /> {tx.askDemo}
             </a>
+            <button
+              onClick={() => setScheduling(true)}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl border border-white/25 bg-white/5 backdrop-blur text-white font-semibold hover:bg-white/10 transition-transform hover:-translate-y-0.5"
+            >
+              <CalendarDays size={18} className="text-[#F0A030]" /> {tx.schedule}
+            </button>
           </div>
           <div className="mt-8 flex flex-wrap justify-center gap-2 animate-slide-up [animation-delay:400ms]">
             {tx.chips.map((c) => (
@@ -365,15 +384,19 @@ function ToursContent() {
                   className="group w-full max-w-2xl bg-white rounded-3xl overflow-hidden shadow-xl shadow-[#0F2B4C]/10 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
                 >
                   <div className="relative aspect-[16/9] overflow-hidden bg-[#0F2B4C]">
-                    <PropertyArt kind={tour.card_image} className="absolute inset-0 w-full h-full transition-transform duration-700 group-hover:scale-105" />
+                    {(tour.card_image === "foto" || tour.card_image === "logo") && tour.card_image_url ? (
+                      <CustomCover kind={tour.card_image} url={mediaUrl(tour.card_image_url)} className="absolute inset-0 w-full h-full transition-transform duration-700 group-hover:scale-105" />
+                    ) : (
+                      <PropertyArt kind={tour.card_image} className="absolute inset-0 w-full h-full transition-transform duration-700 group-hover:scale-105" />
+                    )}
                     <span className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/45 backdrop-blur text-white text-xs font-semibold">
-                      <Rotate3d size={14} className="tours360-spin" /> 360°
+                      <Rotate3d size={14} /> 360°
                     </span>
                     <span className="absolute inset-0 flex items-center justify-center">
                       <span className="relative flex items-center justify-center">
                         <span className="absolute w-20 h-20 rounded-full bg-white/40 animate-ping" />
                         <span className="relative w-20 h-20 rounded-full bg-white/95 text-[#0F2B4C] flex items-center justify-center shadow-2xl transition-transform group-hover:scale-110">
-                          <Rotate3d size={36} className="tours360-spin" />
+                          <Rotate3d size={36} />
                         </span>
                       </span>
                     </span>
@@ -476,7 +499,7 @@ function ToursContent() {
                   </span>
                 )}
                 <span className={cn("w-12 h-12 rounded-xl flex items-center justify-center", p.featured ? "bg-[#F0A030] text-[#0F2B4C]" : "bg-[#F0A030]/15 text-[#b8761a]")}>
-                  <Icon size={24} className={i === 0 ? "tours360-spin" : undefined} />
+                  <Icon size={24} />
                 </span>
                 <h3 className="mt-4 font-serif font-bold text-2xl">{p.name}</h3>
                 <ul className="mt-5 space-y-2.5 flex-1">
@@ -511,7 +534,7 @@ function ToursContent() {
           {tx.steps.map(({ icon: Icon, title, desc }, i) => (
             <li key={title} data-reveal={i} className="relative text-center">
               <span className="relative mx-auto w-14 h-14 rounded-full bg-[#0F2B4C] text-[#F0A030] ring-4 ring-[#F5F7FA] flex items-center justify-center shadow-lg">
-                <Icon size={24} className={i === 2 ? "tours360-spin" : undefined} />
+                <Icon size={24} />
                 <span className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-[#F0A030] text-[#0F2B4C] text-xs font-bold flex items-center justify-center">{i + 1}</span>
               </span>
               <h3 className="mt-4 font-serif font-bold text-lg">{title}</h3>
@@ -538,13 +561,21 @@ function ToursContent() {
             >
               <WhatsAppIcon size={18} /> {tx.askDemo}
             </a>
+            <button
+              onClick={() => setScheduling(true)}
+              className="mt-3 sm:mt-8 sm:ml-3 inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[#F0A030] text-[#0F2B4C] font-semibold hover:bg-[#e5952a] shadow-lg shadow-black/20 transition-transform hover:-translate-y-0.5"
+            >
+              <CalendarDays size={18} /> {tx.schedule}
+            </button>
           </div>
         </div>
       </section>
 
+      <DemoScheduler open={scheduling} onOpenChange={setScheduling} lang={lang} waNumber={WA_NUMBER} />
+
       <footer className="border-t border-gray-200 py-8 text-center text-sm text-gray-500">
         <p className="flex items-center justify-center gap-2">
-          <Rotate3d size={15} className="text-[#F0A030] tours360-spin" /> Tours <Deg360 /> · {tx.by}{" "}
+          <Rotate3d size={15} className="text-[#F0A030]" /> Tours <Deg360 /> · {tx.by}{" "}
           <Link to="/" className="font-semibold text-[#0F2B4C] hover:underline">Cana Escapes</Link>
         </p>
         <p className="mt-1 text-xs">Bávaro · Punta Cana · República Dominicana</p>

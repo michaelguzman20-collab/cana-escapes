@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, ClipboardList, Download, ExternalLink, FileText, Loader2, Plus, Rotate3d, Trash2, UploadCloud, Check, Image as ImageIcon,
 } from "lucide-react";
@@ -32,6 +32,14 @@ export function AdminTourIntakes() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // ?ficha=<id> abre esa ficha directo (por ejemplo, desde la agenda de demostraciones)
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    const id = params.get("ficha");
+    if (!id) return;
+    setOpenId(id);
+    setParams({}, { replace: true });
+  }, [params, setParams]);
 
   const load = useCallback(async () => {
     setLoading(true);

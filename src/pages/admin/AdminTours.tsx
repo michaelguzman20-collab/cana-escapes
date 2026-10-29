@@ -6,7 +6,7 @@ import {
 import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, horizontalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  Rotate3d, ClipboardList, Plus, ArrowLeft, ExternalLink, Copy, Save, Trash2, UploadCloud, Star, LayoutGrid, Pencil,
+  Rotate3d, ClipboardList, CalendarDays, Plus, ArrowLeft, ExternalLink, Copy, Save, Trash2, UploadCloud, Star, LayoutGrid, Pencil,
   Navigation, Info, Crosshair, Eye, Loader2, Settings2, Image as ImageIcon, X, GripVertical, RefreshCw, Download, MoveRight, Type, Wand2, Play, Square, Smartphone, Route, CheckCheck, ChevronLeft, ChevronRight, Instagram,
 } from "lucide-react";
 import { AmbientMusic, MUSIC_STYLES, type MusicStyle } from "@/components/tours/ambientMusic";
@@ -30,7 +30,7 @@ import { AddonPanel } from "@/components/tours/AddonPanel";
 import { ICONS, PRESETS, iconSvg } from "@/components/tours/tourAddons";
 import type { EditorViewerApi } from "@/components/tours/TourEditorViewer";
 import { AutoTourDialog } from "@/components/tours/AutoTourDialog";
-import { PropertyArt, CARD_IMAGES, cardImageOf } from "@/components/tours/PropertyArt";
+import { PropertyArt, CustomCover, CARD_IMAGES } from "@/components/tours/PropertyArt";
 
 // Tours 360 (reemplazo de Kuula). Flujo parecido al de Kuula:
 //  · Lista de tours → abrir uno.
@@ -193,6 +193,9 @@ export function AdminTours() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-4">
+            <Link to="/admin/tours/agenda" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0F2B4C] text-white font-semibold hover:bg-[#173a63]">
+              <CalendarDays size={15} className="text-[#F0A030]" /> Agenda de demostraciones
+            </Link>
             <Link to="/admin/tours/fichas" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0F2B4C] text-white font-semibold hover:bg-[#173a63]">
               <ClipboardList size={15} className="text-[#F0A030]" /> Fichas de clientes
             </Link>
@@ -1265,10 +1268,10 @@ const PLACE_LABEL: Record<PresetKey, string> = {
 };
 
 // Imagen propia para un addon: se reduce (máx. 1024 px) y se guarda junto a las fotos del tour
-async function prepareAddonImage(file: File): Promise<Blob> {
+async function prepareAddonImage(file: File, max = 1024): Promise<Blob> {
   if (file.type === "image/svg+xml") return file;
   const bmp = await createImageBitmap(file);
-  const k = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
+  const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
   const c = document.createElement("canvas");
   c.width = Math.round(bmp.width * k);
   c.height = Math.round(bmp.height * k);
@@ -2090,6 +2093,24 @@ function TourSettings({ form, setForm, onSave, dirty, onDelete, cover }: {
 }) {
   const field = "block text-xs font-semibold text-gray-600 mb-1";
   const logoRef = useRef<HTMLInputElement>(null);
+  const coverRef = useRef<HTMLInputElement>(null);
+  const coverKind = useRef<"foto" | "logo">("foto");
+  const [uploadingCover, setUploadingCover] = useState(false);
+
+  // Portada propia en /tours: una foto (cualquiera, no tiene que ser del tour) o el logo de la propiedad
+  async function uploadCover(file: File) {
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) return toast({ title: "Usa una imagen PNG, JPG o WebP", variant: "destructive" });
+    setUploadingCover(true);
+    try {
+      const blob = await prepareAddonImage(file, coverKind.current === "foto" ? 1600 : 1024);
+      const up = await tourStorage.upload(`${form.id}/cover-${crypto.randomUUID()}.${extOf(blob)}`, blob);
+      setForm({ ...form, card_image: coverKind.current, card_image_url: up.url, card_image_path: up.path });
+      toast({ title: coverKind.current === "foto" ? "Foto lista" : "Logo listo", description: "Pulsa \"Guardar ajustes\" para usarlo como portada." });
+    } catch (e) {
+      fail("No se pudo subir la imagen", e);
+    }
+    setUploadingCover(false);
+  }
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const wa = normalizeWhatsapp(form.whatsapp);
 
@@ -2166,11 +2187,34 @@ function TourSettings({ form, setForm, onSave, dirty, onDelete, cover }: {
       <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
         <div>
           <p className="font-semibold text-[#0F2B4C]">Imagen de presentación</p>
-          <p className="text-xs text-gray-500">La que se ve en la página Tours 360 antes de entrar al recorrido (solo si el tour sale como ejemplo). Elige según el tipo de propiedad.</p>
+          <p className="text-xs text-gray-500">La que se ve en la página Tours 360 antes de entrar al recorrido (solo si el tour sale como ejemplo). Elige una ilustración según el tipo de propiedad, o sube una foto o el logo de la propiedad.</p>
+        </div>
+        <input ref={coverRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) uploadCover(f); }} />
+        {(form.card_image === "foto" || form.card_image === "logo") && form.card_image_url && (
+          <div className="relative rounded-lg overflow-hidden aspect-[16/9] max-w-md border-2 border-[#F0A030]">
+            <CustomCover kind={form.card_image} url={mediaUrl(form.card_image_url)} className="absolute inset-0 w-full h-full" />
+            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/60 text-white text-[11px] font-semibold">
+              {form.card_image === "foto" ? "Foto propia" : "Logo de la propiedad"} · elegida
+            </span>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {(["foto", "logo"] as const).map((k) => (
+            <Button
+              key={k}
+              variant="outline"
+              size="sm"
+              disabled={uploadingCover}
+              onClick={() => { coverKind.current = k; coverRef.current?.click(); }}
+            >
+              {uploadingCover && coverKind.current === k ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <UploadCloud size={14} className="mr-1.5" />}
+              {k === "foto" ? "Subir foto de portada" : "Subir logo de la propiedad"}
+            </Button>
+          ))}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {CARD_IMAGES.map((c) => {
-            const on = cardImageOf(form.card_image) === c.id;
+            const on = form.card_image === c.id || (!form.card_image && c.id === "villa");
             return (
               <button
                 key={c.id}

@@ -37,6 +37,11 @@ export const isTable = (it: IntakeItem): it is TableItem => "table" in it;
 
 export const BUCKET = "tour-intakes";
 const CANA_LOGO = "/brand/logo-light.png";
+// Tipo de propiedad marcado en la ficha → ilustración de presentación en /tours (PropertyArt)
+const CARD_BY_TYPE: Record<string, string> = {
+  Villa: "villa", Apartamento: "apartamento", Casa: "casa", Penthouse: "penthouse",
+  "Local / tienda": "local", Oficina: "oficina", "Terreno / proyecto": "proyecto",
+};
 
 export const text = (d: IntakeData, k: string) => (typeof d[k] === "string" ? (d[k] as string).trim() : "");
 export const picked = (d: IntakeData, k: string) => (Array.isArray(d[k]) ? (d[k] as string[]) : []);
@@ -129,6 +134,7 @@ export function tourFieldsFrom(d: IntakeData): Partial<Tour> {
     description: text(d, "tour_descripcion") || null,
     brand_link: text(d, "tour_enlace_logo") || text(d, "cliente_web") || null,
     showcase: picked(d, "autoriza").some((o) => o.includes("ejemplo")),
+    card_image: CARD_BY_TYPE[picked(d, "prop_tipo")[0]] ?? null,
   };
   if (fields.bedrooms != null) fields.bedrooms = Math.round(fields.bedrooms);
   if (picked(d, "logo").includes("Usar logo de Cana Escapes")) {

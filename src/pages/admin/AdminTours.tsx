@@ -30,6 +30,7 @@ import { AddonPanel } from "@/components/tours/AddonPanel";
 import { ICONS, PRESETS, iconSvg } from "@/components/tours/tourAddons";
 import type { EditorViewerApi } from "@/components/tours/TourEditorViewer";
 import { AutoTourDialog } from "@/components/tours/AutoTourDialog";
+import { PropertyArt, CARD_IMAGES, cardImageOf } from "@/components/tours/PropertyArt";
 
 // Tours 360 (reemplazo de Kuula). Flujo parecido al de Kuula:
 //  · Lista de tours → abrir uno.
@@ -2160,6 +2161,33 @@ function TourSettings({ form, setForm, onSave, dirty, onDelete, cover }: {
       </div>
 
       <MusicPicker value={form.music_style} onChange={(music_style) => setForm({ ...form, music_style })} onSave={onSave} dirty={dirty} />
+
+      {/* Imagen de presentación en canaescapes.com/tours: ilustración según el tipo, no la foto real */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+        <div>
+          <p className="font-semibold text-[#0F2B4C]">Imagen de presentación</p>
+          <p className="text-xs text-gray-500">La que se ve en la página Tours 360 antes de entrar al recorrido (solo si el tour sale como ejemplo). Elige según el tipo de propiedad.</p>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {CARD_IMAGES.map((c) => {
+            const on = cardImageOf(form.card_image) === c.id;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setForm({ ...form, card_image: c.id })}
+                className={cn("rounded-lg overflow-hidden border-2 text-left", on ? "border-[#F0A030]" : "border-transparent hover:border-gray-200")}
+              >
+                <PropertyArt kind={c.id} className="block w-full aspect-[16/10]" />
+                <span className={cn("block px-2 py-1 text-xs font-semibold", on ? "bg-amber-50 text-[#0F2B4C]" : "text-gray-600")}>{c.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <Button onClick={onSave} disabled={!dirty} className="bg-green-600 hover:bg-green-700 text-white">
+          <Save size={14} className="mr-1.5" /> Guardar ajustes
+        </Button>
+      </div>
 
       {/* Logo del propietario: marca de agua fija en todas las fotos, con enlace opcional */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">

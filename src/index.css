@@ -123,3 +123,20 @@ html {
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee { animation: none; }
 }
+
+/* Tours 360: el ícono de flechas gira como un 360° (vuelta, pausa); los anillos de la portada giran lento */
+@keyframes tours360-spin {
+  0% { transform: perspective(200px) rotateY(0deg); }
+  55%, 100% { transform: perspective(200px) rotateY(360deg); }
+}
+.tours360-spin {
+  animation: tours360-spin 3.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.group:hover .tours360-spin { animation-duration: 1.6s; }
+@keyframes tours360-orbit {
+  to { transform: rotate(360deg); }
+}
+.tours360-orbit { animation: tours360-orbit 40s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .tours360-spin, .tours360-orbit { animation: none; }
+}

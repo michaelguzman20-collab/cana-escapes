@@ -13,6 +13,7 @@ export interface Tour {
   cover_url: string | null;
   published: boolean;
   showcase: boolean; // sale como ejemplo en /tours (los tours de clientes solo se ven por su enlace)
+  card_image: string | null; // ilustración de presentación en /tours (PropertyArt): villa, apartamento…
   property_name: string | null;
   location: string | null;
   bedrooms: number | null;

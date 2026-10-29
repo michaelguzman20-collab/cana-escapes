@@ -29,9 +29,8 @@ interface Props {
   nadir: { enabled: boolean; size: number; opacity: number };
   /** Punto de inicio de la foto (se marca con una mira) */
   start?: { yaw: number; pitch: number } | null;
-  /** La mira del punto de inicio se puede arrastrar (modo "Punto de inicio") */
-  startDraggable?: boolean;
-  onStartMoved?(pos: { yaw: number; pitch: number }): void;
+  /** La vista dejó de moverse (girar o zoom): dirección y campo de visión en grados */
+  onViewMoved?(pos: { yaw: number; pitch: number }, fov: number): void;
   cssFilter?: string;
   onPanoClick(pos: { yaw: number; pitch: number }): void;
   onAddonClick(h: TourHotspot): void;
@@ -70,14 +69,6 @@ export default function TourEditorViewer(props: Props) {
     // Arrastrar un addon: se intercepta antes de que el visor gire la vista. Al tocarlo se selecciona.
     const onDown = (e: MouseEvent | TouchEvent) => {
       if (!viewer) return;
-      const p0 = "touches" in e ? e.touches[0] : e;
-      // La mira del punto de inicio (solo con el modo "Punto de inicio" activo)
-      if (cb.current.startDraggable && (e.target as HTMLElement).closest?.(".ce-start-drag")) {
-        e.stopPropagation();
-        e.preventDefault();
-        dragging = { id: "__start", x: p0?.clientX ?? 0, y: p0?.clientY ?? 0 };
-        return;
-      }
       const el = (e.target as HTMLElement).closest?.<HTMLElement>(".ce-addon");
       const id = el?.dataset.addon;
       const { editing, addons } = cb.current;
@@ -108,9 +99,7 @@ export default function TourEditorViewer(props: Props) {
     const onUp = () => {
       const d = dragging;
       dragging = null;
-      if (!d?.pos) return;
-      if (d.id === "__start") cb.current.onStartMoved?.(d.pos);
-      else cb.current.onAddonMoved(d.pos, d.id);
+      if (d?.pos) cb.current.onAddonMoved(d.pos, d.id);
     };
     container.addEventListener("mousedown", onDown, true);
     container.addEventListener("touchstart", onDown, { capture: true, passive: false });
@@ -161,6 +150,18 @@ export default function TourEditorViewer(props: Props) {
         if (data.rightclick || data.marker) return;
         cb.current.onPanoClick({ yaw: data.yaw, pitch: data.pitch });
       });
+      // Avisar cuando la vista se queda quieta (para el modo "Punto de inicio")
+      let viewTimer: number | undefined;
+      const viewMoved = () => {
+        clearTimeout(viewTimer);
+        viewTimer = window.setTimeout(() => {
+          const p = v.getPosition();
+          const sc = cb.current.scene;
+          cb.current.onViewMoved?.({ yaw: p.yaw, pitch: p.pitch }, fovForLevel(v.getZoomLevel(), sc.fov_min, sc.fov_max));
+        }, 450);
+      };
+      v.addEventListener("position-updated", viewMoved);
+      v.addEventListener("zoom-updated", viewMoved);
       // Límite vertical: arrastrar/girar no pasa del ángulo configurado
       v.addEventListener("before-rotate", (e) => {
         e.position.pitch = clampPitch(e.position.pitch, cb.current.scene.pitch_limit);
@@ -264,12 +265,11 @@ export default function TourEditorViewer(props: Props) {
         size: { width: 46, height: 46 },
         position: props.start,
         anchor: "center center",
-        className: props.startDraggable ? "ce-start-drag" : undefined,
         data: { start: true },
       });
     }
     markers.setMarkers(list);
-  }, [ready, logo, props.addons, props.editing, props.sceneTitles, scene.id, props.nadir.enabled, props.nadir.size, props.nadir.opacity, props.start?.yaw, props.start?.pitch, props.startDraggable]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ready, logo, props.addons, props.editing, props.sceneTitles, scene.id, props.nadir.enabled, props.nadir.size, props.nadir.opacity, props.start?.yaw, props.start?.pitch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <div ref={containerRef} className="absolute inset-0" />;
 }

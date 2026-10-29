@@ -1,11 +1,11 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ChevronDown, ChevronUp, Hand, Info, Link2, Music, Rotate3d, VolumeX, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Hand, Info, Link2, Music, Rotate3d, VolumeX, X, Instagram } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
 import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
-import { descriptionIn, fetchTourBySlug, isPhoneWidth, markToursSeen, mediaUrl, viewerImage, normalizeWhatsapp, startScene, tourUrl, whatsappLink, type FullTour } from "@/lib/tours";
+import { descriptionIn, fetchTourBySlug, isPhoneWidth, markToursSeen, mediaUrl, viewerImage, normalizeWhatsapp, instagramUser, instagramLink, startScene, tourUrl, whatsappLink, type FullTour } from "@/lib/tours";
 import { BrandLogo } from "@/components/tours/BrandLogo";
 import { recordSceneView, startPageVisit } from "@/lib/visits";
 import { AmbientMusic } from "@/components/tours/ambientMusic";
@@ -159,6 +159,7 @@ function TourContent() {
     ? whatsappLink(ownerWa, `${t("tours_wa_owner")} ${full.tour.title}: ${url}`)
     : `https://wa.me/?text=${encodeURIComponent(`${full.tour.title} — ${t("tours_wa_text")} ${url}`)}`;
   const waLabel = ownerWa ? t("tours_contact") : t("tours_share_wa");
+  const ownerIg = instagramUser(full.tour.instagram);
   const langButton = (
     <button
       onClick={() => setLang(lang === "es" ? "en" : "es")}
@@ -277,6 +278,18 @@ function TourContent() {
           >
             <WhatsAppIcon size={16} /> <span className="hidden sm:inline">{waLabel}</span>
           </a>
+          {ownerIg && (
+            <a
+              href={instagramLink(ownerIg)}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={t("tours_instagram")}
+              title={`${t("tours_instagram")}: @${ownerIg}`}
+              className="h-9 w-9 rounded-full text-white flex items-center justify-center hover:brightness-110 bg-[linear-gradient(45deg,#F58529,#DD2A7B,#8134AF)]"
+            >
+              <Instagram size={17} />
+            </a>
+          )}
           </div>
         </div>
       </div>

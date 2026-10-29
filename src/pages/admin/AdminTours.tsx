@@ -7,7 +7,7 @@ import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, hori
 import { CSS } from "@dnd-kit/utilities";
 import {
   Rotate3d, Plus, ArrowLeft, ExternalLink, Copy, Save, Trash2, UploadCloud, Star, LayoutGrid, Pencil,
-  Navigation, Info, Crosshair, Eye, Loader2, Settings2, Image as ImageIcon, X, GripVertical, RefreshCw, Download, MoveRight, Type, Wand2, Play, Square, Smartphone, Route, CheckCheck, ChevronLeft, ChevronRight,
+  Navigation, Info, Crosshair, Eye, Loader2, Settings2, Image as ImageIcon, X, GripVertical, RefreshCw, Download, MoveRight, Type, Wand2, Play, Square, Smartphone, Route, CheckCheck, ChevronLeft, ChevronRight, Instagram,
 } from "lucide-react";
 import { AmbientMusic, MUSIC_STYLES, type MusicStyle } from "@/components/tours/ambientMusic";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import { PanoThumb } from "@/components/tours/PanoThumb";
 import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
 import { applyFilters as renderFilters, canvasToBlob, cssPreview, thumbFrom } from "@/lib/panoFilters";
 import {
-  normalizeWhatsapp, type BrandPosition,
+  normalizeWhatsapp, instagramUser, instagramLink, type BrandPosition,
   db, fetchTourContent, slugify, tourUrl, hasFilters, FILTER_KEYS, mediaUrl, fetchRetry, withTimeout, translateArea, genericDescription,
   addonsForScene, sceneLabel, AREA_SUGGESTIONS, type Tour, type TourScene, type TourHotspot, type PanoFilters,
 } from "@/lib/tours";
@@ -84,6 +84,34 @@ function WhatsappInput({ value, onChange, className }: { value: string; onChange
         inputMode="tel"
         className={cn("pl-8", bad && "!border-red-400")}
       />
+    </div>
+  );
+}
+
+// Instagram del propietario: se acepta @usuario o el enlace del perfil; el tour muestra un botón a su perfil
+function InstagramInput({ value, onChange, className, dark }: { value: string; onChange(v: string): void; className?: string; dark?: boolean }) {
+  const user = instagramUser(value);
+  const bad = !!value.trim() && !user;
+  return (
+    <div className={cn("relative", className)} title={user ? `El botón de Instagram del tour abrirá ${instagramLink(user)}` : "Instagram del propietario (opcional): @usuario o enlace del perfil"}>
+      <Instagram size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#E1306C] pointer-events-none" />
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Instagram del propietario"
+        className={cn("pl-8", user && "pr-8", bad && "!border-red-400")}
+      />
+      {user && (
+        <a
+          href={instagramLink(user)}
+          target="_blank"
+          rel="noreferrer"
+          title={`Abrir ${instagramLink(user)}`}
+          className={cn("absolute right-2 top-1/2 -translate-y-1/2", dark ? "text-white/60 hover:text-white" : "text-gray-400 hover:text-[#E1306C]")}
+        >
+          <ExternalLink size={14} />
+        </a>
+      )}
     </div>
   );
 }
@@ -274,7 +302,8 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
     }
     setSaving(true);
     const { id: _id, created_at: _c, updated_at: _u, ...rest } = form;
-    const ok = await patchTour({ ...rest, slug, title: form.title.trim() || tour.title });
+    // Instagram se guarda como usuario (sin @ ni enlace)
+    const ok = await patchTour({ ...rest, slug, title: form.title.trim() || tour.title, instagram: instagramUser(form.instagram) || null });
     setSaving(false);
     if (ok) toast({ title: "Tour guardado" });
     return ok;
@@ -350,8 +379,22 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // "Generar recorrido": guarda las flechas elegidas y abre la revisión foto por foto
-  async function createAutoArrows(rows: Omit<TourHotspot, "id">[]) {
+  // "Generar recorrido": borra las flechas de las conexiones quitadas, crea las nuevas y abre la revisión
+  async function applyAutoArrows(rows: Omit<TourHotspot, "id">[], remove: TourHotspot[]) {
+    if (remove.length) {
+      const ids = remove.map((h) => h.id);
+      try {
+        const { error } = await withTimeout<{ error: unknown }>(db.from("tour_hotspots").delete().in("id", ids), DB_TIMEOUT);
+        if (error) throw error;
+      } catch (e) {
+        fail("No se pudieron borrar las flechas", e);
+        return false;
+      }
+      setHotspots((h) => h.filter((x) => !ids.includes(x.id)));
+      const imgs = remove.flatMap((h) => (h.image_path ? [h.image_path] : []));
+      if (imgs.length) tourStorage.remove(imgs).catch(() => undefined);
+      if (!rows.length) toast({ title: `${remove.length} ${remove.length === 1 ? "flecha borrada" : "flechas borradas"}` });
+    }
     if (!rows.length) return true;
     let res: { data: TourHotspot[] | null; error: unknown };
     try {
@@ -639,6 +682,12 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
             onChange={(v) => setForm({ ...form, whatsapp: v || null })}
             className={cn("w-full sm:w-52", isEditor && "[&_input]:bg-white/10 [&_input]:border-white/15 [&_input]:text-white")}
           />
+          <InstagramInput
+            value={form.instagram ?? ""}
+            onChange={(v) => setForm({ ...form, instagram: v || null })}
+            dark={isEditor}
+            className={cn("w-full sm:w-52", isEditor && "[&_input]:bg-white/10 [&_input]:border-white/15 [&_input]:text-white")}
+          />
           <div className="flex items-center gap-2 ml-auto flex-wrap">
             <label className={cn("flex items-center gap-2 px-2 text-xs font-semibold", isEditor ? "text-white/80" : "text-gray-600")}>
               <Switch checked={tour.published} onCheckedChange={togglePublished} />
@@ -817,7 +866,7 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
           registerGuard={(g) => (sceneGuard.current = g)}
         />
       )}
-      <AutoTourDialog open={autoOpen} scenes={scenes} hotspots={hotspots} onClose={() => setAutoOpen(false)} onCreate={createAutoArrows} />
+      <AutoTourDialog open={autoOpen} scenes={scenes} hotspots={hotspots} onClose={() => setAutoOpen(false)} onApply={applyAutoArrows} />
       {view === "settings" && <TourSettings form={form} setForm={setForm} onSave={saveForm} dirty={dirty} onDelete={deleteTour} cover={scenes.find((s) => s.id === form.start_scene_id) ?? scenes[0]} />}
     </div>
   );
@@ -1297,10 +1346,7 @@ function SceneEditor({
 
   function onPanoClick(pos: { yaw: number; pitch: number }) {
     if (pickingStart) {
-      saveHeading(pos.yaw * DEG, pos.pitch * DEG);
-      apiRef.current?.lookAt(pos);
-      setPickingStart(false);
-      toast({ title: "Punto de inicio guardado", description: "Al entrar a esta foto se mirará hacia ahí." });
+      apiRef.current?.lookAt(pos); // lleva ese punto a la mira del centro (se guarda solo al girar)
       return;
     }
     if (placing) {
@@ -1462,6 +1508,15 @@ function SceneEditor({
     setEditing(null);
   }
 
+  const pickingRef = useRef(false);
+  pickingRef.current = pickingStart;
+  useEffect(() => setPickingStart(false), [scene.id]);
+
+  function finishPickingStart() {
+    setPickingStart(false);
+    toast({ title: "Punto de inicio guardado", description: "Al entrar a esta foto se verá tal como quedó en la mira." });
+  }
+
   function saveHeading(x: number, y: number) {
     setHeading({ x: round1(x), y: round1(y) });
     onUpdateScene(scene.id, { initial_yaw: x / DEG, initial_pitch: Math.max(-90, Math.min(90, y)) / DEG });
@@ -1475,7 +1530,7 @@ function SceneEditor({
     <div className="text-white">
       <div className="flex flex-col lg:flex-row">
         {/* Panorama */}
-        <div className={cn("relative flex-1 h-[55vh] lg:h-[calc(100vh-200px)] min-h-[320px] bg-black", (placing || pickingStart) && "ce-placing")}>
+        <div className={cn("relative flex-1 h-[55vh] lg:h-[calc(100vh-200px)] min-h-[320px] bg-black", placing && "ce-placing")}>
           <Suspense fallback={<div className="absolute inset-0 flex items-center justify-center text-white/60"><Loader2 className="animate-spin mr-2" size={18} /> Cargando visor…</div>}>
             <TourEditorViewer
               scene={scene}
@@ -1490,18 +1545,25 @@ function SceneEditor({
               }}
               onApi={(a) => (apiRef.current = a)}
               nadir={nadir}
-              start={{ yaw: scene.initial_yaw, pitch: scene.initial_pitch }}
-              startDraggable={pickingStart}
-              onStartMoved={(pos) => {
+              start={pickingStart ? null : { yaw: scene.initial_yaw, pitch: scene.initial_pitch }}
+              onViewMoved={(pos, fov) => {
+                // Modo "Punto de inicio": lo que queda en el centro (y el zoom) es lo que se ve al entrar
+                if (!pickingRef.current) return;
                 saveHeading(pos.yaw * DEG, pos.pitch * DEG);
-                toast({ title: "Punto de inicio guardado", description: "Puedes seguir moviendo la mira; pulsa ✕ cuando termines." });
+                if (Math.round(fov) !== scene.fov_initial) onUpdateScene(scene.id, { fov_initial: Math.round(fov) });
               }}
               cssFilter={filtersDirty ? relativePreview(filters, scene.filters) : undefined}
             />
           </Suspense>
           <div className="absolute top-3 left-3 z-20 flex flex-wrap gap-2">
             <button
-              onClick={() => { setPlacing(null); setPickingStart((v) => !v); }}
+              onClick={() => {
+                setPlacing(null);
+                if (pickingStart) return finishPickingStart();
+                // Se empieza mirando al punto de inicio actual, que queda en la mira del centro
+                apiRef.current?.lookAt({ yaw: scene.initial_yaw, pitch: scene.initial_pitch, fov: scene.fov_initial });
+                setPickingStart(true);
+              }}
               className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold shadow", pickingStart ? "bg-[#F0A030] text-[#0F2B4C]" : "bg-black/60 hover:bg-black/80")}
             >
               <Crosshair size={13} /> Punto de inicio
@@ -1514,10 +1576,18 @@ function SceneEditor({
             </button>
           </div>
           {pickingStart && (
-            <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-[#F0A030] text-[#0F2B4C] font-semibold text-xs px-4 py-2 rounded-full shadow-lg">
-              <Crosshair size={14} /> Arrastra la mira (o haz clic) hasta donde debe mirar al entrar
-              <button onClick={() => setPickingStart(false)} className="ml-1"><X size={14} /></button>
-            </div>
+            <>
+              <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-[#F0A030] text-[#0F2B4C] font-semibold text-xs px-4 py-2 rounded-full shadow-lg">
+                <Crosshair size={14} /> Mueve la foto (y el zoom) hasta que la mira quede donde debe mirar al entrar. Se guarda sola.
+                <button onClick={finishPickingStart} className="ml-1 rounded-full bg-[#0F2B4C] text-white px-2.5 py-0.5">Listo</button>
+              </div>
+              {/* Mira fija en el centro: el punto de inicio es lo que queda debajo */}
+              <svg className="ce-start-reticle ce-start-center" viewBox="0 0 48 48" fill="none" strokeLinecap="round" aria-hidden>
+                <circle cx="24" cy="24" r="15" stroke="#F0A030" strokeWidth="3" />
+                <circle cx="24" cy="24" r="3" fill="#F0A030" />
+                <path d="M24 2v11M24 35v11M2 24h11M35 24h11" stroke="#fff" strokeWidth="3" />
+              </svg>
+            </>
           )}
           {placing && (
             <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-[#F0A030] text-[#0F2B4C] font-semibold text-xs px-4 py-2 rounded-full shadow-lg">

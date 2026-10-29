@@ -105,12 +105,15 @@
   pointer-events: none;
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
 }
-/* Modo "Punto de inicio": la mira se agranda y se puede arrastrar */
-.ce-start-drag {
-  cursor: grab;
-}
-.ce-start-drag .ce-start-reticle {
-  transform: scale(1.35);
+/* Modo "Punto de inicio": mira fija en el centro del visor */
+.ce-start-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 62px;
+  height: 62px;
+  transform: translate(-50%, -50%);
+  z-index: 15;
 }
 
 /* ── Pantalla de carga 360: círculo de Cana Escapes con el ícono girando ──

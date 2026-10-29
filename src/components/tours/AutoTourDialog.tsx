@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeftRight, Check, Loader2, Plus, Route, X } from "lucide-react";
+import { ArrowLeftRight, Loader2, Plus, RotateCcw, Route, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { TourHotspot, TourScene } from "@/lib/tours";
+import { PanoThumb } from "./PanoThumb";
 import { arrowRows, existingDirections, pairKey, proposeLinks } from "./autoLinks";
 
-// Vista previa de "Generar recorrido": lista de conexiones propuestas (según el área de cada foto)
-// que el admin puede quitar o completar antes de crear las flechas. Las ya existentes se muestran aparte.
+// "Generar recorrido": lista de conexiones entre fotos (con miniaturas). Junta las que ya existen
+// con las que se proponen según el área de cada foto. El admin marca/desmarca: las nuevas marcadas
+// crean sus flechas (ida y vuelta) y las existentes desmarcadas borran sus flechas. Se puede volver
+// a abrir en cualquier momento para editar el recorrido o "volver a sugerir" tras cambiar las áreas.
 
 interface Row {
   a: string;
@@ -16,12 +19,13 @@ interface Row {
   on: boolean;
 }
 
-export function AutoTourDialog({ open, scenes, hotspots, onClose, onCreate }: {
+export function AutoTourDialog({ open, scenes, hotspots, onClose, onApply }: {
   open: boolean;
   scenes: TourScene[];
   hotspots: TourHotspot[];
   onClose(): void;
-  onCreate(rows: Omit<TourHotspot, "id">[]): Promise<boolean>;
+  /** Crea las flechas nuevas y borra las de las conexiones quitadas */
+  onApply(create: Omit<TourHotspot, "id">[], remove: TourHotspot[]): Promise<boolean>;
 }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [newA, setNewA] = useState("");
@@ -40,51 +44,62 @@ export function AutoTourDialog({ open, scenes, hotspots, onClose, onCreate }: {
     return ab && ba ? "both" : ab || ba ? "one" : "none";
   };
 
-  // Conexiones que ya existen (con al menos una flecha) y que no están en la propuesta
-  const existing = useMemo(() => {
-    const seen = new Set<string>();
-    const list: { a: string; b: string }[] = [];
+  // Lo que hay ahora + lo que se sugiere (sin repetir)
+  function buildRows(): Row[] {
+    const out = new Map<string, Row>();
+    for (const p of proposeLinks(scenes)) out.set(pairKey(p.a, p.b), { ...p, on: true });
     for (const d of dirs) {
       const [a, b] = d.split(">");
-      if (!index.has(a) || !index.has(b) || seen.has(pairKey(a, b))) continue;
-      seen.add(pairKey(a, b));
-      list.push({ a, b });
+      if (!index.has(a) || !index.has(b) || out.has(pairKey(a, b))) continue;
+      out.set(pairKey(a, b), { a, b, why: "Hecha a mano", on: true });
     }
-    return list;
-  }, [dirs, index]);
+    return [...out.values()];
+  }
 
   useEffect(() => {
     if (!open) return;
-    // Lo que ya está conectado en las dos direcciones no se vuelve a proponer
-    setRows(proposeLinks(scenes).filter((p) => state(p.a, p.b) !== "both").map((p) => ({ ...p, on: true })));
+    setRows(buildRows());
     setNewA("");
     setNewB("");
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const noArea = scenes.filter((s) => !s.area?.trim());
   const toCreate = useMemo(() => arrowRows(rows.filter((r) => r.on), scenes, hotspots), [rows, scenes, hotspots]);
-  const proposed = new Set(rows.map((r) => pairKey(r.a, r.b)));
-  const shownExisting = existing.filter((e) => !proposed.has(pairKey(e.a, e.b)));
+  const toRemove = useMemo(() => {
+    const off = new Set(rows.filter((r) => !r.on).map((r) => pairKey(r.a, r.b)));
+    return hotspots.filter((h) => h.action === "scene" && h.target_scene_id && !h.master && off.has(pairKey(h.scene_id, h.target_scene_id)));
+  }, [rows, hotspots]);
+  const noArea = scenes.filter((s) => !s.area?.trim());
 
   function addRow() {
     if (!newA || !newB || newA === newB) return;
     const k = pairKey(newA, newB);
-    if (proposed.has(k)) {
-      setRows((r) => r.map((x) => (pairKey(x.a, x.b) === k ? { ...x, on: true } : x)));
-    } else {
-      setRows((r) => [...r, { a: newA, b: newB, why: "Añadida a mano", on: true }]);
-    }
+    if (rows.some((r) => pairKey(r.a, r.b) === k)) setRows((r) => r.map((x) => (pairKey(x.a, x.b) === k ? { ...x, on: true } : x)));
+    else setRows((r) => [...r, { a: newA, b: newB, why: "Añadida a mano", on: true }]);
     setNewB("");
   }
 
-  async function create() {
+  async function apply() {
+    if (toRemove.length && !confirm(`Se borrarán ${toRemove.length} ${toRemove.length === 1 ? "flecha" : "flechas"} de las conexiones que quitaste. ¿Seguir?`)) return;
     setBusy(true);
-    const ok = await onCreate(toCreate);
+    const ok = await onApply(toCreate, toRemove);
     setBusy(false);
     if (ok) onClose();
   }
 
   const select = "flex-1 min-w-0 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs";
+  const Photo = ({ id }: { id: string }) => {
+    const s = scenes[index.get(id) ?? 0];
+    return (
+      <span className="flex items-center gap-2 min-w-0 flex-1">
+        <PanoThumb src={s?.thumb_url} yaw={s?.initial_yaw} pitch={s?.initial_pitch} fov={s?.fov_initial} className="w-12 h-12 shrink-0 rounded-md" />
+        <span className="font-semibold truncate">{name(id)}</span>
+      </span>
+    );
+  };
+  const label = [
+    toCreate.length ? `Crear ${toCreate.length} ${toCreate.length === 1 ? "flecha" : "flechas"}` : "",
+    toRemove.length ? `borrar ${toRemove.length}` : "",
+  ].filter(Boolean).join(" y ");
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && !busy && onClose()}>
@@ -92,9 +107,8 @@ export function AutoTourDialog({ open, scenes, hotspots, onClose, onCreate }: {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Route size={18} className="text-[#F0A030]" /> Generar recorrido</DialogTitle>
           <DialogDescription>
-            Estas son las conexiones que salen del nombre del área de cada foto. Quita las que no van y añade las que falten.
-            Cada conexión crea dos flechas (ida y vuelta) con el nombre del área. Después revisas foto por foto y
-            arrastras cada flecha hasta su puerta.
+            Estas son las conexiones entre fotos: las que ya tiene el tour y las que se sugieren según el área de cada foto.
+            Desmarca las que no van (sus flechas se borran) y añade las que falten. Cada conexión tiene dos flechas: ida y vuelta.
           </DialogDescription>
         </DialogHeader>
 
@@ -105,24 +119,37 @@ export function AutoTourDialog({ open, scenes, hotspots, onClose, onCreate }: {
           </p>
         )}
 
-        <div className="flex-1 overflow-y-auto -mx-1 px-1 space-y-1">
-          {rows.length === 0 && (
-            <p className="text-xs text-gray-500 py-4 text-center">No hay conexiones nuevas que proponer: todas las fotos ya están conectadas.</p>
-          )}
+        <div className="flex-1 overflow-y-auto -mx-1 px-1 space-y-1.5">
           {rows.map((r, i) => {
             const st = state(r.a, r.b);
+            const status = !r.on
+              ? st === "none" ? "No se creará" : "Se borrarán sus flechas"
+              : st === "both" ? "Ya conectadas" : st === "one" ? "Falta la flecha de vuelta" : `Nueva · ${r.why}`;
             return (
-              <label key={pairKey(r.a, r.b)} className={cn("flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs cursor-pointer", r.on ? "border-gray-200 bg-white" : "border-dashed border-gray-200 bg-gray-50 text-gray-400")}>
+              <label
+                key={pairKey(r.a, r.b)}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg border px-2 py-1.5 text-xs cursor-pointer",
+                  r.on ? "border-gray-200 bg-white" : "border-dashed border-gray-200 bg-gray-50 opacity-60"
+                )}
+              >
                 <input
                   type="checkbox"
                   checked={r.on}
                   onChange={(e) => setRows((x) => x.map((y, j) => (j === i ? { ...y, on: e.target.checked } : y)))}
-                  className="accent-[#F0A030]"
+                  className="accent-[#F0A030] shrink-0"
                 />
-                <span className="font-semibold min-w-0 truncate">{name(r.a)}</span>
-                <ArrowLeftRight size={13} className="shrink-0 text-[#F0A030]" />
-                <span className="font-semibold min-w-0 truncate">{name(r.b)}</span>
-                <span className="ml-auto shrink-0 text-[11px] text-gray-400">{st === "one" ? "Falta la flecha de vuelta" : r.why}</span>
+                <Photo id={r.a} />
+                <ArrowLeftRight size={14} className="shrink-0 text-[#F0A030]" />
+                <Photo id={r.b} />
+                <span
+                  className={cn(
+                    "w-28 shrink-0 text-right text-[11px] leading-tight",
+                    !r.on && st !== "none" ? "text-red-600 font-semibold" : st === "both" && r.on ? "text-green-700" : st === "none" ? "text-[#b8761a]" : "text-gray-500"
+                  )}
+                >
+                  {status}
+                </span>
               </label>
             );
           })}
@@ -141,32 +168,21 @@ export function AutoTourDialog({ open, scenes, hotspots, onClose, onCreate }: {
               <Plus size={14} className="mr-1" /> Añadir
             </Button>
           </div>
-
-          {shownExisting.length > 0 && (
-            <div className="pt-3">
-              <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">Ya conectadas ({shownExisting.length})</h4>
-              <ul className="space-y-0.5">
-                {shownExisting.map((e) => (
-                  <li key={pairKey(e.a, e.b)} className="flex items-center gap-2 px-2.5 text-xs text-gray-500">
-                    <Check size={12} className="text-green-600 shrink-0" />
-                    <span className="truncate">{name(e.a)}</span>
-                    <ArrowLeftRight size={12} className="shrink-0" />
-                    <span className="truncate">{name(e.b)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="ghost" disabled={busy} onClick={onClose}>
-            <X size={14} className="mr-1" /> Cancelar
+        <DialogFooter className="gap-2 sm:gap-0 sm:justify-between">
+          <Button variant="ghost" disabled={busy} onClick={() => setRows(buildRows())} title="Vuelve a la sugerencia (útil si cambiaste las áreas de las fotos)">
+            <RotateCcw size={14} className="mr-1.5" /> Volver a sugerir
           </Button>
-          <Button disabled={busy || toCreate.length === 0} onClick={create} className="bg-[#F0A030] text-[#0F2B4C] hover:bg-[#e5952a]">
-            {busy ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Route size={14} className="mr-1.5" />}
-            Crear {toCreate.length} {toCreate.length === 1 ? "flecha" : "flechas"} y revisar
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" disabled={busy} onClick={onClose}>
+              <X size={14} className="mr-1" /> Cancelar
+            </Button>
+            <Button disabled={busy || (!toCreate.length && !toRemove.length)} onClick={apply} className="bg-[#F0A030] text-[#0F2B4C] hover:bg-[#e5952a]">
+              {busy ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Route size={14} className="mr-1.5" />}
+              {label ? `${label[0].toUpperCase()}${label.slice(1)}` : "Sin cambios"}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

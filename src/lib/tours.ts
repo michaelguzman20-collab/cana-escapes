@@ -26,6 +26,7 @@ export interface Tour {
   brand_position: BrandPosition;
   brand_size: number; // ancho en px
   whatsapp: string | null; // WhatsApp del propietario (el botón verde le escribe)
+  instagram: string | null; // usuario de Instagram del propietario (sin @)
   music_style: "zen" | "lounge" | "tropical" | "bossa"; // música de fondo (ambientMusic.ts)
   sort_order: number;
   created_at: string;
@@ -44,6 +45,22 @@ export function normalizeWhatsapp(raw: string | null | undefined) {
 /** Enlace para escribir por WhatsApp a un número con un mensaje ya escrito */
 export function whatsappLink(phone: string, text: string) {
   return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+}
+
+/**
+ * Usuario de Instagram a partir de lo que se escriba: "@villa.azul", "villa.azul" o el enlace del perfil
+ * ("instagram.com/villa.azul/?hl=es"). "" si no es válido.
+ */
+export function instagramUser(raw: string | null | undefined) {
+  let u = (raw ?? "").trim();
+  const m = u.match(/instagram\.com\/([^/?#\s]+)/i);
+  if (m) u = m[1];
+  u = u.replace(/^@+/, "");
+  return /^[A-Za-z0-9._]{1,30}$/.test(u) ? u : "";
+}
+
+export function instagramLink(user: string) {
+  return `https://www.instagram.com/${user}/`;
 }
 
 /** Enlace externo seguro (añade https:// si falta) */

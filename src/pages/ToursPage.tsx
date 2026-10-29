@@ -6,7 +6,7 @@ import { useSeo } from "@/lib/useSeo";
 import { SEO_PAGES } from "@/lib/seoPages";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { LandingFooter } from "@/components/cana/LandingFooter";
-import { descriptionIn, fetchPublishedTours, type TourCard } from "@/lib/tours";
+import { descriptionIn, fetchPublishedTours, markToursSeen, type TourCard } from "@/lib/tours";
 import { PanoThumb } from "@/components/tours/PanoThumb";
 
 // Galería pública de recorridos 360: canaescapes.com/tours
@@ -15,6 +15,7 @@ function ToursContent() {
   const [tours, setTours] = useState<TourCard[] | null>(null);
 
   useEffect(() => {
+    markToursSeen(); // ya conoce los tours: el botón flotante deja de decir "Nuevo"
     fetchPublishedTours()
       .then(setTours)
       .catch(() => setTours([]));

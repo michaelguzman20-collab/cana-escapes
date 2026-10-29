@@ -7,6 +7,9 @@
 // Variables de entorno (Vercel y .env local): R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
 // R2_BUCKET (por defecto cana-media), VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY.
 // En local la sirve el middleware de vite.config.ts (vite no ejecuta /api por sí solo).
+// La carpeta que se publica en Vercel no lleva @types/node: solo se usa process.env
+declare const process: { env: Record<string, string | undefined> };
+
 
 const PATH_RE = /^tours\/[a-z0-9-]+\/[a-z0-9-]+\.(webp|jpg)$/;
 const enc = new TextEncoder();

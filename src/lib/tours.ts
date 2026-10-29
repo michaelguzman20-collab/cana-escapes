@@ -53,6 +53,20 @@ export function externalUrl(raw: string | null | undefined) {
   return /^https?:\/\//i.test(u) ? u : `https://${u}`;
 }
 
+// La etiqueta "Nuevo" del botón flotante de Tours 360 deja de salir cuando la persona ya vio los tours
+const TOURS_SEEN_KEY = "ce-tours-seen";
+export function markToursSeen() {
+  try { localStorage.setItem(TOURS_SEEN_KEY, "1"); } catch { /* sin almacenamiento */ }
+}
+export function toursSeen() {
+  try { return !!localStorage.getItem(TOURS_SEEN_KEY); } catch { return false; }
+}
+
+/** Pantalla de teléfono (por debajo del punto `sm` de Tailwind): ahí el visor empieza con los botones y las fotos ocultos */
+export function isPhoneWidth() {
+  return typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches;
+}
+
 export interface TourScene {
   id: string;
   tour_id: string;

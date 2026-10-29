@@ -8,6 +8,7 @@ import { GuestLayout } from "@/components/layout/GuestLayout";
 import { LoginPage } from "@/pages/LoginPage";
 import { Toaster } from "@/components/ui/toaster";
 import { supabaseConfigured } from "@/lib/supabase";
+import { VisitTracker } from "@/lib/visits";
 import { HomePage } from "@/pages/HomePage";
 import { Logo } from "@/components/layout/Logo";
 
@@ -33,6 +34,7 @@ const AdminWhatsapp = lazyPage(() => import("@/pages/admin/AdminWhatsapp"), "Adm
 const AdminTrack = lazyPage(() => import("@/pages/admin/AdminTrack"), "AdminTrack");
 const AdminCanaDna = lazyPage(() => import("@/pages/admin/AdminCanaDna"), "AdminCanaDna");
 const AdminTours = lazyPage(() => import("@/pages/admin/AdminTours"), "AdminTours");
+const AdminVisitas = lazyPage(() => import("@/pages/admin/AdminVisitas"), "AdminVisitas");
 const TrackTeamPage = lazyPage(() => import("@/pages/TrackTeamPage"), "TrackTeamPage");
 const GuestDashboard = lazyPage(() => import("@/pages/guest/GuestDashboard"), "GuestDashboard");
 const ShareView = lazyPage(() => import("@/pages/share/ShareView"), "ShareView");
@@ -115,6 +117,7 @@ export default function App() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
+      <VisitTracker />
       <AuthProvider>
         <Suspense fallback={<PageLoader />}>
         <Routes>
@@ -142,6 +145,7 @@ export default function App() {
               <Route path="/admin/track" element={<AdminTrack />} />
               <Route path="/admin/cana-dna" element={<AdminCanaDna />} />
               <Route path="/admin/tours" element={<AdminTours />} />
+              <Route path="/admin/visitas" element={<AdminVisitas />} />
               <Route path="/admin/configuracion" element={<AdminConfiguracion />} />
             </Route>
           </Route>

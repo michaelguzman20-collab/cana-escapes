@@ -9,14 +9,22 @@ interface LangContextValue {
 
 const LangContext = createContext<LangContextValue | null>(null);
 
-// Default language is Spanish. The choice is persisted in localStorage so it
-// stays consistent across pages (each public page mounts its own LangProvider).
+// Until the visitor picks a language, it follows the browser: Spanish if the device is in
+// Spanish, English otherwise. The choice is persisted in localStorage so it stays
+// consistent across pages (each public page mounts its own LangProvider).
 const STORAGE_KEY = "ce_lang";
 
 function getInitialLang(): string {
   if (typeof window === "undefined") return "es";
-  const saved = window.localStorage.getItem(STORAGE_KEY);
-  return saved === "en" || saved === "es" ? saved : "es";
+  let saved: string | null = null;
+  try {
+    saved = window.localStorage.getItem(STORAGE_KEY);
+  } catch {
+    /* ignore storage errors (private mode, etc.) */
+  }
+  if (saved === "en" || saved === "es") return saved;
+  const browser = (navigator.languages?.[0] || navigator.language || "es").toLowerCase();
+  return browser.startsWith("es") ? "es" : "en";
 }
 
 export function LangProvider({ children }: { children: ReactNode }) {

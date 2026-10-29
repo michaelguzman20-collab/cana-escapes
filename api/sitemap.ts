@@ -2,6 +2,9 @@
 // (dist/seo-routes.json, que genera la compilación) con los tours 360 publicados, así cada tour nuevo
 // aparece solo en el mapa del sitio.
 // Variables de entorno: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY.
+// La carpeta que se publica en Vercel no lleva @types/node: solo se usa process.env
+declare const process: { env: Record<string, string | undefined> };
+
 
 const SITE = "https://canaescapes.com";
 

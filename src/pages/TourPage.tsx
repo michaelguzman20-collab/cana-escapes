@@ -1,12 +1,13 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ChevronUp, Info, Link2, MoreVertical, Music, Rotate3d, VolumeX, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Hand, Info, Link2, Music, Rotate3d, VolumeX, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LangProvider, useLang } from "@/lib/LangContext";
 import { useSeo } from "@/lib/useSeo";
 import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
-import { descriptionIn, fetchTourBySlug, mediaUrl, normalizeWhatsapp, startScene, tourUrl, whatsappLink, type FullTour } from "@/lib/tours";
+import { descriptionIn, fetchTourBySlug, isPhoneWidth, markToursSeen, mediaUrl, normalizeWhatsapp, startScene, tourUrl, whatsappLink, type FullTour } from "@/lib/tours";
 import { BrandLogo } from "@/components/tours/BrandLogo";
+import { recordSceneView, startPageVisit } from "@/lib/visits";
 import { AmbientMusic } from "@/components/tours/ambientMusic";
 import { LOADER_IMG } from "@/components/tours/markerHtml";
 import "@/components/tours/tours.css";
@@ -18,6 +19,39 @@ const loadViewer = () => import("@/components/tours/TourViewer");
 const TourViewer = lazy(loadViewer);
 
 const MUSIC_KEY = "ce-tour-music";
+const HINT_KEY = "ce-tour-hint";
+
+// Primera visita: una mano que se desliza indica que la foto se mueve. Se quita al primer toque o a los 7 s
+// y no vuelve a salir en ese navegador.
+function FirstVisitHint({ text }: { text: string }) {
+  const [show, setShow] = useState(() => {
+    try { return !localStorage.getItem(HINT_KEY); } catch { return false; }
+  });
+  useEffect(() => {
+    if (!show) return;
+    const hide = () => {
+      setShow(false);
+      try { localStorage.setItem(HINT_KEY, "seen"); } catch { /* sin almacenamiento */ }
+    };
+    const timer = setTimeout(hide, 7000);
+    window.addEventListener("pointerdown", hide, { once: true });
+    window.addEventListener("wheel", hide, { once: true });
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("pointerdown", hide);
+      window.removeEventListener("wheel", hide);
+    };
+  }, [show]);
+  if (!show) return null;
+  return (
+    <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+      <div className="ce-hint flex flex-col items-center gap-3 px-6 py-5 rounded-2xl bg-black/50 backdrop-blur-sm text-white">
+        <Hand size={40} strokeWidth={1.6} className="ce-hint-hand" />
+        <p className="text-sm font-semibold">{text}</p>
+      </div>
+    </div>
+  );
+}
 
 // Misma pantalla de carga que el visor: círculo de Cana Escapes con el ícono 360 girando
 function Tours360Loader({ text }: { text: string }) {
@@ -37,9 +71,9 @@ function TourContent() {
   const [full, setFull] = useState<FullTour | null | undefined>(undefined);
   const [copied, setCopied] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
-  // Teléfono: la tira de fotos y los botones de arriba se pueden ocultar para ver más imagen
-  const [stripOpen, setStripOpen] = useState(true);
-  const [controlsOpen, setControlsOpen] = useState(true);
+  // Teléfono: la tira de fotos y los botones de arriba empiezan ocultos para ver más imagen
+  const [stripOpen, setStripOpen] = useState(() => !isPhoneWidth());
+  const [controlsOpen, setControlsOpen] = useState(() => !isPhoneWidth());
   const music = useRef<AmbientMusic | null>(null);
   const [musicOn, setMusicOn] = useState(false);
   const fullRef = useRef(full);
@@ -58,6 +92,14 @@ function TourContent() {
   }, [slug]);
 
   useEffect(() => () => music.current?.stop(), []);
+
+  // Visita al tour (una vez); cada foto que se mira se registra aparte en onSceneView
+  const tourId = full?.tour.id;
+  useEffect(() => {
+    if (!tourId) return;
+    startPageVisit(`/tour/${slug}`, { tourId });
+    markToursSeen();
+  }, [tourId, slug]);
 
   function toggleMusic() {
     if (musicOn) {
@@ -117,6 +159,16 @@ function TourContent() {
     ? whatsappLink(ownerWa, `${t("tours_wa_owner")} ${full.tour.title}: ${url}`)
     : `https://wa.me/?text=${encodeURIComponent(`${full.tour.title} — ${t("tours_wa_text")} ${url}`)}`;
   const waLabel = ownerWa ? t("tours_contact") : t("tours_share_wa");
+  const langButton = (
+    <button
+      onClick={() => setLang(lang === "es" ? "en" : "es")}
+      aria-label={lang === "es" ? "View in English" : "Ver en español"}
+      title={lang === "es" ? "View in English" : "Ver en español"}
+      className="h-9 px-2.5 rounded-full bg-black/40 text-white text-xs font-semibold uppercase hover:bg-black/60"
+    >
+      {lang === "es" ? "EN" : "ES"}
+    </button>
+  );
 
   return (
     <div className="fixed inset-0 bg-black overflow-hidden">
@@ -134,6 +186,7 @@ function TourContent() {
           gyroLabel={t("tours_gyro")}
           stripLabels={{ hide: t("tours_hide_photos"), show: t("tours_show_photos") }}
           onStripToggle={setStripOpen}
+          onSceneView={(sceneId) => recordSceneView(`/tour/${slug}`, full.tour.id, sceneId)}
           lang={lang}
         />
       </Suspense>
@@ -164,23 +217,21 @@ function TourContent() {
           </div>
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0 pointer-events-auto">
-          {/* Mostrar / ocultar los botones (solo teléfono) */}
-          <button
-            onClick={() => setControlsOpen((v) => !v)}
-            aria-label={controlsOpen ? t("tours_hide_buttons") : t("tours_show_buttons")}
-            aria-expanded={controlsOpen}
-            title={controlsOpen ? t("tours_hide_buttons") : t("tours_show_buttons")}
-            className="sm:hidden h-9 w-9 rounded-full bg-black/40 text-white flex items-center justify-center"
-          >
-            {controlsOpen ? <ChevronUp size={18} /> : <MoreVertical size={18} />}
-          </button>
+          {/* Teléfono: el idioma queda siempre a la vista, junto a la flecha que muestra / oculta los demás botones */}
+          <div className="flex items-center gap-2 sm:hidden">
+            {langButton}
+            <button
+              onClick={() => setControlsOpen((v) => !v)}
+              aria-label={controlsOpen ? t("tours_hide_buttons") : t("tours_show_buttons")}
+              aria-expanded={controlsOpen}
+              title={controlsOpen ? t("tours_hide_buttons") : t("tours_show_buttons")}
+              className="h-9 w-9 rounded-full bg-black/40 text-white flex items-center justify-center"
+            >
+              {controlsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </button>
+          </div>
           <div className={cn("flex-col sm:flex-row items-end sm:items-center gap-2", controlsOpen ? "flex" : "hidden sm:flex")}>
-          <button
-            onClick={() => setLang(lang === "es" ? "en" : "es")}
-            className="h-9 px-2.5 rounded-full bg-black/40 text-white text-xs font-semibold uppercase hover:bg-black/60"
-          >
-            {lang === "es" ? "EN" : "ES"}
-          </button>
+          <span className="hidden sm:contents">{langButton}</span>
           <button
             onClick={toggleMusic}
             aria-label={musicOn ? t("tours_music_off") : t("tours_music_on")}
@@ -230,6 +281,7 @@ function TourContent() {
         </div>
       </div>
       <BrandLogo tour={full.tour} stripHidden={!stripOpen} />
+      <FirstVisitHint text={window.matchMedia("(pointer: coarse)").matches ? t("tours_hint_touch") : t("tours_hint_mouse")} />
 
       {showInfo && (
         <div className="absolute top-24 right-14 left-3 sm:right-3 sm:left-auto sm:w-96 z-20 rounded-2xl bg-white/95 backdrop-blur p-4 pr-10 shadow-2xl text-sm text-gray-700">

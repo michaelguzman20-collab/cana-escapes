@@ -151,3 +151,20 @@
   0% { transform: rotateY(0deg); }
   100% { transform: rotateY(360deg); }
 }
+
+/* ── Pista de la primera visita (TourPage) ── */
+/* Entra solo con escala (sin opacidad): si la animación no llega a correr, la pista igual se ve */
+.ce-hint {
+  animation: ce-hint-in 0.4s ease-out;
+}
+.ce-hint-hand {
+  animation: ce-hint-swipe 1.8s ease-in-out infinite;
+}
+@keyframes ce-hint-in {
+  from { transform: scale(0.85); }
+  to { transform: scale(1); }
+}
+@keyframes ce-hint-swipe {
+  0%, 100% { transform: translateX(-28px) rotate(-8deg); }
+  50% { transform: translateX(28px) rotate(8deg); }
+}

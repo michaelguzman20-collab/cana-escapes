@@ -4,6 +4,9 @@
 // Variables de entorno: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (solo se leen tours publicados).
 
 import { injectSeo } from "./_seo";
+// La carpeta que se publica en Vercel no lleva @types/node: solo se usa process.env
+declare const process: { env: Record<string, string | undefined> };
+
 
 const SITE = "https://canaescapes.com";
 const DEFAULT_DESC = "Recorrido virtual 360° de una propiedad gestionada por Cana Escapes en Punta Cana.";

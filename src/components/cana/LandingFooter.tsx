@@ -1,7 +1,8 @@
-import { Instagram } from "lucide-react";
+import { Instagram, Rotate3d } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useLang } from "@/lib/LangContext";
 import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
+import { toursSeen } from "@/lib/tours";
 
 const WA_URL = "https://wa.me/18092102773";
 const IG_URL = "https://instagram.com/canaescapes";
@@ -95,33 +96,49 @@ export function LandingFooter() {
         </div>
       </footer>
 
-      {/* WhatsApp floating button */}
-      <a
-        href={WA_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={t("wa_float_label")}
-        className="group fixed bottom-6 right-6 z-50 flex items-center gap-3 animate-float"
-      >
-        {/* Inviting label (slides in on hover, desktop) */}
-        <span className="hidden sm:flex items-center whitespace-nowrap px-4 py-2 rounded-full bg-white text-[#0F2B4C] text-sm font-semibold shadow-lg opacity-0 translate-x-3 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
-          {t("wa_float_label")}
-        </span>
+      {/* Floating buttons: Tours 360 (new service) above WhatsApp */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 animate-float">
+        {!location.pathname.startsWith("/tours") && (
+        <button onClick={() => go("/tours")} aria-label={t("tours_float_label")} className="group flex items-center gap-3">
+          <span className="hidden sm:flex items-center whitespace-nowrap px-4 py-2 rounded-full bg-white text-[#0F2B4C] text-sm font-semibold shadow-lg opacity-0 translate-x-3 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+            {t("tours_float_label")}
+          </span>
+          <span className="relative w-10 h-10 flex-shrink-0">
+            <span className="absolute inset-0 rounded-full bg-[#F0A030] opacity-60 animate-ping" />
+            {/* Same badge as the tour viewer header */}
+            <span className="relative w-10 h-10 bg-[#0F2B4C] border-2 border-[#F0A030] text-[#F0A030] rounded-full flex items-center justify-center shadow-xl shadow-[#0F2B4C]/40 transition-all duration-300 group-hover:scale-110">
+              <Rotate3d size={20} strokeWidth={1.8} />
+            </span>
+            {!toursSeen() && (
+              <span className="absolute -top-2 -left-3 h-4 px-1.5 bg-[#F0A030] text-[#0F2B4C] text-[9px] font-extrabold uppercase rounded-full flex items-center ring-2 ring-white">
+                {t("tours_float_new")}
+              </span>
+            )}
+          </span>
+        </button>
+        )}
 
-        {/* Button */}
-        <span className="relative w-16 h-16 flex-shrink-0">
-          {/* Pulsing ring */}
-          <span className="absolute inset-0 rounded-full bg-[#25D366] opacity-70 animate-ping" />
-          {/* Circle */}
-          <span className="relative w-16 h-16 bg-[#25D366] group-hover:bg-[#1ebe5d] text-white rounded-full flex items-center justify-center shadow-xl shadow-[#25D366]/40 group-hover:shadow-2xl transition-all duration-300 group-hover:scale-110">
-            <WhatsAppIcon size={34} />
+        <a href={WA_URL} target="_blank" rel="noopener noreferrer" aria-label={t("wa_float_label")} className="group flex items-center gap-3">
+          {/* Inviting label (slides in on hover, desktop) */}
+          <span className="hidden sm:flex items-center whitespace-nowrap px-4 py-2 rounded-full bg-white text-[#0F2B4C] text-sm font-semibold shadow-lg opacity-0 translate-x-3 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+            {t("wa_float_label")}
           </span>
-          {/* New-message badge */}
-          <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center ring-2 ring-white animate-bounce">
-            1
+
+          {/* Button */}
+          <span className="relative w-10 h-10 flex-shrink-0">
+            {/* Pulsing ring */}
+            <span className="absolute inset-0 rounded-full bg-[#25D366] opacity-70 animate-ping" />
+            {/* Circle */}
+            <span className="relative w-10 h-10 bg-[#25D366] group-hover:bg-[#1ebe5d] text-white rounded-full flex items-center justify-center shadow-xl shadow-[#25D366]/40 group-hover:shadow-2xl transition-all duration-300 group-hover:scale-110">
+              <WhatsAppIcon size={22} />
+            </span>
+            {/* New-message badge */}
+            <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white animate-bounce">
+              1
+            </span>
           </span>
-        </span>
-      </a>
+        </a>
+      </div>
     </>
   );
 }

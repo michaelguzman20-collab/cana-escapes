@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Crosshair, GalleryHorizontal, Smartphone, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Crosshair, GalleryHorizontal, Smartphone, X } from "lucide-react";
 import { Viewer } from "@photo-sphere-viewer/core";
 import { MarkersPlugin, type MarkerConfig } from "@photo-sphere-viewer/markers-plugin";
 import { VirtualTourPlugin, type VirtualTourNode } from "@photo-sphere-viewer/virtual-tour-plugin";
@@ -14,7 +14,7 @@ import { addonElement, addonMarker } from "./tourAddons";
 import { PanoThumb } from "./PanoThumb";
 import { limitTexturesOnPhones, PSV_LANG_EN, PSV_LANG_ES } from "./viewerSetup";
 import {
-  addonsForScene, areaIn, clampPitch, mediaRetryUrl, mediaUrl, sphereCorrection, startScene, zoomLevelFor, type FullTour, type TourHotspot, type TourScene,
+  addonsForScene, areaIn, clampPitch, isPhoneWidth, mediaRetryUrl, mediaUrl, sphereCorrection, startScene, zoomLevelFor, type FullTour, type TourHotspot, type TourScene,
 } from "@/lib/tours";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +35,8 @@ interface Props {
   stripLabels?: { hide: string; show: string };
   /** Avisa cuando la tira de fotos se oculta o se muestra (para recolocar el logo) */
   onStripToggle?(open: boolean): void;
+  /** Avisa cada vez que se muestra una foto (para contar qué fotos se miran) */
+  onSceneView?(sceneId: string): void;
 }
 
 // Pie de foto: solo el área (Sala, Cocina…); el nombre del tour ya está arriba
@@ -78,13 +80,17 @@ function Card({ addon, onClose }: { addon: TourHotspot; onClose(): void }) {
   );
 }
 
-export default function TourViewer({ full, loadingText, startLabel, lang = "es", gyroLabel, stripLabels, onStripToggle }: Props) {
+export default function TourViewer({ full, loadingText, startLabel, lang = "es", gyroLabel, stripLabels, onStripToggle, onSceneView }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tourRef = useRef<VirtualTourPlugin | null>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const goRef = useRef<(id: string) => void>(() => undefined);
+  // Vuelve a crear los marcadores con los nombres de las áreas en otro idioma
+  const relabelRef = useRef<(lng: string) => void>(() => undefined);
   const langRef = useRef(lang);
   langRef.current = lang;
+  const onSceneViewRef = useRef(onSceneView); // el visor se crea una sola vez
+  onSceneViewRef.current = onSceneView;
   const first = startScene(full);
   const [current, setCurrent] = useState(first?.id ?? "");
   const [card, setCard] = useState<TourHotspot | null>(null);
@@ -92,8 +98,8 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
   const gyroRef = useRef<GyroscopePlugin | null>(null);
   const [gyroSupported, setGyroSupported] = useState(false);
   const [gyroOn, setGyroOn] = useState(false);
-  // En el teléfono la tira de fotos se puede ocultar para ver más imagen (en computadora siempre se ve)
-  const [stripOpen, setStripOpen] = useState(true);
+  // En el teléfono la tira de fotos empieza oculta para ver más imagen (en computadora siempre se ve)
+  const [stripOpen, setStripOpen] = useState(() => !isPhoneWidth());
   const hasStrip = full.scenes.length > 1;
   const toggleStrip = (open: boolean) => {
     setStripOpen(open);
@@ -102,27 +108,32 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
 
   useEffect(() => {
     if (!containerRef.current || !first) return;
-    const titles = new Map(full.scenes.map((s) => [s.id, areaIn(s, langRef.current) || s.title]));
     const sceneById = new Map(full.scenes.map((s) => [s.id, s]));
     const addonById = new Map(full.hotspots.map((h) => [h.id, h]));
 
+    // Marcadores de una escena; los que llevan a otra foto muestran el nombre del área en el idioma dado
+    const sceneMarkers = (s: TourScene, logo: string | null, lng: string) => {
+      const markers: MarkerConfig[] = addonsForScene(full.hotspots, s.id)
+        .filter((h) => h.action !== "scene" || (h.target_scene_id && sceneById.has(h.target_scene_id)))
+        .map((h) => {
+          const target = h.action === "scene" ? sceneById.get(h.target_scene_id!) : undefined;
+          return addonMarker(h, addonElement(h, { label: target ? areaIn(target, lng) || target.title : undefined }));
+        });
+      if (logo && full.tour.nadir_logo) markers.push(nadirMarker(logo, full.tour.nadir_size, full.tour.nadir_opacity));
+      return markers as VirtualTourNode["markers"];
+    };
+
     const buildNodes = (logo: string | null): VirtualTourNode[] =>
-      full.scenes.map((s) => {
-        const markers: MarkerConfig[] = addonsForScene(full.hotspots, s.id)
-          .filter((h) => h.action !== "scene" || (h.target_scene_id && titles.has(h.target_scene_id)))
-          .map((h) => addonMarker(h, addonElement(h, { label: h.action === "scene" ? titles.get(h.target_scene_id!) : undefined })));
-        if (logo && full.tour.nadir_logo) markers.push(nadirMarker(logo, full.tour.nadir_size, full.tour.nadir_opacity));
-        return {
-          id: s.id,
-          panorama: mediaUrl(s.image_url),
-          name: s.title,
-          caption: captionOf(s, langRef.current),
-          thumbnail: mediaUrl(s.thumb_url) ?? undefined,
-          sphereCorrection: sphereCorrection(s),
-          links: [],
-          markers: markers as VirtualTourNode["markers"],
-        };
-      });
+      full.scenes.map((s) => ({
+        id: s.id,
+        panorama: mediaUrl(s.image_url),
+        name: s.title,
+        caption: captionOf(s, langRef.current),
+        thumbnail: mediaUrl(s.thumb_url) ?? undefined,
+        sphereCorrection: sphereCorrection(s),
+        links: [],
+        markers: sceneMarkers(s, logo, langRef.current),
+      }));
 
     // Se crea en el siguiente tick: en desarrollo React monta→desmonta→monta y destruir un visor
     // mientras carga deja la foto "Cargando…" para siempre en el segundo.
@@ -190,9 +201,11 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
       }));
       const tour = viewer.getPlugin(VirtualTourPlugin) as VirtualTourPlugin;
       tourRef.current = tour;
+      relabelRef.current = (lng) => full.scenes.forEach((s) => tour.updateNode({ id: s.id, markers: sceneMarkers(s, logo, lng) }));
       viewerRef.current = viewer;
       tour.addEventListener("node-changed", ({ node }) => {
         setCurrent(node.id);
+        onSceneViewRef.current?.(node.id);
         const s = sceneById.get(node.id);
         if (s) {
           preload(s);
@@ -245,6 +258,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
       cancelled = true;
       clearTimeout(timer);
       tourRef.current = null;
+      relabelRef.current = () => undefined;
       viewerRef.current = null;
       gyroRef.current = null;
       goRef.current = () => undefined;
@@ -261,6 +275,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
     if (!v) return;
     v.setOption("lang", lang === "en" ? PSV_LANG_EN : PSV_LANG_ES);
     if (s) v.setOption("caption", captionOf(s, lang));
+    relabelRef.current(lang);
   }, [lang]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
@@ -306,7 +321,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
           aria-label={stripLabels?.show ?? "Ver fotos"}
           className="sm:hidden absolute left-1/2 -translate-x-1/2 bottom-14 z-10 flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-black/45 backdrop-blur-sm text-white text-xs font-semibold"
         >
-          <GalleryHorizontal size={15} /> {stripLabels?.show ?? "Ver fotos"}
+          <GalleryHorizontal size={15} /> {stripLabels?.show ?? "Ver fotos"} <ChevronUp size={15} />
         </button>
       )}
       {hasStrip && (

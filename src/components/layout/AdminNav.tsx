@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
-import { LayoutDashboard, CalendarDays, CalendarRange, Settings, LogOut, User, Users, Globe, UserCheck, Receipt, TrendingUp, Landmark, Wrench, Banknote, Bell, CheckCheck, KeyRound, MessageCircle, Calculator, MapPin, Dna, Rotate3d } from "lucide-react";
+import { LayoutDashboard, CalendarDays, CalendarRange, Settings, LogOut, User, Users, Globe, UserCheck, Receipt, TrendingUp, Landmark, Wrench, Banknote, Bell, CheckCheck, KeyRound, MessageCircle, Calculator, MapPin, Dna, Rotate3d, BarChart3 } from "lucide-react";
 import { Logo } from "./Logo";
 import { PropertySwitcher } from "./PropertySwitcher";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ const navItems = [
   { to: "/admin/calculadora",   icon: Calculator,      label: "Calculadora"     },
   { to: "/admin/cana-dna",      icon: Dna,             label: "Cana DNA"        },
   { to: "/admin/tours",         icon: Rotate3d,        label: "Tours 360"       },
+  { to: "/admin/visitas",       icon: BarChart3,       label: "Visitas"         },
   { to: "/admin/contabilidad",  icon: Landmark,        label: "Financiero"      },
   { to: "/admin/whatsapp",      icon: MessageCircle,   label: "WhatsApp Bot"    },
   { to: "/admin/track",         icon: MapPin,          label: "Cana Track"      },

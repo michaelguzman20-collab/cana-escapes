@@ -80,7 +80,7 @@ function WhatsappInput({ value, onChange, className }: { value: string; onChange
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="WhatsApp del propietario"
+        placeholder="Ej: 809 555 1234"
         inputMode="tel"
         className={cn("pl-8", bad && "!border-red-400")}
       />
@@ -98,7 +98,7 @@ function InstagramInput({ value, onChange, className, dark }: { value: string; o
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Instagram del propietario"
+        placeholder="Ej: @villaazul o enlace"
         className={cn("pl-8", user && "pr-8", bad && "!border-red-400")}
       />
       {user && (

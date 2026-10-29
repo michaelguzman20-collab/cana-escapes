@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import type { MusicStyle } from "@/components/tours/ambientMusic";
 
 // Tours 360 (canaescapes.com/tours y /tour/:slug). Tablas: tours, tour_scenes, tour_hotspots.
 // Ángulos (yaw/pitch) en radianes, como los usa Photo Sphere Viewer.
@@ -11,6 +12,7 @@ export interface Tour {
   description_en: string | null;
   cover_url: string | null;
   published: boolean;
+  showcase: boolean; // sale como ejemplo en /tours (los tours de clientes solo se ven por su enlace)
   property_name: string | null;
   location: string | null;
   bedrooms: number | null;
@@ -27,7 +29,7 @@ export interface Tour {
   brand_size: number; // ancho en px
   whatsapp: string | null; // WhatsApp del propietario (el botón verde le escribe)
   instagram: string | null; // usuario de Instagram del propietario (sin @)
-  music_style: "zen" | "lounge" | "tropical" | "bossa"; // música de fondo (ambientMusic.ts)
+  music_style: MusicStyle; // música de fondo (ambientMusic.ts)
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -256,11 +258,13 @@ export async function fetchTourContent(tour: Tour): Promise<FullTour> {
 /** Tour de la galería con la vista inicial de su escena de portada (para recortar la miniatura) */
 export type TourCard = Tour & { start: Pick<TourScene, "initial_yaw" | "initial_pitch" | "fov_initial"> | null };
 
+/** Tours de ejemplo para la página pública /tours (publicados y marcados como ejemplo) */
 export async function fetchPublishedTours(): Promise<TourCard[]> {
   const { data, error } = await db
     .from("tours")
     .select("*, start:tour_scenes!tours_start_scene_fk(initial_yaw, initial_pitch, fov_initial)")
     .eq("published", true)
+    .eq("showcase", true)
     .order("sort_order")
     .order("created_at", { ascending: false });
   if (error) throw error;

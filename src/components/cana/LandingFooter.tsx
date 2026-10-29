@@ -97,7 +97,7 @@ export function LandingFooter() {
       </footer>
 
       {/* Floating buttons: Tours 360 (new service) above WhatsApp */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4 animate-float">
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-7 animate-float">
         {!location.pathname.startsWith("/tours") && (
         <button onClick={() => go("/tours")} aria-label={t("tours_float_label")} className="group flex items-center gap-3">
           <span className="hidden sm:flex items-center whitespace-nowrap px-4 py-2 rounded-full bg-white text-[#0F2B4C] text-sm font-semibold shadow-lg opacity-0 translate-x-3 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">

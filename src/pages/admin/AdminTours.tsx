@@ -1,12 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, horizontalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  Rotate3d, Plus, ArrowLeft, ExternalLink, Copy, Save, Trash2, UploadCloud, Star, LayoutGrid, Pencil,
+  Rotate3d, ClipboardList, Plus, ArrowLeft, ExternalLink, Copy, Save, Trash2, UploadCloud, Star, LayoutGrid, Pencil,
   Navigation, Info, Crosshair, Eye, Loader2, Settings2, Image as ImageIcon, X, GripVertical, RefreshCw, Download, MoveRight, Type, Wand2, Play, Square, Smartphone, Route, CheckCheck, ChevronLeft, ChevronRight, Instagram,
 } from "lucide-react";
 import { AmbientMusic, MUSIC_STYLES, type MusicStyle } from "@/components/tours/ambientMusic";
@@ -38,6 +38,8 @@ import { AutoTourDialog } from "@/components/tours/AutoTourDialog";
 //  · "Ajustes del tour": enlace, datos de la propiedad, autorrotación.
 
 const TourEditorViewer = lazy(() => import("@/components/tours/TourEditorViewer"));
+// Marca de agua de Cana Escapes para tours sin propietario (promociona el servicio Tours 360)
+const CANA_LOGO = "/brand/logo-light.png";
 
 const DEG = 180 / Math.PI;
 // Tiempo máximo de una escritura en la BD antes de avisar (para que "Guardar" no quede colgado)
@@ -124,6 +126,14 @@ export function AdminTours() {
   const [newTitle, setNewTitle] = useState("");
   const [newWhatsapp, setNewWhatsapp] = useState("");
   const [creating, setCreating] = useState(false);
+  // ?tour=<id> abre ese tour directo (por ejemplo, al crearlo desde una ficha de cliente)
+  const [params, setParams] = useSearchParams();
+  useEffect(() => {
+    const id = params.get("tour");
+    if (!id) return;
+    setOpenId(id);
+    setParams({}, { replace: true });
+  }, [params, setParams]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -181,9 +191,14 @@ export function AdminTours() {
               <p className="text-xs text-gray-500">Sube fotos 360, únelas con flechas y comparte el enlace del recorrido.</p>
             </div>
           </div>
-          <Link to="/tours" target="_blank" className="inline-flex items-center gap-1.5 text-[#0F2B4C] font-semibold hover:text-[#b8761a]">
-            Ver galería pública <ExternalLink size={14} />
-          </Link>
+          <div className="flex flex-wrap items-center gap-4">
+            <Link to="/admin/tours/fichas" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0F2B4C] text-white font-semibold hover:bg-[#173a63]">
+              <ClipboardList size={15} className="text-[#F0A030]" /> Fichas de clientes
+            </Link>
+            <Link to="/tours" target="_blank" className="inline-flex items-center gap-1.5 text-[#0F2B4C] font-semibold hover:text-[#b8761a]">
+              Ver página pública <ExternalLink size={14} />
+            </Link>
+          </div>
         </div>
 
         <StorageNotice />
@@ -692,6 +707,19 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
             <label className={cn("flex items-center gap-2 px-2 text-xs font-semibold", isEditor ? "text-white/80" : "text-gray-600")}>
               <Switch checked={tour.published} onCheckedChange={togglePublished} />
               {tour.published ? "Publicado" : "Borrador"}
+            </label>
+            {/* Ejemplo: sale en canaescapes.com/tours. Los tours de clientes se dejan sin marcar y solo se ven por su enlace */}
+            <label
+              title="Mostrar este tour como ejemplo en la página Tours 360. Los tours de clientes déjalos sin marcar: solo se ven por su enlace."
+              className={cn("flex items-center gap-2 px-2 text-xs font-semibold", isEditor ? "text-white/80" : "text-gray-600")}
+            >
+              <Switch
+                checked={tour.showcase}
+                onCheckedChange={async (v) => {
+                  if (await patchTour({ showcase: v })) toast({ title: v ? "Sale como ejemplo en Tours 360" : "Ya no sale en Tours 360 (solo por su enlace)" });
+                }}
+              />
+              Ejemplo en /tours
             </label>
             <Button variant="outline" size="sm" onClick={() => copyLink(tour.slug)} className={cn(isEditor && "bg-transparent border-white/20 text-white hover:bg-white/10 hover:text-white")}>
               <Copy size={14} className="mr-1.5" /> Copiar enlace
@@ -2163,6 +2191,20 @@ function TourSettings({ form, setForm, onSave, dirty, onDelete, cover }: {
             {uploadingLogo ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <UploadCloud size={14} className="mr-1.5" />}
             {form.brand_logo_url ? "Cambiar logo" : "Subir logo"}
           </Button>
+          {/* Tours sin propietario (o de muestra): nuestro logo, y al tocarlo lleva a la página de Tours 360 */}
+          {form.brand_logo_url !== CANA_LOGO && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-[#F0A030] text-[#b8761a] hover:bg-amber-50"
+              onClick={() => {
+                setForm({ ...form, brand_logo_url: CANA_LOGO, brand_logo_path: null, brand_link: "https://canaescapes.com/tours" });
+                toast({ title: "Marca de agua Cana Escapes lista", description: "Pulsa \"Guardar ajustes\" para publicarla en el tour." });
+              }}
+            >
+              <Rotate3d size={14} className="mr-1.5" /> Usar marca de agua Cana Escapes
+            </Button>
+          )}
           {form.brand_logo_url && (
             <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setForm({ ...form, brand_logo_url: null, brand_logo_path: null })}>
               <X size={14} className="mr-1" /> Quitar

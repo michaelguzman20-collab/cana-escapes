@@ -69,7 +69,8 @@ export function LandingNavbar() {
           : "bg-transparent"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Wider at 2xl: the Apps · Cana DNA · Tours 360 pills show their labels there and overflowed max-w-7xl */}
+      <div className="max-w-7xl 2xl:max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Logo — always returns to the home page */}
           <Link
@@ -156,7 +157,7 @@ export function LandingNavbar() {
               to="/login"
               aria-label={t("nav_login")}
               title={t("nav_login")}
-              className="flex items-center gap-2 px-3 xl:px-4 py-2 text-sm font-medium text-white/80 hover:text-white border border-white/20 hover:border-white/40 rounded-lg transition-all"
+              className="flex shrink-0 items-center gap-2 whitespace-nowrap px-3 xl:px-4 py-2 text-sm font-medium text-white/80 hover:text-white border border-white/20 hover:border-white/40 rounded-lg transition-all"
             >
               <LogIn size={14} />
               {/* Icon-only between lg and xl so the nav fits with the Apps + Cana DNA pills */}

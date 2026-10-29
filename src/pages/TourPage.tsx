@@ -130,7 +130,7 @@ function TourContent() {
   }, []);
 
   useSeo({
-    title: full ? `${full.tour.title} — Tour 360 | Cana Escapes` : "Tour 360 | Cana Escapes",
+    title: full ? `${full.tour.title} — Tour 360` : "Tour 360 · Punta Cana",
     description: (full && descriptionIn(full.tour, lang)) || t("tours_seo_desc"),
     path: `/tour/${slug}`,
   });

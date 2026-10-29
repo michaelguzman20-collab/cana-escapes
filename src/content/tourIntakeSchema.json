@@ -1,0 +1,78 @@
+{
+  "_info": "Ficha de cliente Tours 360. La usan la página /admin/tours/fichas y el generador del PDF (scripts/generar-ficha-tours360.py). Las claves son los nombres de los campos del PDF: no cambiarlas o los PDF ya rellenados no se podrán importar. Casillas: en el PDF cada opción es <clave>_<índice>.",
+  "pages": [
+    {
+      "subtitle": "Ficha de cliente · datos para preparar el recorrido virtual",
+      "sections": [
+        {
+          "title": "1. Datos del cliente",
+          "items": [
+            { "row": [["cliente_nombre", "Nombre completo", 3], ["cliente_empresa", "Empresa / marca (como aparecerá en el tour)", 3]] },
+            { "checks": "cliente_tipo", "label": "Tipo de cliente", "cols": 4, "options": ["Inmobiliaria / agente", "Renta corta (anfitrión)", "Propietario (venta)", "Otro"] },
+            { "row": [["cliente_whatsapp", "WhatsApp (botón verde del tour)", 2], ["cliente_telefono", "Otro teléfono", 2], ["cliente_correo", "Correo electrónico", 3]] },
+            { "row": [["cliente_instagram", "Instagram (@usuario)", 2], ["cliente_web", "Página web", 3]] }
+          ]
+        },
+        {
+          "title": "2. La propiedad",
+          "items": [
+            { "row": [["prop_nombre", "Nombre de la propiedad", 3], ["prop_ubicacion", "Residencial / dirección", 4]] },
+            { "checks": "prop_tipo", "label": "Tipo", "cols": 4, "options": ["Villa", "Apartamento", "Casa", "Penthouse", "Local / tienda", "Oficina", "Terreno / proyecto", "Otro"] },
+            { "row": [["prop_habitaciones", "Habitaciones", 1], ["prop_banos", "Baños", 1], ["prop_m2", "Metros² aprox.", 1], ["prop_niveles", "Niveles", 1], ["prop_precio", "Precio publicado (opcional)", 2]] },
+            { "checks": "prop_uso", "label": "Uso del recorrido", "cols": 3, "options": ["Venta", "Renta corta", "Alquiler largo", "Proyecto en construcción", "Tienda / local comercial", "Proyecto comercial"] }
+          ]
+        },
+        {
+          "title": "3. Paquete y modalidad",
+          "items": [
+            { "checks": "paquete", "label": "", "cols": 1, "options": ["Esencial · Tour virtual 360° con tu logo, WhatsApp e Instagram", "Plus · Esencial + fotos y video con drone", "Premium · Plus + fotografía arquitectónica y de interiores + acompañamiento"] },
+            { "checks": "modalidad", "label": "Modalidad", "cols": 2, "options": ["Pago único", "Con acompañamiento y seguimiento mensual"] },
+            { "row": [["monto", "Monto acordado", 2], ["forma_pago", "Forma de pago", 2], ["anticipo", "Anticipo / fechas de pago", 3]] }
+          ]
+        },
+        {
+          "title": "4. Reporte de visitas",
+          "items": [
+            { "checks": "metricas", "label": "¿Enviarle por correo las estadísticas de visitas de su tour? ¿Cada cuánto?", "cols": 5, "options": ["No, gracias", "Semanal", "Quincenal", "Mensual", "Trimestral"] },
+            { "row": [["metricas_correo", "Correo para el reporte (si es distinto al de arriba)", 1]] }
+          ]
+        }
+      ]
+    },
+    {
+      "subtitle": "Personalización, visita a la propiedad, planos y mediciones",
+      "sections": [
+        {
+          "title": "5. Cómo se verá el tour",
+          "items": [
+            { "checks": "logo", "label": "Logo", "cols": 4, "options": ["Ya lo entregó", "Lo enviará luego", "Usar logo de Cana Escapes", "Sin logo"] },
+            { "row": [["tour_titulo", "Nombre que aparece arriba en el tour", 3], ["tour_enlace_logo", "Al tocar el logo abre (web o Instagram)", 3]] },
+            { "row": [["tour_descripcion", "Descripción corta (lo más atractivo de la propiedad)", 1]], "height": 38 }
+          ]
+        },
+        {
+          "title": "6. Visita para las tomas",
+          "items": [
+            { "row": [["visita_fecha1", "Fecha preferida", 2], ["visita_hora1", "Hora", 1], ["visita_fecha2", "Fecha alternativa", 2], ["visita_hora2", "Hora", 1]] },
+            { "row": [["visita_contacto", "Persona que abre en la propiedad", 3], ["visita_contacto_tel", "Teléfono", 2], ["visita_acceso", "Acceso (llaves, garita, administración)", 3]] },
+            { "checks": "prep", "label": "Preparación (el cliente se compromete a tener)", "cols": 4, "options": ["Limpia y ordenada", "Luces funcionando", "Camas hechas", "Piscina limpia", "Permiso administración", "Permiso para volar drone", "Sin objetos personales", "Entrada sin carros"] }
+          ]
+        },
+        {
+          "title": "7. Planos y mediciones (opcional)",
+          "items": [
+            { "checks": "planos", "label": "¿Tiene planos de la propiedad? Con planos detallados la visita virtual, las fotos y el video quedan mejor.", "cols": 3, "options": ["Sí, los enviará", "Sí, en físico", "No tiene"] },
+            { "table": "med", "rows": 5, "columns": [["Área", 150], ["Largo (m)", 70], ["Ancho (m)", 70], ["Alto (m)", 60], ["Notas", 0]] }
+          ]
+        },
+        {
+          "title": "8. Autorización",
+          "items": [
+            { "checks": "autoriza", "label": "", "cols": 1, "options": ["Autorizo publicar el recorrido 360° de esta propiedad en el enlace que me entregarán.", "Autorizo usarlo como ejemplo en la página de Tours 360 (opcional)."] },
+            { "signatures": ["Firma del cliente", "Por Cana Escapes · Tours 360"] }
+          ]
+        }
+      ]
+    }
+  ]
+}

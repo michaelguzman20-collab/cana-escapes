@@ -36,9 +36,9 @@ export const SEO_PAGES = {
       "Ocupación, precio por noche, ingresos, temporadas y proyecciones de alquiler vacacional por zona en Bávaro, Punta Cana, Cap Cana, Cana Bay y Bayahibe. Actualizado cada semana.",
   },
   "/tours": {
-    title: "Tours 360 — Recorridos virtuales de propiedades en Punta Cana | Cana Escapes",
+    title: "Tours 360 — Recorridos virtuales 360° para propiedades en Punta Cana y Bávaro",
     description:
-      "Recorre en 360° villas y apartamentos de Punta Cana y Bávaro gestionados por Cana Escapes, desde tu teléfono o computadora.",
+      "Recorridos virtuales 360° con tu marca para inmobiliarias, rentas cortas y propiedades en venta en Bávaro y Punta Cana. Fotos y video con drone y fotografía arquitectónica.",
   },
   "/apps/cana-track/borrar-cuenta": {
     title: "Borrar cuenta de Cana Track — Cana Escapes",

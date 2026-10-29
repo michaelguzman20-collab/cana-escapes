@@ -4,14 +4,24 @@
 //   · lounge   — piano eléctrico jazzy, bajo, bombo suave y hi-hat con swing (bar de hotel)
 //   · tropical — marimba con ritmo de tresillo, shaker, bajo y bombo suave (tropical house)
 //   · bossa    — piano eléctrico y bajo con clave de bossa nova, rim y shaker (terraza al atardecer)
+//   · piano    — piano solo con arpegios lentos, sin percusión (íntimo)
+//   · chill    — chill house suave: bombo a negras, hi-hat a contratiempo y acordes cortos (moderno)
+//   · caribe   — steel pan con ritmo de calypso, bajo y shaker (playa)
+//   · elegante — cuerdas lentas y notas de piano, sin percusión (lujo, cinematográfico)
+//   · acustica — guitarra punteada en arpegio, bajo y shaker suave (fresco, natural)
 // Los navegadores solo permiten sonido después de que la persona toca un botón.
 
-export type MusicStyle = "zen" | "lounge" | "tropical" | "bossa";
+export type MusicStyle = "zen" | "lounge" | "tropical" | "bossa" | "piano" | "chill" | "caribe" | "elegante" | "acustica";
 
 export const MUSIC_STYLES: { id: MusicStyle; name: string; desc: string }[] = [
   { id: "lounge", name: "Lounge", desc: "Piano eléctrico jazzy, bajo y ritmo suave. Elegante, de bar de hotel." },
   { id: "tropical", name: "Tropical", desc: "Marimba con ritmo caribeño, shaker y bajo. Alegre y fresco." },
   { id: "bossa", name: "Bossa nova", desc: "Acordes suaves con clave de bossa. Relajado, de terraza al atardecer." },
+  { id: "piano", name: "Piano", desc: "Piano solo con arpegios lentos, sin percusión. Íntimo y cálido." },
+  { id: "chill", name: "Chill house", desc: "Ritmo suave y moderno con acordes cortos. Para apartamentos y rooftops." },
+  { id: "caribe", name: "Caribe", desc: "Steel pan con ritmo de calypso. Playa y vacaciones." },
+  { id: "elegante", name: "Elegante", desc: "Cuerdas lentas y notas de piano. De lujo, como de película." },
+  { id: "acustica", name: "Acústica", desc: "Guitarra punteada y bajo suave. Fresca y natural." },
   { id: "zen", name: "Zen", desc: "Pads y campanitas sin ritmo. Muy tranquilo (la de antes)." },
 ];
 
@@ -115,6 +125,110 @@ const GROOVES: Record<Exclude<MusicStyle, "zen">, Groove> = {
       if (s === 14 && R() < 0.35) m.ep([c.notes[c.notes.length - 1] + 12], t, d * 3, 0.2);
     },
   },
+  // I–V–vi–IV en fa (F, C/E, Dm, B♭) — 2 compases por acorde, arpegio de corcheas
+  piano: {
+    bpm: 72,
+    stepsPerChord: 32,
+    swing: 0,
+    chords: [
+      { bass: 41, notes: [53, 57, 60, 64, 65] },
+      { bass: 40, notes: [52, 55, 60, 62, 67] },
+      { bass: 38, notes: [53, 57, 60, 62, 65] },
+      { bass: 34, notes: [53, 58, 62, 65, 69] },
+    ],
+    play(m, s, t, c, d) {
+      if (s === 0 || s === 16) m.piano([c.bass, c.bass + 12], t, 0.5);
+      if (s % 2 === 0) {
+        const up = [0, 1, 2, 3, 4, 3, 2, 1];
+        const n = c.notes[up[(s / 2) % up.length]];
+        m.piano([n + (s >= 16 && R() < 0.2 ? 12 : 0)], t, s % 8 === 0 ? 0.42 : 0.3);
+      }
+      if ((s === 12 || s === 28) && R() < 0.35) m.piano([c.notes[c.notes.length - 1] + 12], t + d, 0.22);
+    },
+  },
+  // vi–IV–I–V en la menor (Am7, Fmaj7, Cmaj7, G6)
+  chill: {
+    bpm: 112,
+    stepsPerChord: 16,
+    swing: 0.12,
+    chords: [
+      { bass: 33, notes: [57, 60, 64, 67] },
+      { bass: 29, notes: [57, 60, 64, 65] },
+      { bass: 36, notes: [55, 59, 64, 67] },
+      { bass: 31, notes: [55, 59, 62, 64] },
+    ],
+    play(m, s, t, c, d) {
+      if (s % 4 === 0) m.kick(t, 0.4);
+      if (s % 4 === 2) m.hat(t, 0.12);
+      if (s === 4 || s === 12) m.clap(t, 0.14);
+      if (s === 2 || s === 7 || s === 10) m.ep(c.notes, t, d * 1.5, 0.3);
+      if (s === 2 || s === 6 || s === 10 || s === 14) m.bass(hz(c.bass + (s === 14 ? 12 : 0)), t, d * 1.6, 0.5);
+      if (s === 0) m.pad(c.notes.map((n) => hz(n - 12)), t, d * 16, 0.016);
+      if ((s === 5 || s === 13) && R() < 0.3) m.pluck(hz(c.notes[Math.floor(R() * c.notes.length)] + 12), t, 0.25);
+    },
+  },
+  // I–IV–V–I en sol (G, C, D7, G) — calypso
+  caribe: {
+    bpm: 108,
+    stepsPerChord: 16,
+    swing: 0.06,
+    chords: [
+      { bass: 31, notes: [67, 71, 74] },
+      { bass: 36, notes: [67, 72, 76] },
+      { bass: 38, notes: [66, 69, 72, 74] },
+      { bass: 31, notes: [71, 74, 79] },
+    ],
+    play(m, s, t, c, d) {
+      if (s === 0 || s === 8) m.kick(t, 0.35);
+      if (s === 4 || s === 12) m.rim(t, 0.15);
+      m.shaker(t, s % 2 ? 0.1 : 0.05);
+      const pattern = [0, 3, 6, 10, 12, 14];
+      const i = pattern.indexOf(s);
+      if (i >= 0) m.steel(hz(c.notes[(i + (R() < 0.3 ? 1 : 0)) % c.notes.length]), t, i === 0 ? 0.5 : 0.36);
+      if (s === 0 || s === 6) m.bass(hz(c.bass), t, d * 3, 0.55);
+      if (s === 10 || s === 12) m.bass(hz(c.bass + 7), t, d * 2, 0.42);
+    },
+  },
+  // i–VI–III–VII en re menor (Dm, B♭maj7, F, C) — 2 compases por acorde, sin percusión
+  elegante: {
+    bpm: 60,
+    stepsPerChord: 32,
+    swing: 0,
+    chords: [
+      { bass: 38, notes: [50, 53, 57, 62] },
+      { bass: 34, notes: [50, 53, 57, 58] },
+      { bass: 41, notes: [48, 53, 57, 60] },
+      { bass: 36, notes: [48, 52, 55, 60] },
+    ],
+    play(m, s, t, c, d) {
+      if (s === 0) {
+        m.strings(c.notes.map(hz), t, d * 34);
+        m.bass(hz(c.bass), t, d * 30, 0.4, 1.2);
+      }
+      const mel = [0, 6, 12, 20, 26];
+      if (mel.includes(s) && R() < 0.7) m.piano([c.notes[Math.floor(R() * c.notes.length)] + 24], t, 0.24);
+    },
+  },
+  // I–vi–IV–V en re (D, Bm, G, A) — guitarra en arpegio
+  acustica: {
+    bpm: 92,
+    stepsPerChord: 16,
+    swing: 0.1,
+    chords: [
+      { bass: 38, notes: [57, 62, 66, 69] },
+      { bass: 35, notes: [54, 59, 62, 66] },
+      { bass: 43, notes: [55, 59, 62, 67] },
+      { bass: 45, notes: [57, 61, 64, 69] },
+    ],
+    play(m, s, t, c, d) {
+      const order = [0, 2, 1, 3, 2, 1];
+      if (s % 2 === 0 || R() < 0.15) m.pluck(hz(c.notes[order[s % order.length]]), t, s % 4 === 0 ? 0.5 : 0.35);
+      if (s === 0 || s === 10) m.pluck(hz(c.bass + 12), t, 0.45);
+      if (s === 0 || s === 8) m.bass(hz(c.bass), t, d * 4, 0.45);
+      if (s % 2 === 1) m.shaker(t, 0.06);
+      if (s === 4 || s === 12) m.rim(t, 0.1);
+    },
+  },
 };
 
 export class AmbientMusic {
@@ -156,13 +270,14 @@ export class AmbientMusic {
     // Un filtro general quita brillo áspero: el sonido queda "de fondo"
     const tone = ctx.createBiquadFilter();
     tone.type = "lowpass";
-    tone.frequency.value = this.style === "tropical" ? 9000 : 7000;
+    tone.frequency.value = this.style === "tropical" || this.style === "caribe" ? 9000 : 7000;
     master.connect(tone).connect(ctx.destination);
     this.master = master;
 
     // Reverberación: respuesta de ruido que se apaga
     const reverb = ctx.createConvolver();
-    const secs = this.style === "zen" ? 4 : 2.2;
+    const spacious = this.style === "zen" || this.style === "elegante" || this.style === "piano";
+    const secs = spacious ? 4 : 2.2;
     const len = Math.floor(ctx.sampleRate * secs);
     const ir = ctx.createBuffer(2, len, ctx.sampleRate);
     for (let ch = 0; ch < 2; ch++) {
@@ -171,7 +286,7 @@ export class AmbientMusic {
     }
     reverb.buffer = ir;
     const wet = ctx.createGain();
-    wet.gain.value = this.style === "zen" ? 0.55 : 0.3;
+    wet.gain.value = this.style === "zen" ? 0.55 : spacious ? 0.45 : 0.3;
     reverb.connect(wet).connect(master);
 
     const bus = ctx.createGain();
@@ -325,6 +440,65 @@ export class AmbientMusic {
       g.gain.value = gain;
       g.connect(env);
       this.osc("sine", f * mult, t, 3.1, g);
+    }
+  }
+
+  /** Piano acústico: varios armónicos que se apagan rápido, los agudos antes */
+  piano(notes: number[], t: number, vel: number) {
+    for (const n of notes) {
+      const f = hz(n);
+      for (const [mult, gain, decay] of [[1, 1, 2.2], [2, 0.35, 1.2], [3, 0.12, 0.6], [4, 0.05, 0.35]]) {
+        const a = this.env(t, 0.05 * vel * gain, 0.004, decay, this.bus!);
+        this.osc(mult === 1 ? "triangle" : "sine", f * mult, t, decay + 0.1, a, mult === 1 ? 0 : 2);
+      }
+    }
+  }
+
+  /** Steel pan: fundamental + armónicos algo desafinados */
+  steel(f: number, t: number, vel: number) {
+    for (const [mult, gain, decay] of [[1, 1, 1.1], [2, 0.5, 0.7], [3.01, 0.22, 0.4], [4.02, 0.1, 0.2]]) {
+      const a = this.env(t, 0.07 * vel * gain, 0.004, decay, this.bus!);
+      this.osc("sine", f * mult, t, decay + 0.1, a);
+    }
+  }
+
+  /** Cuerda punteada (guitarra): diente de sierra con filtro que se cierra */
+  pluck(f: number, t: number, vel: number) {
+    const ctx = this.ctx!;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.Q.value = 2;
+    lp.frequency.setValueAtTime(Math.min(6000, f * 8), t);
+    lp.frequency.exponentialRampToValueAtTime(Math.max(200, f * 1.2), t + 0.5);
+    const a = this.env(t, 0.05 * vel, 0.003, 1.1, this.bus!);
+    lp.connect(a);
+    this.osc("sawtooth", f, t, 1.2, lp);
+    this.osc("triangle", f, t, 1.2, lp, 4);
+  }
+
+  /** Cuerdas: diente de sierra suave con vibrato lento, entrada y salida largas */
+  strings(freqs: number[], t: number, dur: number) {
+    const ctx = this.ctx!;
+    for (const f of freqs) {
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(0.022, t + Math.min(3, dur / 3));
+      env.gain.setValueAtTime(0.022, t + dur * 0.75);
+      env.gain.linearRampToValueAtTime(0, t + dur);
+      const lp = ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = 1600;
+      lp.connect(env).connect(this.bus!);
+      for (const det of [-8, 8]) {
+        const o = this.osc("sawtooth", f, t, dur, lp, det);
+        const lfo = ctx.createOscillator();
+        lfo.frequency.value = 4.5;
+        const depth = ctx.createGain();
+        depth.gain.value = 6;
+        lfo.connect(depth).connect(o.detune);
+        lfo.start(t);
+        lfo.stop(t + dur + 0.05);
+      }
     }
   }
 

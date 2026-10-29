@@ -34,6 +34,7 @@ const AdminWhatsapp = lazyPage(() => import("@/pages/admin/AdminWhatsapp"), "Adm
 const AdminTrack = lazyPage(() => import("@/pages/admin/AdminTrack"), "AdminTrack");
 const AdminCanaDna = lazyPage(() => import("@/pages/admin/AdminCanaDna"), "AdminCanaDna");
 const AdminTours = lazyPage(() => import("@/pages/admin/AdminTours"), "AdminTours");
+const AdminTourIntakes = lazyPage(() => import("@/pages/admin/AdminTourIntakes"), "AdminTourIntakes");
 const AdminVisitas = lazyPage(() => import("@/pages/admin/AdminVisitas"), "AdminVisitas");
 const TrackTeamPage = lazyPage(() => import("@/pages/TrackTeamPage"), "TrackTeamPage");
 const GuestDashboard = lazyPage(() => import("@/pages/guest/GuestDashboard"), "GuestDashboard");
@@ -145,6 +146,7 @@ export default function App() {
               <Route path="/admin/track" element={<AdminTrack />} />
               <Route path="/admin/cana-dna" element={<AdminCanaDna />} />
               <Route path="/admin/tours" element={<AdminTours />} />
+              <Route path="/admin/tours/fichas" element={<AdminTourIntakes />} />
               <Route path="/admin/visitas" element={<AdminVisitas />} />
               <Route path="/admin/configuracion" element={<AdminConfiguracion />} />
             </Route>

@@ -9,7 +9,7 @@ declare const process: { env: Record<string, string | undefined> };
 
 
 const SITE = "https://canaescapes.com";
-const DEFAULT_DESC = "Recorrido virtual 360° de una propiedad gestionada por Cana Escapes en Punta Cana.";
+const DEFAULT_DESC = "Recorrido virtual 360° de una propiedad en Punta Cana y Bávaro.";
 
 interface TourRow {
   title: string;
@@ -56,14 +56,14 @@ export async function GET(req: Request) {
   const [page, tour] = await Promise.all([fetch(`${origin}/index.html`).then((r) => r.text()), fetchTour(slug)]);
   const html = tour
     ? injectSeo(page, {
-        title: `${tour.title} — Tour 360 | Cana Escapes`,
+        title: `${tour.title} — Tour 360`,
         description: summary(tour),
         url: `${SITE}/tour/${slug}`,
         image: imageUrl(tour.cover_url),
         imageAlt: `${tour.title} — recorrido virtual 360°`,
       })
     : injectSeo(page, {
-        title: "Tour 360 | Cana Escapes",
+        title: "Tour 360 · Punta Cana",
         description: DEFAULT_DESC,
         url: `${SITE}/tour/${slug}`,
         noindex: true, // borrador o inexistente: que no aparezca en buscadores

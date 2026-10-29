@@ -25,7 +25,7 @@
         {
           "title": "3. Paquete y modalidad",
           "items": [
-            { "checks": "paquete", "label": "", "cols": 1, "options": ["Esencial · Tour virtual 360° con tu logo, WhatsApp e Instagram", "Plus · Esencial + fotografía de interiores y arquitectónica", "Premium · Plus + fotos y video con drone + acompañamiento y seguimiento"] },
+            { "checks": "paquete", "label": "", "cols": 1, "options": ["Esencial · Tour virtual 360° con tu logo, WhatsApp e Instagram", "Plus · Esencial + más fotografía de interiores + acompañamiento", "Premium · Plus + fotos y video con drone + acompañamiento y seguimiento sin extras"] },
             { "checks": "modalidad", "label": "Modalidad", "cols": 2, "options": ["Pago único", "Con acompañamiento y seguimiento mensual"] },
             { "row": [["monto", "Monto acordado", 2], ["forma_pago", "Forma de pago", 2], ["anticipo", "Anticipo / fechas de pago", 3]] }
           ]

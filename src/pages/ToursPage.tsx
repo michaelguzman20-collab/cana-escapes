@@ -29,7 +29,7 @@ const TEXT = {
     subtitle:
       "Que tus clientes caminen por la propiedad desde su teléfono, estén donde estén, antes de visitarla o reservar. Un enlace con tu marca para tu web, Instagram o WhatsApp.",
     seeDemo: "Ver un ejemplo",
-    askDemo: "Pide una demostración",
+    askDemo: "Contáctanos",
     schedule: "Agendar demostración",
     chips: ["Primero en Bávaro y Punta Cana", "Desde cualquier país", "Con tu marca"],
     demoKicker: "Pruébalo tú mismo",
@@ -72,10 +72,10 @@ const TEXT = {
     packsDesc: "Cada propiedad es distinta: armamos el precio contigo. Pago único o con acompañamiento y seguimiento.",
     packs: [
       { name: "Esencial", items: ["Tour virtual 360°", "Tu logo, WhatsApp e Instagram", "Enlace para compartir"] },
-      { name: "Plus", items: ["Todo lo de Esencial", "Más fotografía de interiores", "Fotografía arquitectónica"], featured: true },
-      { name: "Premium", items: ["Todo lo de Plus", "Fotos y video con drone", "Acompañamiento y seguimiento"] },
+      { name: "Plus", items: ["Todo lo de Esencial", "Más fotografía de interiores", "Acompañamiento"], featured: true },
+      { name: "Premium", items: ["Todo lo de Plus", "Fotos y video con drone", "Acompañamiento y seguimiento sin extras"] },
     ],
-    featured: "Más pedido",
+    featured: "Más solicitado",
     ask: "Consultar",
     stepsKicker: "Cómo empezamos",
     stepsTitle: "Tres pasos y listo",
@@ -96,7 +96,7 @@ const TEXT = {
     subtitle:
       "Let your clients walk through the property from their phone, wherever they are, before visiting or booking. A branded link for your website, Instagram or WhatsApp.",
     seeDemo: "See an example",
-    askDemo: "Request a demo",
+    askDemo: "Contact us",
     schedule: "Book a demo",
     chips: ["First in Bávaro & Punta Cana", "From any country", "With your brand"],
     demoKicker: "Try it yourself",
@@ -139,8 +139,8 @@ const TEXT = {
     packsDesc: "Every property is different, so we price it with you. One-time payment or ongoing support.",
     packs: [
       { name: "Essential", items: ["360° virtual tour", "Your logo, WhatsApp and Instagram", "Shareable link"] },
-      { name: "Plus", items: ["Everything in Essential", "More interior photography", "Architectural photography"], featured: true },
-      { name: "Premium", items: ["Everything in Plus", "Drone photos and video", "Ongoing support and follow-up"] },
+      { name: "Plus", items: ["Everything in Essential", "More interior photography", "Support"], featured: true },
+      { name: "Premium", items: ["Everything in Plus", "Drone photos and video", "Support and follow-up at no extra cost"] },
     ],
     featured: "Most requested",
     ask: "Ask about it",
@@ -424,12 +424,18 @@ function ToursContent() {
         <Heading kicker={tx.forKicker} title={tx.forTitle} />
         <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {tx.for.map(({ icon: Icon, title, desc }, i) => (
-            <div key={title} data-reveal={i} className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-b-4 border-transparent hover:border-[#F0A030]">
-              <span className="w-12 h-12 rounded-xl bg-[#F0A030]/15 text-[#b8761a] flex items-center justify-center transition-colors group-hover:bg-[#F0A030] group-hover:text-[#0F2B4C]">
+            <div
+              key={title}
+              data-reveal={i}
+              className="group relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br from-[#173a63] to-[#0F2B4C] text-white shadow-lg shadow-[#0F2B4C]/20 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300"
+            >
+              <span className="relative w-12 h-12 rounded-xl bg-[#F0A030] text-[#0F2B4C] flex items-center justify-center shadow-md shadow-[#F0A030]/30">
                 <Icon size={24} />
               </span>
-              <h3 className="mt-4 font-serif font-bold text-lg">{title}</h3>
-              <p className="mt-1.5 text-gray-600 text-sm leading-relaxed">{desc}</p>
+              <h3 className="relative mt-4 font-serif font-bold text-lg">{title}</h3>
+              <p className="relative mt-1.5 text-white/75 text-sm leading-relaxed">{desc}</p>
+              <span aria-hidden className="absolute left-6 right-6 bottom-0 h-1 rounded-t-full bg-[#F0A030] scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300" />
+              <Icon aria-hidden size={120} className="absolute -right-6 -bottom-6 text-white opacity-[0.06] transition-transform duration-500 group-hover:scale-110" />
             </div>
           ))}
         </div>

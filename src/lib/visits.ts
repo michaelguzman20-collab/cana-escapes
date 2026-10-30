@@ -5,6 +5,9 @@ import { supabase } from "@/lib/supabase";
 // Registro de visitas del sitio y de los Tours 360 (tablas site_visits y site_events).
 // Sin datos personales: un identificador al azar por navegador, el tipo de dispositivo, el idioma,
 // de qué sitio llegó la persona, cuánto tiempo se quedó, hasta dónde bajó y qué botones tocó.
+// También país y ciudad (Vercel los deduce de la conexión; la IP no se guarda) y la fuente del enlace
+// (utm_source / ?src=, o la app de Instagram/Facebook). Los navegadores del equipo se marcan al abrir el panel
+// (mark_internal_visitor) y sus visitas no cuentan en las estadísticas.
 // En localhost no se registra nada (para probar: localStorage "ce-track-test" = "1").
 
 const VISITOR_KEY = "ce-visitor";
@@ -30,6 +33,59 @@ function visitorId() {
 }
 const visitor = typeof window !== "undefined" ? visitorId() : "";
 
+/** Marca este navegador como del equipo (lo llama el panel; el servidor solo lo acepta de un administrador) */
+export function markInternalVisitor() {
+  try {
+    const ua = navigator.userAgent;
+    const os = /iPhone|iPad/.test(ua) ? "iPhone/iPad" : /Android/.test(ua) ? "Android" : /Mac/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : "Otro";
+    const br = /Edg\//.test(ua) ? "Edge" : /CriOS|Chrome\//.test(ua) ? "Chrome" : /FxiOS|Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : "Navegador";
+    rpc("mark_internal_visitor", { p_visitor: visitor, p_label: `${br} · ${os}` }).then(undefined, () => undefined);
+  } catch {
+    /* sin importancia */
+  }
+}
+
+// País y ciudad: una consulta por sesión a /api/geo (en local no existe y queda vacío)
+type Geo = { country: string | null; city: string | null };
+let geoPromise: Promise<Geo> | null = null;
+function geo(): Promise<Geo> {
+  if (geoPromise) return geoPromise;
+  const empty: Geo = { country: null, city: null };
+  try {
+    const saved = sessionStorage.getItem("ce-geo");
+    if (saved) return (geoPromise = Promise.resolve(JSON.parse(saved) as Geo));
+  } catch { /* sigue */ }
+  geoPromise = Promise.race([
+    fetch("/api/geo").then((r) => (r.ok ? r.json() : empty)).then((g: Geo) => {
+      const v = { country: typeof g?.country === "string" ? g.country : null, city: typeof g?.city === "string" ? g.city : null };
+      try { sessionStorage.setItem("ce-geo", JSON.stringify(v)); } catch { /* sin almacenamiento */ }
+      return v;
+    }),
+    new Promise<Geo>((res) => setTimeout(() => res(empty), 2500)),
+  ]).catch(() => empty);
+  return geoPromise;
+}
+
+// Fuente del enlace: ?utm_source= o ?src= (por ejemplo ?src=whatsapp), o la app que lo abrió.
+// Se guarda para toda la sesión: las páginas siguientes vienen de la misma fuente.
+function linkSource(): { source: string | null; campaign: string | null } {
+  try {
+    const saved = sessionStorage.getItem("ce-src");
+    if (saved) return JSON.parse(saved);
+    const q = new URLSearchParams(location.search);
+    const ua = navigator.userAgent;
+    const app = /Instagram/i.test(ua) ? "instagram" : /FBAN|FBAV|FB_IAB/i.test(ua) ? "facebook" : /TikTok|musical_ly/i.test(ua) ? "tiktok" : null;
+    const v = {
+      source: (q.get("utm_source") || q.get("src") || (q.has("fbclid") ? "facebook" : q.has("gclid") ? "google" : null) || app)?.slice(0, 40) ?? null,
+      campaign: q.get("utm_campaign")?.slice(0, 60) ?? null,
+    };
+    sessionStorage.setItem("ce-src", JSON.stringify(v));
+    return v;
+  } catch {
+    return { source: null, campaign: null };
+  }
+}
+
 function device() {
   if (!window.matchMedia("(pointer: coarse)").matches) return "desktop";
   return Math.min(screen.width, screen.height) < 768 ? "phone" : "tablet";
@@ -54,15 +110,21 @@ const rpc = supabase.rpc.bind(supabase) as unknown as Rpc;
 // Una visita sin registrar no debe molestar a nadie: cualquier error queda aquí y la página sigue
 function insertVisit(path: string, opts: { tourId?: string; sceneId?: string }): PromiseLike<number | null> {
   try {
-    return rpc("record_visit", {
+    const referrer = externalReferrer();
+    const src = linkSource();
+    return geo().then((g) => rpc("record_visit", {
       p_visitor: visitor,
       p_path: path,
       p_device: device(),
       p_tour_id: opts.tourId ?? null,
       p_scene_id: opts.sceneId ?? null,
-      p_referrer: externalReferrer(),
+      p_referrer: referrer,
       p_lang: (navigator.language || "").slice(0, 2),
-    }).then(
+      p_country: g.country,
+      p_city: g.city,
+      p_source: src.source,
+      p_campaign: src.campaign,
+    })).then(
       ({ data }) => (typeof data === "number" ? data : null),
       () => null
     );

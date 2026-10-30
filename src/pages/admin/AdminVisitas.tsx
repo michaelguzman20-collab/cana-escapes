@@ -1,18 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { BarChart3, Clock, ExternalLink, Monitor, MousePointerClick, MoveDown, RefreshCw, Rotate3d, Smartphone, Tablet, Users } from "lucide-react";
+import { BarChart3, Clock, Copy, Download, ExternalLink, Image as Images, Loader2, MessageCircle, Monitor, MousePointerClick, MoveDown, RefreshCw, Rotate3d, Share2, Smartphone, Tablet, Trash2, UserCheck, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
+import { buildVisitsPdf, deliverPdf, type VisitsReport } from "@/lib/visitsPdf";
 
 // Visitas del sitio público y de los Tours 360 (tablas site_visits y site_events; resumen con visit_stats).
 // "Visitas" = páginas abiertas; "visitantes" = navegadores distintos; las fotos de cada tour se cuentan aparte.
-// Se puede ver todo el sitio o una sola página, con su detalle: tiempo, hasta dónde bajan, horas y qué tocan.
+// Se puede ver todo el sitio o una sola página, con su detalle: tiempo, hasta dónde bajan, horas y qué tocan,
+// de dónde llegan (canal, país, ciudad) y exportarlo a PDF. Las visitas del equipo (internal_visitors) no cuentan.
 
 interface RecentVisit {
   visited_at: string;
   path: string;
   device: "phone" | "tablet" | "desktop";
   referrer: string | null;
+  channel: string;
+  campaign: string | null;
+  country: string | null;
+  city: string | null;
+  internal: boolean;
   lang: string | null;
   duration: number | null;
   scroll: number | null;
@@ -23,7 +31,16 @@ interface RecentVisit {
 interface Stats {
   visits: number;
   visitors: number;
+  new_visitors: number;
+  internal_hidden: number;
   tour_visits: number;
+  photo_views: number;
+  contacts: Partial<Record<"whatsapp" | "phone" | "email", number>>;
+  langs: { lang: string; visits: number }[];
+  channels: { channel: string; visits: number }[];
+  campaigns: { campaign: string; visits: number }[];
+  countries: { country: string; visits: number }[];
+  cities: { city: string; country: string | null; visits: number }[];
   avg_duration: number | null;
   avg_scroll: number | null;
   interacted: number;
@@ -34,7 +51,17 @@ interface Stats {
   referrers: { host: string; visits: number }[];
   events: { kind: string; label: string | null; count: number }[];
   recent: RecentVisit[];
-  tours: { id: string; title: string; slug: string; visits: number; visitors: number; scenes: { title: string; views: number }[] }[];
+  tours: {
+    id: string;
+    title: string;
+    slug: string;
+    visits: number;
+    visitors: number;
+    photo_views: number;
+    avg_duration: number | null;
+    contacts: number;
+    scenes: { title: string; views: number }[];
+  }[];
 }
 
 type Rpc = (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
@@ -59,6 +86,43 @@ const pageName = (path: string) => (PAGE_NAMES[path] ? `${PAGE_NAMES[path]} (${p
 
 const KIND_NAMES: Record<string, string> = { whatsapp: "WhatsApp", phone: "Llamada", email: "Correo", link: "Enlace externo", click: "Botón" };
 const DEVICE_ICON = { phone: Smartphone, tablet: Tablet, desktop: Monitor };
+const DEVICE_NAMES = { phone: "Teléfono", tablet: "Tableta", desktop: "Computadora" };
+
+const CHANNEL_NAMES: Record<string, string> = {
+  directo: "Directo o sin marca",
+  whatsapp: "WhatsApp",
+  instagram: "Instagram",
+  facebook: "Facebook",
+  google: "Google",
+  buscadores: "Otros buscadores",
+  tiktok: "TikTok",
+  x: "X (Twitter)",
+  linkedin: "LinkedIn",
+  plataformas: "Airbnb / Booking / Vrbo",
+  correo: "Correo",
+  qr: "Código QR",
+};
+const channelName = (c: string) => CHANNEL_NAMES[c] ?? c;
+
+// Nombre del país en español a partir del código (DO → República Dominicana) y su bandera
+let regionNames: Intl.DisplayNames | null = null;
+try {
+  regionNames = new Intl.DisplayNames(["es"], { type: "region" });
+} catch {
+  regionNames = null;
+}
+const countryName = (c: string | null) => (c ? regionNames?.of(c) ?? c : "");
+const flag = (c: string | null) => (c && /^[A-Z]{2}$/.test(c) ? String.fromCodePoint(...[...c].map((ch) => 0x1f1a5 + ch.charCodeAt(0))) : "");
+const LANG_NAMES: Record<string, string> = { es: "Español", en: "Inglés", fr: "Francés", de: "Alemán", it: "Italiano", pt: "Portugués", ru: "Ruso", nl: "Neerlandés" };
+
+// Enlaces marcados para saber por dónde llega cada visita (?src=…)
+const SHARE_SOURCES = [
+  { src: "whatsapp", label: "WhatsApp" },
+  { src: "instagram", label: "Instagram" },
+  { src: "facebook", label: "Facebook" },
+  { src: "qr", label: "Código QR" },
+  { src: "correo", label: "Correo" },
+];
 
 const fmt = (n: number) => n.toLocaleString("es-DO");
 function fmtDuration(s: number | null | undefined) {
@@ -166,6 +230,7 @@ function RecentTable({ rows, showPath, showPhotos }: { rows: RecentVisit[]; show
                 {showPath && <th className="py-1.5 pr-3 font-medium">Página</th>}
                 <th className="py-1.5 pr-3 font-medium">Dispositivo</th>
                 <th className="py-1.5 pr-3 font-medium">Llegó desde</th>
+                <th className="py-1.5 pr-3 font-medium">Lugar</th>
                 <th className="py-1.5 pr-3 font-medium">Tiempo</th>
                 <th className="py-1.5 pr-3 font-medium">Bajó</th>
                 {showPhotos && <th className="py-1.5 pr-3 font-medium">Fotos vistas</th>}
@@ -184,7 +249,12 @@ function RecentTable({ rows, showPath, showPhotos }: { rows: RecentVisit[]; show
                     <td className="py-1.5 pr-3">
                       <span className="inline-flex items-center gap-1"><Icon size={13} /> {r.lang?.toUpperCase()}</span>
                     </td>
-                    <td className="py-1.5 pr-3">{r.referrer ?? <span className="text-gray-400">directo</span>}</td>
+                    <td className="py-1.5 pr-3">
+                      {r.channel === "directo" ? <span className="text-gray-400">directo</span> : CHANNEL_NAMES[r.channel] ?? r.referrer ?? r.channel}
+                      {r.campaign && <span className="text-gray-400"> · {r.campaign}</span>}
+                      {r.internal && <span className="ml-1 rounded bg-emerald-100 text-emerald-800 px-1">equipo</span>}
+                    </td>
+                    <td className="py-1.5 pr-3 whitespace-nowrap">{r.country ? `${flag(r.country)} ${r.city ?? countryName(r.country)}` : <span className="text-gray-400">—</span>}</td>
                     <td className="py-1.5 pr-3 whitespace-nowrap">{fmtDuration(r.duration)}</td>
                     <td className="py-1.5 pr-3">{r.scroll != null ? `${r.scroll}%` : "—"}</td>
                     {showPhotos && <td className="py-1.5 pr-3">{r.photos || "—"}</td>}
@@ -207,20 +277,52 @@ export function AdminVisitas() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [withTeam, setWithTeam] = useState(false);
+  const [team, setTeam] = useState<{ visitor: string; label: string | null; created_at: string; last_seen: string }[]>([]);
+  const [showTeam, setShowTeam] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   const load = async () => {
     setLoading(true);
     setError(null);
-    const [s, p] = await Promise.all([rpc("visit_stats", { p_days: days, p_path: path || null }), rpc("visit_paths", { p_days: days })]);
+    const [s, p, t] = await Promise.all([
+      rpc("visit_stats", { p_days: days, p_path: path || null, p_internal: withTeam }),
+      rpc("visit_paths", { p_days: days }),
+      supabase.from("internal_visitors").select("visitor, label, created_at, last_seen").order("last_seen", { ascending: false }),
+    ]);
     if (s.error) setError(s.error.message);
     else setStats(s.data as Stats);
     if (!p.error) setPaths(p.data as { path: string; visits: number; title: string | null }[]);
+    if (!t.error) setTeam(t.data ?? []);
     setLoading(false);
   };
 
   useEffect(() => {
     load();
-  }, [days, path]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [days, path, withTeam]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Se mantiene al día solo: cada minuto mientras la página está a la vista
+  const loadRef = useRef(load);
+  loadRef.current = load;
+  useEffect(() => {
+    const t = setInterval(() => !document.hidden && loadRef.current(), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  async function removeTeamDevice(visitor: string) {
+    if (!confirm("¿Volver a contar las visitas de este dispositivo?")) return;
+    const { error } = await supabase.from("internal_visitors").delete().eq("visitor", visitor);
+    if (error) toast({ title: "No se pudo quitar", description: error.message, variant: "destructive" });
+    else load();
+  }
+
+  function copySourceLink(src: string) {
+    const url = `${location.origin}${path}?src=${src}`;
+    navigator.clipboard.writeText(url).then(
+      () => toast({ title: "Enlace copiado", description: url }),
+      () => toast({ title: "No se pudo copiar", description: url, variant: "destructive" })
+    );
+  }
 
   const dev = stats?.devices ?? {};
   const devTotal = (dev.phone ?? 0) + (dev.tablet ?? 0) + (dev.desktop ?? 0);
@@ -230,6 +332,63 @@ export function AdminVisitas() {
   const options = path && !paths.some((p) => p.path === path) ? [{ path, visits: 0, title: null }, ...paths] : paths;
   const selected = options.find((p) => p.path === path);
   const selectedName = selected?.title ? `Tour: ${selected.title}` : pageName(path);
+  const tourRow = isTour ? stats?.tours.find((t) => `/tour/${t.slug}` === path) : undefined;
+  const contacts = stats ? (stats.contacts.whatsapp ?? 0) + (stats.contacts.phone ?? 0) + (stats.contacts.email ?? 0) : 0;
+  const returning = stats ? Math.max(0, stats.visitors - stats.new_visitors) : 0;
+  const photosPerVisit = stats && stats.tour_visits ? (stats.photo_views / stats.tour_visits).toFixed(1).replace(".", ",") : null;
+
+  async function exportPdf(share: boolean) {
+    if (!stats) return;
+    setPdfBusy(true);
+    try {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(start.getDate() - (days - 1));
+      const d = (x: Date) => x.toLocaleDateString("es-DO", { day: "numeric", month: "short", year: "numeric" });
+      const shown = Math.min(days, 90);
+      const byDay = new Map(stats.daily.map((x) => [x.day, x.visits]));
+      const daily = Array.from({ length: shown }, (_, i) => {
+        const x = new Date();
+        x.setDate(x.getDate() - (shown - 1 - i));
+        return { label: x.toLocaleDateString("es-DO", { day: "numeric", month: "short" }), value: byDay.get(x.toLocaleDateString("en-CA", { timeZone: "America/Santo_Domingo" })) ?? 0 };
+      });
+      const peak = stats.hours.length ? stats.hours.reduce((a, b) => (b.visits > a.visits ? b : a)) : null;
+      const hourLabel = (h: number) => `${h % 12 || 12} ${h < 12 ? "a. m." : "p. m."}`;
+      const kpis: VisitsReport["kpis"] = [
+        { label: "Visitas", value: fmt(stats.visits), note: isTour ? "veces que se abrió el tour" : "páginas abiertas" },
+        { label: "Visitantes", value: fmt(stats.visitors), note: `${fmt(stats.new_visitors)} nuevos · ${fmt(returning)} recurrentes` },
+        { label: "Tiempo promedio", value: fmtDuration(stats.avg_duration), note: "con la página a la vista" },
+      ];
+      if (isTour || !path) kpis.push({ label: "Fotos vistas", value: fmt(stats.photo_views), note: photosPerVisit ? `${photosPerVisit} fotos por visita` : undefined });
+      kpis.push({ label: "Contactos", value: fmt(contacts), note: `WhatsApp ${stats.contacts.whatsapp ?? 0} · Llamadas ${stats.contacts.phone ?? 0} · Correo ${stats.contacts.email ?? 0}` });
+      kpis.push({ label: "Interactuaron", value: stats.visits ? `${Math.round((stats.interacted / stats.visits) * 100)}%` : "—", note: peak ? `hora pico: ${hourLabel(peak.hour)}` : undefined });
+      const report: VisitsReport = {
+        title: path ? selectedName : "Todo el sitio",
+        url: path ? `https://canaescapes.com${path}` : undefined,
+        periodLabel: `${PERIODS.find((p) => p.days === days)?.label ?? `${days} días`}: ${d(start)} – ${d(end)}`,
+        kpis,
+        daily,
+        sections: [
+          ...(isTour ? [{ title: "Fotos más vistas", rows: (tourRow?.scenes ?? []).map((s) => ({ label: s.title, value: s.views })), empty: "Sin fotos vistas." }] : []),
+          { title: "De dónde llegan", rows: stats.channels.map((c) => ({ label: channelName(c.channel), value: c.visits })), empty: "Sin datos." },
+          { title: "Países", rows: stats.countries.map((c) => ({ label: countryName(c.country), value: c.visits })), empty: "Sin datos de país todavía." },
+          { title: "Ciudades", rows: stats.cities.map((c) => ({ label: `${c.city}${c.country ? `, ${countryName(c.country)}` : ""}`, value: c.visits })), empty: "Sin datos de ciudad todavía." },
+          { title: "Dispositivo", rows: (["phone", "desktop", "tablet"] as const).filter((k) => stats.devices[k]).map((k) => ({ label: DEVICE_NAMES[k], value: stats.devices[k] ?? 0 })), empty: "Sin datos." },
+          { title: "Idioma del navegador", rows: stats.langs.map((l) => ({ label: LANG_NAMES[l.lang] ?? l.lang.toUpperCase(), value: l.visits })), empty: "Sin datos." },
+          { title: "Qué tocan", rows: stats.events.slice(0, 10).map((e) => ({ label: e.label && e.label !== e.kind ? `${KIND_NAMES[e.kind] ?? e.kind}: ${e.label}` : KIND_NAMES[e.kind] ?? e.kind, value: e.count })), empty: "Nadie tocó botones o enlaces." },
+          ...(stats.campaigns.length ? [{ title: "Campañas", rows: stats.campaigns.map((c) => ({ label: c.campaign, value: c.visits })), empty: "" }] : []),
+          ...(!path ? [{ title: "Tours 360", rows: stats.tours.filter((t) => t.visits).map((t) => ({ label: t.title, value: t.visits })), empty: "Sin visitas a tours." }] : []),
+        ],
+      };
+      const bytes = await buildVisitsPdf(report);
+      const slug = (path ? (selected?.title ?? path) : "sitio").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
+      await deliverPdf(bytes, `visitas-${slug}-${end.toLocaleDateString("en-CA")}.pdf`, share);
+    } catch (e) {
+      toast({ title: "No se pudo crear el PDF", description: (e as Error).message, variant: "destructive" });
+    } finally {
+      setPdfBusy(false);
+    }
+  }
 
   return (
     <div className="px-3 sm:px-6 pt-6 pb-8 min-h-screen bg-gradient-to-br from-[#eef3f9] via-[#f0f6ff] to-[#e8f0f8] overflow-x-hidden">
@@ -268,10 +427,61 @@ export function AdminVisitas() {
             <button onClick={load} disabled={loading} className="h-9 w-9 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 hover:bg-gray-50" title="Actualizar">
               <RefreshCw size={15} className={cn(loading && "animate-spin")} />
             </button>
+            <button
+              onClick={() => exportPdf(false)}
+              disabled={!stats || pdfBusy}
+              className="h-9 px-3 rounded-lg bg-[#0F2B4C] text-white text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-[#163a63] disabled:opacity-50"
+              title="Descargar el reporte de lo que estás viendo (todo el sitio o el tour elegido)"
+            >
+              {pdfBusy ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} PDF
+            </button>
+            {typeof navigator !== "undefined" && "share" in navigator && (
+              <button
+                onClick={() => exportPdf(true)}
+                disabled={!stats || pdfBusy}
+                className="h-9 w-9 rounded-lg border border-gray-300 bg-white flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                title="Compartir el PDF (WhatsApp, correo…)"
+              >
+                <Share2 size={15} />
+              </button>
+            )}
           </div>
         </div>
 
         {error && <p className="rounded-lg bg-red-50 border border-red-200 text-red-700 px-3 py-2">No se pudieron cargar las visitas: {error}</p>}
+
+        {/* Visitas del equipo: este navegador y los demás donde se abrió el panel no cuentan */}
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-xs text-emerald-900">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <UserCheck size={15} className="shrink-0" />
+            <span>
+              <b>Tus visitas no cuentan.</b> Cada dispositivo donde abres este panel queda como del equipo
+              {stats && !withTeam && stats.internal_hidden > 0 && <> · {fmt(stats.internal_hidden)} {stats.internal_hidden === 1 ? "visita tuya oculta" : "visitas tuyas ocultas"} en este periodo</>}.
+            </span>
+            <button onClick={() => setShowTeam((v) => !v)} className="font-semibold underline underline-offset-2">
+              {showTeam ? "Ocultar dispositivos" : `Dispositivos del equipo (${team.length})`}
+            </button>
+            <label className="ml-auto inline-flex items-center gap-1.5 font-semibold cursor-pointer">
+              <input type="checkbox" checked={withTeam} onChange={(e) => setWithTeam(e.target.checked)} /> Incluir mis visitas
+            </label>
+          </div>
+          {showTeam && (
+            <div className="mt-2 space-y-1">
+              <p className="text-emerald-800/80">Para que tu teléfono tampoco cuente, entra una vez al panel desde ese teléfono (en el mismo navegador con el que abres los tours).</p>
+              {team.map((d) => (
+                <div key={d.visitor} className="flex items-center gap-2 bg-white/70 rounded-md px-2 py-1">
+                  <span className="font-semibold">{d.label ?? "Dispositivo"}</span>
+                  <span className="text-emerald-800/70">
+                    desde {new Date(d.created_at).toLocaleDateString("es-DO", { day: "numeric", month: "short" })} · último uso {new Date(d.last_seen).toLocaleDateString("es-DO", { day: "numeric", month: "short" })}
+                  </span>
+                  <button onClick={() => removeTeamDevice(d.visitor)} className="ml-auto text-red-600 hover:text-red-700" title="Volver a contar este dispositivo">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {stats && (
           <>
@@ -281,11 +491,21 @@ export function AdminVisitas() {
                 <Link to={path} target="_blank" className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-[#b8761a]">abrir <ExternalLink size={12} /></Link>
               </p>
             )}
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
               <Card icon={BarChart3} label="Visitas" value={fmt(stats.visits)} note="páginas abiertas" />
-              <Card icon={Users} label="Visitantes" value={fmt(stats.visitors)} note="navegadores distintos" />
+              <Card icon={Users} label="Visitantes" value={fmt(stats.visitors)} note={`${fmt(stats.new_visitors)} nuevos · ${fmt(returning)} recurrentes`} />
               <Card icon={Clock} label="Tiempo promedio" value={fmtDuration(stats.avg_duration)} note="con la página a la vista" />
-              <Card icon={MoveDown} label="Bajan hasta" value={stats.avg_scroll != null ? `${stats.avg_scroll}%` : "—"} note="de la página, en promedio" />
+              {isTour ? (
+                <Card icon={Images} label="Fotos vistas" value={fmt(stats.photo_views)} note={photosPerVisit ? `${photosPerVisit} fotos por visita` : "dentro del tour"} />
+              ) : (
+                <Card icon={MoveDown} label="Bajan hasta" value={stats.avg_scroll != null ? `${stats.avg_scroll}%` : "—"} note="de la página, en promedio" />
+              )}
+              <Card
+                icon={MessageCircle}
+                label="Contactos"
+                value={fmt(contacts)}
+                note={`WhatsApp ${stats.contacts.whatsapp ?? 0} · Llamadas ${stats.contacts.phone ?? 0} · Correo ${stats.contacts.email ?? 0}`}
+              />
               <Card
                 icon={MousePointerClick}
                 label="Interactuaron"
@@ -315,10 +535,44 @@ export function AdminVisitas() {
               />
               <BarList
                 title="De dónde llegan"
-                rows={stats.referrers.map((r) => ({ label: r.host, value: r.visits }))}
-                empty="Sin datos: las visitas directas (enlace escrito o guardado) no muestran origen."
+                rows={stats.channels.map((c) => ({ label: channelName(c.channel), value: c.visits }))}
+                empty="Todavía no hay visitas en este periodo."
               />
             </div>
+
+            <div className="grid md:grid-cols-3 gap-4">
+              <BarList
+                title="Países"
+                rows={stats.countries.map((c) => ({ label: `${flag(c.country)} ${countryName(c.country)}`, value: c.visits }))}
+                empty="Sin datos de país todavía (se registran desde esta versión)."
+              />
+              <BarList
+                title="Ciudades"
+                rows={stats.cities.map((c) => ({ label: `${flag(c.country)} ${c.city}`, value: c.visits }))}
+                empty="Sin datos de ciudad todavía."
+              />
+              <BarList
+                title={stats.campaigns.length ? "Campañas" : "Idioma del navegador"}
+                rows={stats.campaigns.length ? stats.campaigns.map((c) => ({ label: c.campaign, value: c.visits })) : stats.langs.map((l) => ({ label: LANG_NAMES[l.lang] ?? l.lang.toUpperCase(), value: l.visits }))}
+                empty="Sin datos."
+              />
+            </div>
+
+            {path && (
+              <div className="bg-white rounded-xl border border-gray-200 p-4">
+                <h2 className="font-semibold text-[#0F2B4C]">Enlaces marcados</h2>
+                <p className="text-xs text-gray-500 mt-0.5 mb-2">
+                  WhatsApp casi nunca dice de dónde viene la visita. Comparte el enlace marcado de cada lugar y aquí sabrás exactamente por dónde entró cada persona.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {SHARE_SOURCES.map((s) => (
+                    <button key={s.src} onClick={() => copySourceLink(s.src)} className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-gray-300 text-xs font-semibold text-[#0F2B4C] hover:bg-gray-50">
+                      <Copy size={12} /> {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {(!path || isTour) && (
               <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -335,6 +589,9 @@ export function AdminVisitas() {
                           </button>
                           <span className="text-xs text-gray-500"><b className="text-[#0F2B4C]">{fmt(t.visits)}</b> {t.visits === 1 ? "visita" : "visitas"}</span>
                           <span className="text-xs text-gray-500"><b className="text-[#0F2B4C]">{fmt(t.visitors)}</b> {t.visitors === 1 ? "visitante" : "visitantes"}</span>
+                          <span className="text-xs text-gray-500"><b className="text-[#0F2B4C]">{fmt(t.photo_views)}</b> fotos vistas</span>
+                          {t.avg_duration != null && <span className="text-xs text-gray-500"><b className="text-[#0F2B4C]">{fmtDuration(t.avg_duration)}</b> promedio</span>}
+                          {t.contacts > 0 && <span className="text-xs text-emerald-700"><b>{fmt(t.contacts)}</b> {t.contacts === 1 ? "contacto" : "contactos"}</span>}
                         </div>
                         {t.scenes.length > 0 && (
                           <p className="mt-1 text-xs text-gray-500">

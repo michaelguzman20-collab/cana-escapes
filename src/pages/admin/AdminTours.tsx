@@ -755,20 +755,6 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
             <Button variant="outline" size="sm" onClick={() => copyLink(tour.slug)} className={cn(isEditor && "bg-transparent border-white/20 text-white hover:bg-white/10 hover:text-white")}>
               <Copy size={14} className="mr-1.5" /> Copiar enlace
             </Button>
-            <a
-              href={viewHref}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => {
-                if (!isDirty()) return;
-                e.preventDefault();
-                guard(() => window.open(viewHref, "_blank"));
-              }}
-            >
-              <Button variant="outline" size="sm" className={cn(isEditor && "bg-transparent border-white/20 text-white hover:bg-white/10 hover:text-white")}>
-                <Eye size={14} className="mr-1.5" /> Ver
-              </Button>
-            </a>
             <Button size="sm" onClick={saveForm} disabled={!dirty || saving} className="bg-green-600 hover:bg-green-700 text-white">
               {saving ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Save size={14} className="mr-1.5" />} Guardar
             </Button>
@@ -805,7 +791,8 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
             </button>
           </div>
         )}
-        <div className="max-w-screen-2xl mx-auto mt-3 flex gap-1">
+        {/* Fotos · Editor 360 · Ajustes del tour · Ver: juntos, uno al lado del otro */}
+        <div className="max-w-screen-2xl mx-auto mt-3 flex flex-wrap gap-1.5">
           {([
             ["grid", "Fotos", LayoutGrid],
             ["editor", "Editor 360", Pencil],
@@ -816,15 +803,32 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
               onClick={() => k !== view && guard(() => setView(k), true)}
               disabled={k === "editor" && !scenes.length}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors disabled:opacity-40",
+                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-40",
                 view === k
                   ? "bg-[#F0A030] text-[#0F2B4C]"
-                  : isEditor ? "text-white/70 hover:bg-white/10" : "text-gray-600 hover:bg-gray-100"
+                  : isEditor ? "text-white/75 hover:bg-white/10" : "text-gray-600 hover:bg-gray-100"
               )}
             >
-              <Icon size={14} /> {label}
+              <Icon size={16} /> {label}
             </button>
           ))}
+          <a
+            href={viewHref}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => {
+              if (!isDirty()) return;
+              e.preventDefault();
+              guard(() => window.open(viewHref, "_blank"));
+            }}
+            title={isEditor ? "Abrir el tour público en esta foto" : "Abrir el tour público"}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border transition-colors",
+              isEditor ? "border-white/20 text-white hover:bg-white/10" : "border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+            )}
+          >
+            <Eye size={16} /> Ver
+          </a>
         </div>
       </div>
 
@@ -838,11 +842,11 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
       >
         <DialogContent
           ref={dialogRef}
-          className="max-w-md"
+          className="max-w-lg"
           onOpenAutoFocus={placeDialog}
           style={dialogShift ? { marginLeft: dialogShift.x, marginTop: dialogShift.y } : undefined}
         >
-          <DialogHeader>
+          <DialogHeader className="text-center sm:text-center">
             <DialogTitle>Tienes cambios sin guardar</DialogTitle>
             <DialogDescription>
               {dirty && "Nombre, descripción o ajustes del tour. "}
@@ -850,7 +854,7 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
               ¿Quieres guardarlos antes de continuar?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="flex-row flex-wrap justify-center gap-2 sm:justify-center sm:space-x-0">
             <Button variant="ghost" disabled={savingAll} onClick={() => setPendingAction(null)}>Cancelar</Button>
             <Button
               variant="outline"

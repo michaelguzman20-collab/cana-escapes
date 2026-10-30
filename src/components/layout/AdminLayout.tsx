@@ -1,9 +1,12 @@
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { AdminNav } from "./AdminNav";
 import { PropertyProvider } from "@/contexts/PropertyContext";
+import { markInternalVisitor } from "@/lib/visits";
 
 export function AdminLayout() {
+  // Este navegador es del equipo: sus visitas al sitio y a los tours no cuentan en Visitas
+  useEffect(markInternalVisitor, []);
   return (
     <PropertyProvider>
       <div className="flex min-h-screen bg-background">

@@ -143,7 +143,7 @@ export function AddonPanel({ addon, onChange, scenes, sceneId, busy, onSave, onD
       {/* Apariencia */}
       <section className="space-y-2">
         <h4 className={h3}>Apariencia</h4>
-        {addon.kind !== "text" && <Range label={addon.kind === "image" ? "Ancho" : "Tamaño"} value={s.size ?? 44} min={16} max={addon.kind === "image" ? 800 : 160} unit="px" onChange={(v) => st({ size: v })} />}
+        {addon.kind !== "text" && <Range label={addon.kind === "image" ? "Ancho" : "Tamaño"} value={s.size ?? 30} min={16} max={addon.kind === "image" ? 800 : 160} unit="px" onChange={(v) => st({ size: v })} />}
         <Range label="Opacidad" value={s.opacity ?? 100} min={10} max={100} unit="%" onChange={(v) => st({ opacity: v })} />
         <Range label="Rotación" value={s.rotation ?? 0} min={-180} max={180} unit="°" onChange={(v) => st({ rotation: v })} />
         <label className="flex items-center gap-2 text-[11px] text-white/70">

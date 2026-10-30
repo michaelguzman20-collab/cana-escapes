@@ -46,9 +46,9 @@ export function iconSvg(id: string, color: string) {
 
 // ── Estilos por defecto ─────────────────────────────────────────────────────
 export const PRESETS: Record<"arrow" | "info" | "icon" | "text" | "image", Partial<TourHotspot>> = {
-  arrow: { kind: "icon", icon: "chevron", action: "scene", style: { size: 52, fontSize: 8, opacity: 85, tint: "#ffffff", bg: "rgba(0,0,0,0.25)", placement: "2d", shadow: true } },
-  info: { kind: "icon", icon: "info", action: "card", style: { size: 36, fontSize: 8, opacity: 100, tint: "#0F2B4C", bg: "#ffffff", placement: "2d", shadow: true } },
-  icon: { kind: "icon", icon: "target", action: "none", style: { size: 44, fontSize: 8, opacity: 100, tint: "#ffffff", bg: "rgba(15,43,76,0.6)", placement: "2d", shadow: true } },
+  arrow: { kind: "icon", icon: "chevron", action: "scene", style: { size: 30, fontSize: 8, opacity: 85, tint: "#ffffff", bg: "rgba(0,0,0,0.25)", placement: "2d", shadow: true } },
+  info: { kind: "icon", icon: "info", action: "card", style: { size: 30, fontSize: 8, opacity: 100, tint: "#0F2B4C", bg: "#ffffff", placement: "2d", shadow: true } },
+  icon: { kind: "icon", icon: "target", action: "none", style: { size: 30, fontSize: 8, opacity: 100, tint: "#ffffff", bg: "rgba(15,43,76,0.6)", placement: "2d", shadow: true } },
   text: { kind: "text", action: "none", style: { label: "Texto", fontSize: 8, color: "#ffffff", labelBg: "rgba(0,0,0,0.45)", placement: "2d", shadow: true } },
   image: { kind: "image", action: "none", style: { size: 220, fontSize: 8, opacity: 100, placement: "2d" } },
 };
@@ -61,7 +61,7 @@ const SCALE_3D = 4;
 export function addonElement(h: TourHotspot, opts: { label?: string; selected?: boolean; pending?: boolean } = {}) {
   const s = h.style ?? {};
   const k = is3D(s) ? SCALE_3D : 1;
-  const size = (s.size ?? 44) * k;
+  const size = (s.size ?? 30) * k;
   const el = document.createElement("div");
   el.className = [
     "ce-addon",

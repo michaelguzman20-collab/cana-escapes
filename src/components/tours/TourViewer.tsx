@@ -14,7 +14,7 @@ import { addonElement, addonMarker } from "./tourAddons";
 import { PanoThumb } from "./PanoThumb";
 import { limitTexturesOnPhones, PSV_LANG_EN, PSV_LANG_ES } from "./viewerSetup";
 import {
-  addonsForScene, areaIn, clampPitch, isPhoneWidth, mediaRetryUrl, mediaUrl, viewerImage, sphereCorrection, startScene, zoomLevelFor, type FullTour, type TourHotspot, type TourScene,
+  addonsForScene, areaIn, clampPitch, mediaRetryUrl, mediaUrl, viewerImage, sphereCorrection, startScene, zoomLevelFor, type FullTour, type TourHotspot, type TourScene,
 } from "@/lib/tours";
 import { cn } from "@/lib/utils";
 
@@ -99,7 +99,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
   const [gyroSupported, setGyroSupported] = useState(false);
   const [gyroOn, setGyroOn] = useState(false);
   // En el teléfono la tira de fotos empieza oculta para ver más imagen (en computadora siempre se ve)
-  const [stripOpen, setStripOpen] = useState(() => !isPhoneWidth());
+  const [stripOpen, setStripOpen] = useState(false);
   const hasStrip = full.scenes.length > 1;
   const toggleStrip = (open: boolean) => {
     setStripOpen(open);
@@ -283,7 +283,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
     <div className="absolute inset-0">
       <div ref={containerRef} className="absolute inset-0" />
       {card && <Card addon={card} onClose={() => setCard(null)} />}
-      <div className={cn("absolute left-3 z-10 flex items-center gap-2", hasStrip && stripOpen ? "bottom-[8.5rem]" : "bottom-14 sm:bottom-[8.5rem]")}>
+      <div className={cn("absolute left-3 z-10 flex items-center gap-2", hasStrip && stripOpen ? "bottom-[8.5rem]" : "bottom-14")}>
         <button
           onClick={() => {
             const s = full.scenes.find((x) => x.id === current);
@@ -320,19 +320,19 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
         <button
           onClick={() => toggleStrip(true)}
           aria-label={stripLabels?.show ?? "Ver fotos"}
-          className="sm:hidden absolute left-1/2 -translate-x-1/2 bottom-14 z-10 flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-black/45 backdrop-blur-sm text-white text-xs font-semibold"
+          className="absolute left-1/2 -translate-x-1/2 bottom-14 z-10 flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-black/45 backdrop-blur-sm text-white text-xs font-semibold"
         >
           <GalleryHorizontal size={15} /> {stripLabels?.show ?? "Ver fotos"} <ChevronUp size={15} />
         </button>
       )}
       {hasStrip && (
-        <div className={cn("absolute left-0 right-0 bottom-12 z-10 flex-col items-center px-3 pointer-events-none", stripOpen ? "flex" : "hidden sm:flex")}>
+        <div className={cn("absolute left-0 right-0 bottom-12 z-10 flex-col items-center px-3 pointer-events-none", stripOpen ? "flex" : "hidden")}>
           {/* Pestaña para ocultar la tira (solo teléfono) */}
           <button
             onClick={() => toggleStrip(false)}
             aria-label={stripLabels?.hide ?? "Ocultar fotos"}
             title={stripLabels?.hide ?? "Ocultar fotos"}
-            className="sm:hidden pointer-events-auto flex items-center justify-center w-12 h-5 rounded-t-lg bg-black/35 backdrop-blur-sm text-white/90"
+            className="pointer-events-auto flex items-center justify-center w-12 h-5 rounded-t-lg bg-black/35 backdrop-blur-sm text-white/90"
           >
             <ChevronDown size={16} />
           </button>

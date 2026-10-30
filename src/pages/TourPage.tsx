@@ -72,7 +72,8 @@ function TourContent() {
   const [copied, setCopied] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   // Teléfono: la tira de fotos y los botones de arriba empiezan ocultos para ver más imagen
-  const [stripOpen, setStripOpen] = useState(() => !isPhoneWidth());
+  const [stripOpen, setStripOpen] = useState(false);
+  const [stripLift, setStripLift] = useState(0); // px que ocupa la tira de fotos abierta
   const [controlsOpen, setControlsOpen] = useState(() => !isPhoneWidth());
   const music = useRef<AmbientMusic | null>(null);
   const [musicOn, setMusicOn] = useState(false);
@@ -187,6 +188,7 @@ function TourContent() {
           gyroLabel={t("tours_gyro")}
           stripLabels={{ hide: t("tours_hide_photos"), show: t("tours_show_photos") }}
           onStripToggle={setStripOpen}
+          onStripLift={setStripLift}
           onSceneView={(sceneId) => recordSceneView(`/tour/${slug}`, full.tour.id, sceneId)}
           lang={lang}
         />
@@ -291,7 +293,7 @@ function TourContent() {
           </div>
         </div>
       </div>
-      <BrandLogo tour={full.tour} stripHidden={!stripOpen} />
+      <BrandLogo tour={full.tour} stripHidden={!stripOpen} lift={stripOpen ? stripLift : 0} />
       <FirstVisitHint text={window.matchMedia("(pointer: coarse)").matches ? t("tours_hint_touch") : t("tours_hint_mouse")} />
 
       {showInfo && (

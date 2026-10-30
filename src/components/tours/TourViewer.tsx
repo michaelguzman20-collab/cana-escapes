@@ -35,6 +35,8 @@ interface Props {
   stripLabels?: { hide: string; show: string };
   /** Avisa cuando la tira de fotos se oculta o se muestra (para recolocar el logo) */
   onStripToggle?(open: boolean): void;
+  /** Alto (px) que ocupa la tira de fotos abierta, medido desde el borde de abajo (0 = oculta) */
+  onStripLift?(px: number): void;
   /** Avisa cada vez que se muestra una foto (para contar qué fotos se miran) */
   onSceneView?(sceneId: string): void;
 }
@@ -80,7 +82,7 @@ function Card({ addon, onClose }: { addon: TourHotspot; onClose(): void }) {
   );
 }
 
-export default function TourViewer({ full, loadingText, startLabel, lang = "es", gyroLabel, stripLabels, onStripToggle, onSceneView }: Props) {
+export default function TourViewer({ full, loadingText, startLabel, lang = "es", gyroLabel, stripLabels, onStripToggle, onStripLift, onSceneView }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tourRef = useRef<VirtualTourPlugin | null>(null);
   const viewerRef = useRef<Viewer | null>(null);
@@ -105,6 +107,33 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
     setStripOpen(open);
     onStripToggle?.(open);
   };
+  // La tira tapaba los botones y el logo: se mide su alto real y todo lo demás sube encima de ella
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [stripH, setStripH] = useState(0);
+  const onStripLiftRef = useRef(onStripLift);
+  onStripLiftRef.current = onStripLift;
+  useEffect(() => {
+    const el = stripRef.current;
+    if (!stripOpen || !el) {
+      setStripH(0);
+      onStripLiftRef.current?.(0);
+      return;
+    }
+    const measure = () => {
+      const h = el.getBoundingClientRect().height;
+      setStripH(h);
+      onStripLiftRef.current?.(h + 48); // 48 px = barra del visor
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [stripOpen]);
+  // La foto actual queda centrada en la tira al abrirla o al cambiar de foto
+  const currentThumbRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (stripOpen) currentThumbRef.current?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }, [stripOpen, current]);
 
   useEffect(() => {
     if (!containerRef.current || !first) return;
@@ -283,7 +312,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
     <div className="absolute inset-0">
       <div ref={containerRef} className="absolute inset-0" />
       {card && <Card addon={card} onClose={() => setCard(null)} />}
-      <div className={cn("absolute left-3 z-10 flex items-center gap-2", hasStrip && stripOpen ? "bottom-[8.5rem]" : "bottom-14")}>
+      <div className="absolute left-3 z-10 flex items-center gap-2" style={{ bottom: hasStrip && stripOpen ? 48 + stripH + 8 : 56 }}>
         <button
           onClick={() => {
             const s = full.scenes.find((x) => x.id === current);
@@ -326,7 +355,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
         </button>
       )}
       {hasStrip && (
-        <div className={cn("absolute left-0 right-0 bottom-12 z-10 flex-col items-center px-3 pointer-events-none", stripOpen ? "flex" : "hidden")}>
+        <div ref={stripRef} className={cn("absolute left-0 right-0 bottom-12 z-10 flex-col items-center px-3 pointer-events-none", stripOpen ? "flex" : "hidden")}>
           {/* Pestaña para ocultar la tira (solo teléfono) */}
           <button
             onClick={() => toggleStrip(false)}
@@ -340,14 +369,18 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
             {full.scenes.map((s) => (
               <button
                 key={s.id}
+                ref={s.id === current ? currentThumbRef : undefined}
                 onClick={() => s.id !== current && goRef.current(s.id)}
+                aria-current={s.id === current}
                 className={cn(
-                  "shrink-0 w-16 sm:w-20 rounded-lg overflow-hidden border-2 text-left transition-colors",
-                  s.id === current ? "border-[#F0A030]" : "border-transparent opacity-80 hover:opacity-100"
+                  "shrink-0 w-16 sm:w-20 rounded-lg overflow-hidden border-2 text-left transition-all",
+                  s.id === current
+                    ? "border-[#F0A030] ring-2 ring-[#F0A030]/70 shadow-lg shadow-black/40 scale-105"
+                    : "border-transparent opacity-55 hover:opacity-100"
                 )}
               >
                 <PanoThumb src={s.thumb_url} yaw={s.initial_yaw} pitch={s.initial_pitch} fov={s.fov_initial} className="bg-black/40" />
-                <div className="px-1.5 py-0.5 text-[10px] sm:text-[11px] font-medium text-white truncate bg-black/50">{areaIn(s, lang) || s.title || "—"}</div>
+                <div className={cn("px-1.5 py-0.5 text-[10px] sm:text-[11px] truncate", s.id === current ? "font-bold bg-[#F0A030] text-[#0F2B4C]" : "font-medium text-white bg-black/50")}>{areaIn(s, lang) || s.title || "—"}</div>
               </button>
             ))}
           </div>

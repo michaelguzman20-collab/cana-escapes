@@ -16,11 +16,12 @@ const POSITION: Record<Tour["brand_position"], string> = {
 
 // Con la tira de fotos oculta (teléfono) el logo de abajo baja hasta la barra del visor
 const POSITION_NO_STRIP: Partial<Record<Tour["brand_position"], string>> = {
-  "bottom-right": "right-3 bottom-14 sm:bottom-[8.75rem]",
-  "bottom-left": "left-3 bottom-28 sm:bottom-[11.5rem]",
+  "bottom-right": "right-3 bottom-14",
+  "bottom-left": "left-3 bottom-28",
 };
 
-export function BrandLogo({ tour, className, stripHidden }: { tour: Brand; className?: string; stripHidden?: boolean }) {
+// lift = px que ocupa abajo la tira de fotos abierta (con su barra); el logo de abajo se coloca encima
+export function BrandLogo({ tour, className, stripHidden, lift }: { tour: Brand; className?: string; stripHidden?: boolean; lift?: number }) {
   if (!tour.brand_logo_url) return null;
   const href = externalUrl(tour.brand_link);
   const img = (
@@ -34,11 +35,14 @@ export function BrandLogo({ tour, className, stripHidden }: { tour: Brand; class
   );
   const place = (stripHidden && POSITION_NO_STRIP[tour.brand_position]) || POSITION[tour.brand_position] || POSITION["bottom-right"];
   const pos = cn("absolute z-10", place, className);
+  // Con la tira abierta se mide su alto real (puede variar con la pantalla)
+  const bottom = lift && tour.brand_position.startsWith("bottom") ? lift + 8 + (tour.brand_position === "bottom-left" ? 44 : 0) : undefined;
+  const style = bottom ? { bottom } : undefined;
   return href ? (
-    <a href={href} target="_blank" rel="noopener noreferrer" className={cn(pos, "hover:scale-105 transition-transform")} title={href}>
+    <a href={href} target="_blank" rel="noopener noreferrer" className={cn(pos, "hover:scale-105 transition-transform")} style={style} title={href}>
       {img}
     </a>
   ) : (
-    <div className={cn(pos, "pointer-events-none")}>{img}</div>
+    <div className={cn(pos, "pointer-events-none")} style={style}>{img}</div>
   );
 }

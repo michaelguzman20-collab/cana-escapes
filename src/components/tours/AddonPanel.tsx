@@ -177,7 +177,20 @@ export function AddonPanel({ addon, onChange, scenes, sceneId, busy, onSave, onD
 
       {/* Texto / etiqueta */}
       <section className="space-y-2">
-        <h4 className={h3}>{addon.kind === "text" ? "Texto" : "Etiqueta"}</h4>
+        <div className="flex items-center justify-between gap-2">
+          <h4 className={h3}>{addon.kind === "text" ? "Texto" : "Etiqueta"}</h4>
+          {/* Quitar la etiqueta: solo queda el botón (flecha, ícono…) sin nombre debajo */}
+          {addon.kind !== "text" && (
+            <label className="flex items-center gap-1.5 text-[11px] text-white/70 cursor-pointer">
+              <input type="checkbox" checked={!!s.noLabel} onChange={(e) => st({ noLabel: e.target.checked })} className="h-3.5 w-3.5 accent-[#F0A030]" />
+              Sin etiqueta
+            </label>
+          )}
+        </div>
+        {addon.kind !== "text" && s.noLabel ? (
+          <p className="text-[11px] text-white/50">Solo se ve el botón, sin nombre debajo.</p>
+        ) : (
+          <>
         {addon.kind === "text" ? (
           <Textarea value={s.label ?? ""} onChange={(e) => st({ label: e.target.value })} rows={2} placeholder="Escribe el texto" className={cn("text-xs", input)} />
         ) : (
@@ -190,6 +203,8 @@ export function AddonPanel({ addon, onChange, scenes, sceneId, busy, onSave, onD
           <label className="flex items-center gap-2 text-[11px] text-white/70"><Switch checked={!!s.bold} onCheckedChange={(v) => st({ bold: v })} /> Negrita</label>
           {addon.kind !== "text" && <label className="flex items-center gap-2 text-[11px] text-white/70"><Switch checked={!!s.onlyHover} onCheckedChange={(v) => st({ onlyHover: v })} /> Solo al pasar</label>}
         </div>
+          </>
+        )}
       </section>
 
       {/* Acción */}
@@ -212,8 +227,9 @@ export function AddonPanel({ addon, onChange, scenes, sceneId, busy, onSave, onD
             className="w-full rounded-md bg-white/10 border border-white/15 px-2 py-1.5 text-xs [&>option]:text-black"
           >
             <option value="">— Elige la foto —</option>
-            {scenes.filter((x) => x.id !== sceneId).map((x) => (
-              <option key={x.id} value={x.id}>{sceneLabel(x)}</option>
+            {/* Con el número del carrete: distingue fotos con el mismo nombre */}
+            {scenes.map((x, i) => x.id !== sceneId && (
+              <option key={x.id} value={x.id}>{i + 1}. {sceneLabel(x)}</option>
             ))}
           </select>
         )}

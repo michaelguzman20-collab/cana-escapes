@@ -74,7 +74,7 @@ export function addonElement(h: TourHotspot, opts: { label?: string; selected?: 
   el.style.opacity = String((s.opacity ?? 100) / 100);
   const rot = !is3D(s) && s.rotation ? `transform: rotate(${s.rotation}deg);` : "";
   const shadow = s.shadow ? "filter: drop-shadow(0 3px 6px rgba(0,0,0,.45));" : "";
-  const labelText = h.kind === "text" ? "" : s.label || opts.label || "";
+  const labelText = h.kind === "text" || s.noLabel ? "" : s.label || opts.label || "";
   const label = labelText
     ? `<div class="ce-addon-label${s.onlyHover ? " ce-only-hover" : ""}" style="font-size:${(s.fontSize ?? 13) * k}px;color:${s.color ?? "#fff"};${s.labelBg !== "" ? `background:${s.labelBg ?? "rgba(15,43,76,0.85)"};` : ""}${s.bold ? "font-weight:700;" : ""}">${escapeHtml(labelText)}</div>`
     : "";

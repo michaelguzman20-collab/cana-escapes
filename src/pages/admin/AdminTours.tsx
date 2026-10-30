@@ -1374,6 +1374,8 @@ function SceneEditor({
   const replaceRef = useRef<HTMLInputElement>(null);
   const sceneAddons = useMemo(() => addonsForScene(hotspots, scene.id), [hotspots, scene.id]);
   const titles = useMemo(() => new Map(scenes.map((s) => [s.id, s.area?.trim() || s.title || "Escena"])), [scenes]);
+  // Lista de addons: "→ 4. Cocina", con el número del carrete (hay fotos con el mismo nombre)
+  const numberedTitles = useMemo(() => new Map(scenes.map((s, i) => [s.id, `${i + 1}. ${titles.get(s.id)}`])), [scenes, titles]);
   const [pickingStart, setPickingStart] = useState(false);
   const [area, setArea] = useState(scene.area ?? "");
   useEffect(() => setArea(scene.area ?? ""), [scene.area]);
@@ -1797,7 +1799,7 @@ function SceneEditor({
                     {h.kind === "text" && <Type size={12} className="shrink-0 -ml-5" />}
                     {h.kind === "image" && <ImageIcon size={12} className="shrink-0 -ml-5" />}
                     <button onClick={() => editAddon(h)} className="flex-1 text-left truncate hover:underline">
-                      {addonSummary(h, titles)}
+                      {addonSummary(h, numberedTitles)}
                       {h.master && <span className="ml-1 text-[9px] font-bold text-[#F0A030]">MASTER</span>}
                       {h.style?.auto && <span className="ml-1 text-[9px] font-bold text-[#F0A030]">POR REVISAR</span>}
                     </button>

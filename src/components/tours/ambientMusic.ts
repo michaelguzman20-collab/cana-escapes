@@ -231,6 +231,12 @@ const GROOVES: Record<Exclude<MusicStyle, "zen">, Groove> = {
   },
 };
 
+// Cada estilo sale con un nivel muy distinto (medido: de -60 dB el piano a -39 dB el zen, casi
+// inaudibles). Esta ganancia los deja a todos parecidos (~ -29 dB RMS): fondo audible sin tapar nada.
+const LOUDNESS: Record<MusicStyle, number> = {
+  zen: 3, tropical: 8, chill: 8, caribe: 10, elegante: 10.5, acustica: 11, bossa: 13.5, lounge: 27, piano: 35,
+};
+
 export class AmbientMusic {
   readonly style: MusicStyle;
   private ctx: AudioContext | null = null;
@@ -257,21 +263,39 @@ export class AmbientMusic {
     return !!this.ctx;
   }
 
+  /** ¿Suena de verdad? (false si el navegador aún espera un toque) */
+  get audible() {
+    return this.ctx?.state === "running";
+  }
+
+  resume() {
+    return this.ctx?.resume().catch(() => undefined);
+  }
+
   async start(volume = 0.16) {
     if (this.ctx) return;
     const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const ctx = new Ctx();
     this.ctx = ctx;
-    await ctx.resume();
+    // Sin un toque previo el navegador deja el audio en pausa: se prepara igual y suena con resume()
+    // (no se espera aquí: en algunos navegadores esa promesa no termina hasta el primer toque)
+    ctx.resume().catch(() => undefined);
 
     const master = ctx.createGain();
     master.gain.setValueAtTime(0, ctx.currentTime);
-    master.gain.linearRampToValueAtTime(volume, ctx.currentTime + 2.5);
+    master.gain.linearRampToValueAtTime(volume * LOUDNESS[this.style], ctx.currentTime + 2.5);
     // Un filtro general quita brillo áspero: el sonido queda "de fondo"
     const tone = ctx.createBiquadFilter();
     tone.type = "lowpass";
     tone.frequency.value = this.style === "tropical" || this.style === "caribe" ? 9000 : 7000;
-    master.connect(tone).connect(ctx.destination);
+    // Limitador: un golpe fuerte (acordes que coinciden) nunca satura
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -10;
+    limiter.knee.value = 6;
+    limiter.ratio.value = 12;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.25;
+    master.connect(tone).connect(limiter).connect(ctx.destination);
     this.master = master;
 
     // Reverberación: respuesta de ruido que se apaga

@@ -345,6 +345,31 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
     else action();
   }
 
+  // El aviso aparece con "Guardar y continuar" justo bajo el ratón (donde se hizo clic): un clic más y sigue.
+  // El navegador no deja mover el puntero, así que se mueve el aviso hasta él (y Enter también guarda).
+  const lastPointer = useRef<{ x: number; y: number; t: number } | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const saveBtnRef = useRef<HTMLButtonElement>(null);
+  const [dialogShift, setDialogShift] = useState<{ x: number; y: number } | null>(null);
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => (lastPointer.current = { x: e.clientX, y: e.clientY, t: Date.now() });
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  }, []);
+  function placeDialog(e: Event) {
+    e.preventDefault();
+    saveBtnRef.current?.focus();
+    const p = lastPointer.current;
+    const box = dialogRef.current?.getBoundingClientRect();
+    const btn = saveBtnRef.current?.getBoundingClientRect();
+    if (!p || Date.now() - p.t > 1500 || !box || !btn) return setDialogShift(null);
+    const m = 8;
+    const cur = dialogShift ?? { x: 0, y: 0 }; // lo medido ya incluye el desplazamiento actual
+    const x = Math.min(Math.max(p.x - (btn.left + btn.width / 2), m - box.left), window.innerWidth - m - box.right);
+    const y = Math.min(Math.max(p.y - (btn.top + btn.height / 2), m - box.top), window.innerHeight - m - box.bottom);
+    setDialogShift({ x: cur.x + x, y: cur.y + y });
+  }
+
   async function saveAll() {
     setSavingAll(true);
     let ok = true;
@@ -682,6 +707,8 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
   }
 
   const isEditor = view === "editor";
+  // Desde el editor, "Ver" abre el tour directamente en la foto que se está editando
+  const viewHref = `/tour/${tour.slug}${isEditor && currentId ? `?foto=${currentId}` : ""}`;
 
   return (
     <div className={cn("min-h-screen text-sm", isEditor ? "bg-[#111827]" : "bg-gradient-to-br from-[#eef3f9] via-[#f0f6ff] to-[#e8f0f8]")}>
@@ -729,13 +756,13 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
               <Copy size={14} className="mr-1.5" /> Copiar enlace
             </Button>
             <a
-              href={`/tour/${tour.slug}`}
+              href={viewHref}
               target="_blank"
               rel="noreferrer"
               onClick={(e) => {
                 if (!isDirty()) return;
                 e.preventDefault();
-                guard(() => window.open(`/tour/${tour.slug}`, "_blank"));
+                guard(() => window.open(viewHref, "_blank"));
               }}
             >
               <Button variant="outline" size="sm" className={cn(isEditor && "bg-transparent border-white/20 text-white hover:bg-white/10 hover:text-white")}>
@@ -801,8 +828,20 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
         </div>
       </div>
 
-      <Dialog open={!!pendingAction} onOpenChange={(o) => !o && !savingAll && setPendingAction(null)}>
-        <DialogContent className="max-w-md">
+      <Dialog
+        open={!!pendingAction}
+        onOpenChange={(o) => {
+          if (o || savingAll) return;
+          setPendingAction(null);
+          setDialogShift(null);
+        }}
+      >
+        <DialogContent
+          ref={dialogRef}
+          className="max-w-md"
+          onOpenAutoFocus={placeDialog}
+          style={dialogShift ? { marginLeft: dialogShift.x, marginTop: dialogShift.y } : undefined}
+        >
           <DialogHeader>
             <DialogTitle>Tienes cambios sin guardar</DialogTitle>
             <DialogDescription>
@@ -828,6 +867,7 @@ function TourEditor({ tour, allTours, onBack, onChange, onDeleted }: {
               Salir sin guardar
             </Button>
             <Button
+              ref={saveBtnRef}
               disabled={savingAll}
               onClick={async () => {
                 const act = pendingAction;
@@ -1408,11 +1448,25 @@ function SceneEditor({
     }
   }
 
+  // Si el addon abierto tiene cambios sin guardar, antes de abrir otro (o poner uno nuevo) se pregunta.
+  // Devuelve false si quedó esperando la respuesta (el visor no empieza a arrastrar).
+  function guardAddon(action: () => void) {
+    if (!addonDirty) return action(), true;
+    guard(action);
+    return false;
+  }
+
   function editAddon(h: TourHotspot) {
-    if (editing?.id === h.id) return; // ya abierto (p. ej. recién arrastrado): no perder la posición nueva
-    setPlacing(null);
-    setTab("puntos");
-    setEditing({ ...h, style: { ...h.style }, hide_in: [...(h.hide_in ?? [])] });
+    if (editing?.id === h.id) return true; // ya abierto (p. ej. recién arrastrado): no perder la posición nueva
+    return guardAddon(() => {
+      setPlacing(null);
+      setTab("puntos");
+      setEditing({ ...h, style: { ...h.style }, hide_in: [...(h.hide_in ?? [])] });
+    });
+  }
+
+  function startPlacing(k: PresetKey) {
+    guardAddon(() => setPlacing(k));
   }
 
   async function uploadAddonImage(file: File) {
@@ -1501,6 +1555,12 @@ function SceneEditor({
   const pendingHere = sceneAddons.filter((h) => h.style?.auto);
   const pendingTotal = hotspots.filter((h) => h.style?.auto).length;
   const sceneIndex = scenes.findIndex((s) => s.id === scene.id);
+  // Fotos conectadas: a las que llevan las flechas de esta foto (en el orden del tour)
+  const linkedIds = useMemo(
+    () => new Set(sceneAddons.filter((h) => h.action === "scene" && h.target_scene_id && h.target_scene_id !== scene.id).map((h) => h.target_scene_id!)),
+    [sceneAddons, scene.id]
+  );
+  const linkedScenes = scenes.filter((s) => linkedIds.has(s.id));
 
   // En la revisión, al soltar una flecha arrastrada se guarda sola (y deja de estar "por revisar")
   async function saveMoved(id: string, pos: { yaw: number; pitch: number }) {
@@ -1562,7 +1622,7 @@ function SceneEditor({
     <div className="text-white">
       <div className="flex flex-col lg:flex-row">
         {/* Panorama */}
-        <div className={cn("relative flex-1 h-[55vh] lg:h-[calc(100vh-200px)] min-h-[320px] bg-black", placing && "ce-placing")}>
+        <div className={cn("relative isolate flex-1 h-[55vh] lg:h-[calc(100vh-200px)] min-h-[320px] bg-black", placing && "ce-placing")}>
           <Suspense fallback={<div className="absolute inset-0 flex items-center justify-center text-white/60"><Loader2 className="animate-spin mr-2" size={18} /> Cargando visor…</div>}>
             <TourEditorViewer
               scene={scene}
@@ -1692,16 +1752,16 @@ function SceneEditor({
           <section>
             <h3 className="text-xs font-bold uppercase tracking-wider text-white/50 mb-2">Añadir</h3>
             <div className="grid grid-cols-2 gap-2">
-              <Button size="sm" onClick={() => setPlacing("arrow")} className={cn("bg-[#F0A030] text-[#0F2B4C] hover:bg-[#e5952a]", placing === "arrow" && "ring-2 ring-white")}>
+              <Button size="sm" onClick={() => startPlacing("arrow")} className={cn("bg-[#F0A030] text-[#0F2B4C] hover:bg-[#e5952a]", placing === "arrow" && "ring-2 ring-white")}>
                 <Navigation size={14} className="mr-1.5" /> Flecha
               </Button>
-              <Button size="sm" onClick={() => setPlacing("info")} className={cn("bg-white text-[#0F2B4C] hover:bg-gray-100", placing === "info" && "ring-2 ring-[#F0A030]")}>
+              <Button size="sm" onClick={() => startPlacing("info")} className={cn("bg-white text-[#0F2B4C] hover:bg-gray-100", placing === "info" && "ring-2 ring-[#F0A030]")}>
                 <Info size={14} className="mr-1.5" /> Info
               </Button>
             </div>
             <div className="grid grid-cols-3 gap-2 mt-2">
               {([["icon", "Ícono", Crosshair], ["text", "Texto", Type], ["image", "Imagen", ImageIcon]] as const).map(([k, label, Icon]) => (
-                <Button key={k} size="sm" variant="ghost" onClick={() => setPlacing(k)} className={cn("bg-white/10 text-white hover:bg-white/20 hover:text-white", placing === k && "ring-2 ring-[#F0A030]")}>
+                <Button key={k} size="sm" variant="ghost" onClick={() => startPlacing(k)} className={cn("bg-white/10 text-white hover:bg-white/20 hover:text-white", placing === k && "ring-2 ring-[#F0A030]")}>
                   <Icon size={14} className="mr-1" /> {label}
                 </Button>
               ))}
@@ -1983,6 +2043,7 @@ function SceneEditor({
                 scene={s}
                 index={i}
                 active={s.id === scene.id}
+                linked={linkedIds.has(s.id)}
                 isStart={s.id === startId}
                 onOpen={() => s.id !== scene.id && guard(() => setCurrentId(s.id))}
               />
@@ -1990,15 +2051,40 @@ function SceneEditor({
           </div>
         </SortableContext>
       </DndContext>
+      {/* Fotos a las que llevan las flechas de esta: un clic para saltar a la siguiente */}
+      <div className="flex items-center gap-2 overflow-x-auto px-3 py-2 bg-black/80 border-t border-white/10 text-xs" style={{ scrollbarWidth: "thin" }}>
+        <span className="shrink-0 flex items-center gap-1 font-semibold text-sky-300">
+          <Navigation size={12} /> Conectada con:
+        </span>
+        {linkedScenes.length ? (
+          linkedScenes.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => guard(() => setCurrentId(s.id))}
+              title={`Ir a "${sceneLabel(s)}"`}
+              className="shrink-0 flex items-center gap-1.5 pl-0.5 pr-2 py-0.5 rounded-full border border-sky-400/60 bg-sky-400/10 hover:bg-sky-400/25 text-white"
+            >
+              <span className="w-6 h-6 rounded-full overflow-hidden">
+                <PanoThumb src={s.thumb_url} yaw={s.initial_yaw} pitch={s.initial_pitch} fov={s.fov_initial} />
+              </span>
+              {scenes.indexOf(s) + 1}. {s.area?.trim() || s.title || "Sin nombre"}
+              <ChevronRight size={12} className="text-sky-300" />
+            </button>
+          ))
+        ) : (
+          <span className="text-white/50">Ninguna flecha todavía: pon una con "Flecha" para conectar esta foto.</span>
+        )}
+      </div>
     </div>
   );
 }
 
 // Miniatura del carrete del editor: número de orden, foto y nombre; se puede arrastrar
-function StripThumb({ scene: s, index, active, isStart, onOpen }: {
+function StripThumb({ scene: s, index, active, linked, isStart, onOpen }: {
   scene: TourScene;
   index: number;
   active: boolean;
+  linked: boolean; // una flecha de la foto actual lleva a esta
   isStart: boolean;
   onOpen(): void;
 }) {
@@ -2014,7 +2100,7 @@ function StripThumb({ scene: s, index, active, isStart, onOpen }: {
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
         "relative shrink-0 w-20 rounded overflow-hidden border-2 text-left touch-none cursor-grab active:cursor-grabbing",
-        active ? "border-[#F0A030]" : "border-transparent opacity-70 hover:opacity-100",
+        active ? "border-[#F0A030]" : linked ? "border-sky-400" : "border-transparent opacity-70 hover:opacity-100",
         isDragging && "z-10 opacity-100 ring-2 ring-[#F0A030] shadow-xl"
       )}
     >
@@ -2023,6 +2109,11 @@ function StripThumb({ scene: s, index, active, isStart, onOpen }: {
         {isStart && <Star size={9} className="text-[#F0A030]" fill="currentColor" />}
         {index + 1}
       </span>
+      {linked && (
+        <span title="Conectada con la foto actual" className="absolute top-0.5 right-0.5 w-[18px] h-[18px] rounded-full bg-sky-500 text-white flex items-center justify-center">
+          <Navigation size={10} />
+        </span>
+      )}
       {/* Nombre de la foto para identificarla cuando hay muchas */}
       <div className={cn("px-1 py-0.5 text-[10px] leading-tight font-medium truncate", active ? "bg-[#F0A030] text-[#0F2B4C]" : "bg-black/70 text-white")}>
         {s.area?.trim() || s.title || "Sin nombre"}

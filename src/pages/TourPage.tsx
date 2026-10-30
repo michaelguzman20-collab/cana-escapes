@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Check, ChevronDown, ChevronUp, Hand, Info, Link2, Music, Rotate3d, VolumeX, X, Instagram } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LangProvider, useLang } from "@/lib/LangContext";
@@ -67,6 +67,9 @@ function Tours360Loader({ text }: { text: string }) {
 
 function TourContent() {
   const { slug = "" } = useParams();
+  // ?foto=<id>: abrir en esa foto (el botón "Ver" del editor 360 abre así la que se está editando)
+  const [params] = useSearchParams();
+  const foto = params.get("foto");
   const { t, lang, setLang } = useLang();
   const [full, setFull] = useState<FullTour | null | undefined>(undefined);
   const [copied, setCopied] = useState(false);
@@ -84,13 +87,14 @@ function TourContent() {
     loadViewer();
     fetchTourBySlug(slug)
       .then((f) => {
+        if (f && foto && f.scenes.some((s) => s.id === foto)) f = { ...f, tour: { ...f.tour, start_scene_id: foto } };
         // La primera foto se pide ya, mientras se prepara el visor
         const first = f && startScene(f);
         if (first) new Image().src = mediaUrl(viewerImage(first));
         setFull(f);
       })
       .catch(() => setFull(null));
-  }, [slug]);
+  }, [slug, foto]);
 
   useEffect(() => () => music.current?.stop(), []);
 
@@ -105,30 +109,40 @@ function TourContent() {
   function toggleMusic() {
     if (musicOn) {
       music.current?.stop();
+      music.current = null;
       setMusicOn(false);
       try { localStorage.setItem(MUSIC_KEY, "off"); } catch { /* sin almacenamiento */ }
       return;
     }
     music.current ??= new AmbientMusic(full?.tour.music_style);
-    music.current.start().catch(() => setMusicOn(false));
+    music.current.start().then(() => music.current?.resume()).catch(() => setMusicOn(false));
     setMusicOn(true);
     try { localStorage.setItem(MUSIC_KEY, "on"); } catch { /* sin almacenamiento */ }
   }
 
-  // Si la persona dejó la música encendida la vez anterior, suena al primer toque en la pantalla
-  // (los navegadores no dejan reproducir sonido sin un toque)
+  // La música arranca sola (salvo que la persona la apagara antes; el botón la apaga).
+  // Los navegadores no dejan sonar nada hasta el primer toque: si aún no suena, empieza con el
+  // primer toque, clic, arrastre de la foto o tecla en cualquier parte de la página.
+  const musicStyle = full?.tour.music_style;
   useEffect(() => {
-    let wanted = false;
-    try { wanted = localStorage.getItem(MUSIC_KEY) === "on"; } catch { /* sin almacenamiento */ }
-    if (!wanted) return;
-    const onFirst = () => {
-      if (music.current?.playing) return;
-      music.current ??= new AmbientMusic(fullRef.current?.tour.music_style);
-      music.current.start().then(() => setMusicOn(true)).catch(() => undefined);
+    if (!musicStyle) return;
+    let off = false;
+    try { off = localStorage.getItem(MUSIC_KEY) === "off"; } catch { /* sin almacenamiento */ }
+    if (off) return;
+    music.current ??= new AmbientMusic(musicStyle);
+    music.current.start().catch(() => undefined);
+    setMusicOn(true);
+    const onFirst = (e: Event) => {
+      // El propio botón de música ya decide (si se toca primero, es para apagarla)
+      if ((e.target as HTMLElement).closest?.("[data-music-toggle]")) return;
+      music.current?.resume();
+      if (music.current?.audible !== false) remove();
     };
-    window.addEventListener("pointerdown", onFirst, { once: true });
-    return () => window.removeEventListener("pointerdown", onFirst);
-  }, []);
+    const events = ["pointerdown", "touchstart", "keydown", "click"] as const;
+    const remove = () => events.forEach((n) => window.removeEventListener(n, onFirst, true));
+    events.forEach((n) => window.addEventListener(n, onFirst, true));
+    return remove;
+  }, [musicStyle]);
 
   useSeo({
     title: full ? `${full.tour.title} — Tour 360` : "Tour 360 · Punta Cana",
@@ -160,7 +174,10 @@ function TourContent() {
     ? whatsappLink(ownerWa, `${t("tours_wa_owner")} ${full.tour.title}: ${url}`)
     : `https://wa.me/?text=${encodeURIComponent(`${full.tour.title} — ${t("tours_wa_text")} ${url}`)}`;
   const waLabel = ownerWa ? t("tours_contact") : t("tours_share_wa");
+  // Sin Instagram del propietario, el botón lleva al de Cana Escapes (igual que WhatsApp sirve para compartir)
   const ownerIg = instagramUser(full.tour.instagram);
+  const igUser = ownerIg || "canaescapes";
+  const igLabel = ownerIg ? t("tours_instagram") : t("tours_instagram_cana");
   const langButton = (
     <button
       onClick={() => setLang(lang === "es" ? "en" : "es")}
@@ -235,6 +252,7 @@ function TourContent() {
           <span className="hidden sm:contents">{langButton}</span>
           <button
             onClick={toggleMusic}
+            data-music-toggle
             aria-label={musicOn ? t("tours_music_off") : t("tours_music_on")}
             title={musicOn ? t("tours_music_off") : t("tours_music_on")}
             aria-pressed={musicOn}
@@ -278,18 +296,16 @@ function TourContent() {
           >
             <WhatsAppIcon size={17} />
           </a>
-          {ownerIg && (
-            <a
-              href={instagramLink(ownerIg)}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={t("tours_instagram")}
-              title={`${t("tours_instagram")}: @${ownerIg}`}
-              className="h-9 w-9 rounded-full text-white flex items-center justify-center hover:brightness-110 bg-[linear-gradient(45deg,#F58529,#DD2A7B,#8134AF)]"
-            >
-              <Instagram size={17} />
-            </a>
-          )}
+          <a
+            href={instagramLink(igUser)}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={igLabel}
+            title={`${igLabel}: @${igUser}`}
+            className="h-9 w-9 rounded-full text-white flex items-center justify-center hover:brightness-110 bg-[linear-gradient(45deg,#F58529,#DD2A7B,#8134AF)]"
+          >
+            <Instagram size={17} />
+          </a>
           </div>
         </div>
       </div>

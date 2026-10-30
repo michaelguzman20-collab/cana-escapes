@@ -33,7 +33,8 @@ interface Props {
   onViewMoved?(pos: { yaw: number; pitch: number }, fov: number): void;
   cssFilter?: string;
   onPanoClick(pos: { yaw: number; pitch: number }): void;
-  onAddonClick(h: TourHotspot): void;
+  /** false = no se abrió (queda preguntando si guardar el actual): no se arrastra */
+  onAddonClick(h: TourHotspot): boolean | void;
   onAddonMoved(pos: { yaw: number; pitch: number }, id: string): void;
   onApi?(api: EditorViewerApi | null): void;
 }
@@ -78,7 +79,7 @@ export default function TourEditorViewer(props: Props) {
       e.stopPropagation();
       e.preventDefault();
       dragging = { id, x: p?.clientX ?? 0, y: p?.clientY ?? 0 };
-      if (editing?.id !== id) cb.current.onAddonClick(h);
+      if (editing?.id !== id && cb.current.onAddonClick(h) === false) dragging = null;
     };
     const onMove = (e: MouseEvent | TouchEvent) => {
       if (!dragging || !viewer) return;

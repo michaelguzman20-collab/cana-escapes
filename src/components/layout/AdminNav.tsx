@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { NavLink, Link, useNavigate } from "react-router-dom";
-import { LayoutDashboard, CalendarDays, CalendarRange, Settings, LogOut, User, Users, Globe, UserCheck, Receipt, TrendingUp, Landmark, Wrench, Banknote, Bell, CheckCheck, KeyRound, MessageCircle, Calculator, MapPin, Dna, Rotate3d, BarChart3 } from "lucide-react";
+import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
+import { LayoutDashboard, CalendarDays, CalendarRange, Settings, LogOut, User, Users, Globe, UserCheck, Receipt, TrendingUp, Landmark, Wrench, Banknote, Bell, CheckCheck, KeyRound, MessageCircle, Calculator, MapPin, Dna, Rotate3d, BarChart3, ChevronDown } from "lucide-react";
 import { Logo } from "./Logo";
 import { PropertySwitcher } from "./PropertySwitcher";
 import { Button } from "@/components/ui/button";
@@ -8,26 +8,47 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAdminNotifications, useMarkNotificationRead, useMarkAllRead } from "@/hooks/useAdminNotifications";
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { to: "/admin/dashboard",     icon: LayoutDashboard, label: "Dashboard"       },
-  { to: "/admin/reservas",      icon: CalendarDays,    label: "Reservas"        },
-  { to: "/admin/huespedes",     icon: Users,           label: "Huéspedes"       },
-  { to: "/admin/calendario",    icon: CalendarRange,   label: "Calendario"      },
-  { to: "/admin/mantenimiento", icon: Wrench,          label: "Mantenimiento"   },
-  { to: "/admin/plataformas",   icon: Globe,           label: "Plataformas"     },
-  { to: "/admin/propietarios",  icon: UserCheck,       label: "Propietarios"    },
-  { to: "/admin/cargos",        icon: Receipt,         label: "Cargos Prop."    },
-  { to: "/admin/pagos-propietarios", icon: Banknote,   label: "Pagos Prop."     },
-  { to: "/admin/cana-escapes",  icon: TrendingUp,      label: "Cana Escapes"    },
-  { to: "/admin/calculadora",   icon: Calculator,      label: "Calculadora"     },
-  { to: "/admin/cana-dna",      icon: Dna,             label: "Cana DNA"        },
-  { to: "/admin/tours",         icon: Rotate3d,        label: "Tours 360"       },
-  { to: "/admin/visitas",       icon: BarChart3,       label: "Visitas"         },
-  { to: "/admin/contabilidad",  icon: Landmark,        label: "Financiero"      },
-  { to: "/admin/whatsapp",      icon: MessageCircle,   label: "WhatsApp Bot"    },
-  { to: "/admin/track",         icon: MapPin,          label: "Cana Track"      },
-  { to: "/admin/configuracion", icon: Settings,        label: "Configuración"   },
+// Menú lateral agrupado: cada grupo se abre/cierra con su flecha (el del apartado abierto se abre solo)
+const navGroups = [
+  { id: "operacion", label: "Operación", items: [
+    { to: "/admin/dashboard",     icon: LayoutDashboard, label: "Dashboard"       },
+    { to: "/admin/reservas",      icon: CalendarDays,    label: "Reservas"        },
+    { to: "/admin/huespedes",     icon: Users,           label: "Huéspedes"       },
+    { to: "/admin/calendario",    icon: CalendarRange,   label: "Calendario"      },
+    { to: "/admin/mantenimiento", icon: Wrench,          label: "Mantenimiento"   },
+    { to: "/admin/plataformas",   icon: Globe,           label: "Plataformas"     },
+  ] },
+  { id: "propietarios", label: "Propietarios", items: [
+    { to: "/admin/propietarios",  icon: UserCheck,       label: "Propietarios"    },
+    { to: "/admin/cargos",        icon: Receipt,         label: "Cargos Prop."    },
+    { to: "/admin/pagos-propietarios", icon: Banknote,   label: "Pagos Prop."     },
+  ] },
+  { id: "negocio", label: "Negocio", items: [
+    { to: "/admin/cana-escapes",  icon: TrendingUp,      label: "Cana Escapes"    },
+    { to: "/admin/calculadora",   icon: Calculator,      label: "Calculadora"     },
+    { to: "/admin/cana-dna",      icon: Dna,             label: "Cana DNA"        },
+    { to: "/admin/contabilidad",  icon: Landmark,        label: "Financiero"      },
+  ] },
+  { id: "tours", label: "Tours 360", items: [
+    { to: "/admin/tours",         icon: Rotate3d,        label: "Tours 360"       },
+    { to: "/admin/visitas",       icon: BarChart3,       label: "Visitas"         },
+  ] },
+  { id: "herramientas", label: "Herramientas", items: [
+    { to: "/admin/whatsapp",      icon: MessageCircle,   label: "WhatsApp Bot"    },
+    { to: "/admin/track",         icon: MapPin,          label: "Cana Track"      },
+    { to: "/admin/configuracion", icon: Settings,        label: "Configuración"   },
+  ] },
 ];
+const navItems = navGroups.flatMap((g) => g.items);
+
+const OPEN_KEY = "admin-nav-open";
+function readOpen(): Record<string, boolean> {
+  try {
+    return JSON.parse(localStorage.getItem(OPEN_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
 
 function timeAgo(date: string) {
   const diff = Date.now() - new Date(date).getTime();
@@ -141,6 +162,18 @@ function NotificationBell({ variant = "desktop" }: { variant?: "desktop" | "mobi
 export function AdminNav() {
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [open, setOpen] = useState<Record<string, boolean>>(readOpen);
+  const isOpen = (g: (typeof navGroups)[number]) => open[g.id] ?? g.items.some((i) => pathname.startsWith(i.to));
+  function toggle(g: (typeof navGroups)[number]) {
+    const next = { ...open, [g.id]: !isOpen(g) };
+    setOpen(next);
+    try {
+      localStorage.setItem(OPEN_KEY, JSON.stringify(next));
+    } catch {
+      /* sin almacenamiento: solo dura esta visita */
+    }
+  }
 
   async function handleSignOut() {
     await signOut();
@@ -150,7 +183,8 @@ export function AdminNav() {
   return (
     <>
       {/* ══ DESKTOP SIDEBAR (md+) ══════════════════════════════════════════ */}
-      <aside className="hidden md:flex w-64 min-h-screen bg-[#0F2B4C] flex-col shrink-0">
+      {/* Fijo a la altura de la pantalla: la página se desplaza sola y el menú tiene su propio scroll */}
+      <aside className="hidden md:flex w-64 h-screen fixed top-0 left-0 z-40 bg-[#0F2B4C] flex-col shrink-0">
         {/* Logo */}
         <div className="px-5 py-6 flex justify-center border-b border-white/10">
           <Link
@@ -176,24 +210,47 @@ export function AdminNav() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-4 space-y-1">
-          {navItems.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-[#F0A030] text-[#0F2B4C]"
-                    : "text-white/70 hover:bg-white/10 hover:text-white"
-                )
-              }
-            >
-              <Icon size={16} />
-              {label}
-            </NavLink>
-          ))}
+        <nav className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1" style={{ scrollbarWidth: "thin" }}>
+          {navGroups.map((g) => {
+            const expanded = isOpen(g);
+            const hasActive = g.items.some((i) => pathname.startsWith(i.to));
+            return (
+              <div key={g.id}>
+                <button
+                  onClick={() => toggle(g)}
+                  aria-expanded={expanded}
+                  className={cn(
+                    "w-full flex items-center justify-between px-3 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors hover:bg-white/5",
+                    hasActive && !expanded ? "text-[#F0A030]" : "text-white/40 hover:text-white/70"
+                  )}
+                >
+                  {g.label}
+                  <ChevronDown size={14} className={cn("transition-transform", !expanded && "-rotate-90")} />
+                </button>
+                {expanded && (
+                  <div className="space-y-0.5 pb-1">
+                    {g.items.map(({ to, icon: Icon, label }) => (
+                      <NavLink
+                        key={to}
+                        to={to}
+                        className={({ isActive }) =>
+                          cn(
+                            "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                            isActive
+                              ? "bg-[#F0A030] text-[#0F2B4C]"
+                              : "text-white/70 hover:bg-white/10 hover:text-white"
+                          )
+                        }
+                      >
+                        <Icon size={16} />
+                        {label}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         {/* User */}

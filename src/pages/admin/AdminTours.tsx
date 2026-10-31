@@ -6,7 +6,7 @@ import {
 import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, horizontalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  Rotate3d, ClipboardList, CalendarDays, Plus, ArrowLeft, ExternalLink, Copy, Save, Trash2, UploadCloud, Star, LayoutGrid, Pencil,
+  Rotate3d, ClipboardList, CalendarDays, Calculator, Plus, ArrowLeft, ExternalLink, Copy, Save, Trash2, UploadCloud, Star, LayoutGrid, Pencil,
   Navigation, Info, Crosshair, Eye, Loader2, Settings2, Image as ImageIcon, X, GripVertical, RefreshCw, Download, MoveRight, Type, Wand2, Play, Square, Smartphone, Route, CheckCheck, ChevronLeft, ChevronRight, Instagram,
 } from "lucide-react";
 import { AmbientMusic, MUSIC_STYLES, type MusicStyle } from "@/components/tours/ambientMusic";
@@ -198,6 +198,9 @@ export function AdminTours() {
             </Link>
             <Link to="/admin/tours/fichas" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0F2B4C] text-white font-semibold hover:bg-[#173a63]">
               <ClipboardList size={15} className="text-[#F0A030]" /> Fichas de clientes
+            </Link>
+            <Link to="/admin/tours/precios" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0F2B4C] text-white font-semibold hover:bg-[#173a63]">
+              <Calculator size={15} className="text-[#F0A030]" /> Precios
             </Link>
             <Link to="/tours" target="_blank" className="inline-flex items-center gap-1.5 text-[#0F2B4C] font-semibold hover:text-[#b8761a]">
               Ver página pública <ExternalLink size={14} />

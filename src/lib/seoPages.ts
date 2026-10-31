@@ -17,9 +17,9 @@ export interface SeoMeta {
 const SITE = "https://canaescapes.com";
 
 const TOURS_PACKS = [
-  ["Esencial", "Tour virtual 360° con tu logo, botones a WhatsApp e Instagram y enlace para compartir."],
+  ["Esencial", "Tour virtual 360° con tu logo, tu enlace y conexiones a tu propiedad."],
   ["Plus", "Todo lo de Esencial, más fotografía de interiores y acompañamiento."],
-  ["Premium", "Todo lo de Plus, más fotos y video con drone, acompañamiento y seguimiento."],
+  ["Luxury", "Todo lo de Plus, más fotos y video con drone y acompañamiento extendido."],
 ];
 
 export const SEO_PAGES = {

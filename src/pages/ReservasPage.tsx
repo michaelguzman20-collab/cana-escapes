@@ -11,17 +11,22 @@ import { PathSelector } from "@/components/cana/PathSelector";
 import { ContactSection } from "@/components/cana/ContactSection";
 import { LandingFooter } from "@/components/cana/LandingFooter";
 
-export function HomePage() {
+// Reservas y propiedades de Cana Escapes (canaescapes.com/reservas). Antes era la portada;
+// ahora la portada es Servicios y esto queda como su propia pestaña.
+export function ReservasPage() {
   const ref = useRef<HTMLDivElement>(null);
 
   useSeo({
-    ...SEO_PAGES["/"],
-    path: "/",
+    ...SEO_PAGES["/reservas"],
+    path: "/reservas",
   });
 
-  // Scroll to a hash target when arriving from another route (e.g. /#experiencias)
+  // Scroll to a hash target when arriving from another route (e.g. /reservas#experiencias)
   useEffect(() => {
-    if (!window.location.hash) return;
+    if (!window.location.hash) {
+      window.scrollTo(0, 0);
+      return;
+    }
     const el = document.querySelector(window.location.hash);
     if (el) {
       window.setTimeout(() => el.scrollIntoView({ behavior: "smooth" }), 120);
@@ -79,7 +84,7 @@ export function HomePage() {
         <PasarelaPlayas />
         <PropertyCatalog />
         <Experiences />
-        <PathSelector />
+        <PathSelector exclude="/reservas" />
         <ContactSection />
         <LandingFooter />
       </div>

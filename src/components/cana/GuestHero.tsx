@@ -37,6 +37,8 @@ export function GuestHero() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-16 w-full">
         <div className="max-w-3xl">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#F0A030] mb-4 animate-fade-in">{t("ghero_kicker")}</p>
+
           {/* Location badge */}
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full mb-8 backdrop-blur-sm animate-fade-in">
             <MapPin size={14} className="text-[#F0A030]" />

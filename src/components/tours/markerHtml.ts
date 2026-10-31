@@ -16,11 +16,21 @@ const ROTATE_3D = [
   "M19 15.57c-1.804.885-4.274 1.43-7 1.43-5.523 0-10-2.239-10-5s4.477-5 10-5c4.838 0 8.873 1.718 9.8 4",
 ];
 
-/** Ícono 360 (naranja) para la pantalla de carga: gira dentro del círculo de Tours 360 (tours.css) */
+// Mismo movimiento que Tours360Logo (index.css t360-*): las dos flechas giran a la vez y todo el ícono
+// da una vuelta en el sentido del reloj; luego pausa. Va dentro del SVG para que funcione como <img>.
+const LOADER_STYLE =
+  "g{transform-box:view-box;transform-origin:12px 12px;animation:3s cubic-bezier(.45,0,.55,1) infinite}" +
+  ".z{animation-name:z}.v{animation-name:y}.h{animation-name:x}" +
+  "@keyframes z{0%{transform:rotate(0)}40%,to{transform:rotate(360deg)}}" +
+  "@keyframes y{0%{transform:rotateY(0)}40%,to{transform:rotateY(360deg)}}" +
+  "@keyframes x{0%{transform:rotateX(0)}40%,to{transform:rotateX(360deg)}}";
+
+/** Ícono 360 (naranja) animado para la pantalla de carga, dentro del círculo de Tours 360 (tours.css) */
 export const LOADER_IMG =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#F0A030" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ROTATE_3D.map((d) => `<path d="${d}"/>`).join("")}</svg>`
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#F0A030" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" overflow="visible"><style>${LOADER_STYLE}</style>` +
+      `<g class="z"><g class="v"><path d="${ROTATE_3D[0]}"/></g><g class="h"><path d="${ROTATE_3D[2]}"/><path d="${ROTATE_3D[1]}"/></g></g></svg>`
   );
 
 let nadirLogo: Promise<string> | null = null;

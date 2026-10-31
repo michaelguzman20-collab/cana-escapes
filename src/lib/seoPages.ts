@@ -24,19 +24,19 @@ const TOURS_PACKS = [
 
 export const SEO_PAGES = {
   "/": {
-    title: "Cana Escapes | Alquiler Vacacional y Gestión de Propiedades en Punta Cana",
+    title: "Cana Escapes | Servicios y Mantenimiento para Condominios en Punta Cana",
     description:
-      "Villas y apartamentos para tus vacaciones en Bávaro y Punta Cana, y gestión integral de propiedades para propietarios. Reserva tu escapada o maximiza los retornos de tu inversión.",
+      "Soluciones Integrales de Mantenimiento y Servicios Generales para condominios y propiedades en Bávaro y Punta Cana: eléctrico, plomería, aire acondicionado, obra civil, áreas verdes y más.",
+  },
+  "/reservas": {
+    title: "Reservas | Alquiler Vacacional en Punta Cana y Bávaro — Cana Escapes",
+    description:
+      "Villas y apartamentos para tus vacaciones en Bávaro y Punta Cana. Playas de arena blanca, experiencias y atención personalizada. Reserva tu escapada con Cana Escapes.",
   },
   "/propietarios": {
     title: "Para Propietarios | Gestión de Propiedades en Punta Cana — Cana Escapes",
     description:
       "Gestionamos tu propiedad en Punta Cana con tecnología, transparencia y máximos retornos: comisiones progresivas, mantenimiento preventivo y reportes financieros claros.",
-  },
-  "/servicios": {
-    title: "Servicios & Mantenimiento para Condominios en Punta Cana — Cana Escapes",
-    description:
-      "Soluciones Integrales de Mantenimiento y Servicios Generales para áreas comunes de condominios en Bávaro y Punta Cana: eléctrico, plomería, HVAC, obra civil, domótica y más.",
   },
   "/apps": {
     title: "Apps para Android — Cana Escapes",

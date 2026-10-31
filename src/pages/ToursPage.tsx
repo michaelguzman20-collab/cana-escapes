@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Rotate3d, MapPin, BedDouble, Loader2, Globe, Building2, Palmtree, KeyRound, Smartphone, Layers,
+  Rotate3d, MapPin, BedDouble, Globe, Building2, Palmtree, KeyRound, Smartphone, Layers,
   Languages, MessageCircle, Gem, Crown, CalendarDays, MessagesSquare, CalendarCheck, Link2, Check, Sparkles,
   ShieldCheck, HeartHandshake, Plane, CloudRain, Clock, BadgeCheck, ArrowRight, Music,
 } from "lucide-react";
@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { descriptionIn, fetchPublishedTours, markToursSeen, mediaUrl, whatsappLink, type TourCard } from "@/lib/tours";
 import { PropertyArt, CustomCover } from "@/components/tours/PropertyArt";
 import { DemoScheduler } from "@/components/tours/DemoScheduler";
+import { Tours360Mark } from "@/components/tours/Tours360Mark";
+import { Tours360Logo } from "@/components/tours/Tours360Logo";
 
 // Página de Tours 360 como servicio aparte (canaescapes.com/tours): está pensada para propietarios,
 // inmobiliarias, brokers y anfitriones de renta corta. No usa el menú de Cana Escapes.
@@ -161,18 +163,6 @@ const TEXT = {
 
 const PACK_ICONS = [Rotate3d, Gem, Crown];
 
-/** Distintivo de Tours 360: círculo azul con borde ámbar; con `spin` las flechas giran (solo encabezado y portada) */
-function Tours360Mark({ size = 40, spin }: { size?: number; spin?: boolean }) {
-  return (
-    <span
-      className="flex items-center justify-center rounded-full bg-[#0F2B4C] border-[3px] border-[#F0A030] shrink-0 shadow-lg shadow-[#F0A030]/10"
-      style={{ width: size, height: size }}
-    >
-      <Rotate3d size={size * 0.52} className={cn("text-[#F0A030]", spin && "tours360-spin")} strokeWidth={1.8} />
-    </span>
-  );
-}
-
 /** "360°" con el círculo de grados arriba, como en el título de la portada */
 function Deg360({ className }: { className?: string }) {
   return (
@@ -267,7 +257,7 @@ function ToursContent() {
             className="flex items-center gap-2.5 min-w-0"
             aria-label="Tours 360° — inicio"
           >
-            <Tours360Mark size={38} spin />
+            <Tours360Logo size={38} />
             <span className="text-white font-serif font-bold text-lg sm:text-xl whitespace-nowrap">
               Tours <Deg360 className="text-[#F0A030]" />
             </span>
@@ -310,7 +300,7 @@ function ToursContent() {
         <div aria-hidden className="absolute -left-40 bottom-[-240px] w-[500px] h-[500px] rounded-full border border-dashed border-[#F0A030]/15 tours360-orbit [animation-direction:reverse]" />
         <Rotate3d aria-hidden size={420} strokeWidth={0.6} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white/[0.03]" />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <div className="inline-flex animate-slide-up"><Tours360Mark size={64} spin /></div>
+          <div className="inline-flex animate-slide-up"><Tours360Logo size={77} /></div>
           <div className="mt-6 animate-slide-up [animation-delay:80ms]">
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#F0A030]/40 bg-[#0F2B4C]/40 text-[#F0A030] text-xs font-semibold uppercase tracking-[0.18em]">
               {tx.badge}
@@ -356,8 +346,8 @@ function ToursContent() {
       <section id="demo" className="-mt-20 relative max-w-6xl mx-auto px-4 sm:px-6 scroll-mt-20">
         <p className="text-center text-xs font-bold uppercase tracking-[0.2em] text-[#F0A030] mb-3 relative">{tx.demoKicker}</p>
         {tours === null ? (
-          <div className="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl py-16 flex items-center justify-center text-gray-500">
-            <Loader2 className="animate-spin mr-2" size={18} /> {tx.loading}
+          <div className="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl py-14 flex flex-col items-center justify-center gap-3 text-gray-500">
+            <Tours360Logo size={56} /> {tx.loading}
           </div>
         ) : tours.length === 0 ? (
           <div className="max-w-2xl mx-auto bg-white rounded-3xl shadow-xl py-12 px-6 text-center text-gray-500">

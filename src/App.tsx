@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, type ComponentType } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SplashScreen } from "@/components/cana/SplashScreen";
+import { ToursSplash } from "@/components/tours/ToursSplash";
 import { RequireAuth } from "@/components/auth/RequireAuth";
 import { AdminLayout } from "@/components/layout/AdminLayout";
 import { GuestLayout } from "@/components/layout/GuestLayout";
@@ -9,7 +10,8 @@ import { LoginPage } from "@/pages/LoginPage";
 import { Toaster } from "@/components/ui/toaster";
 import { supabaseConfigured } from "@/lib/supabase";
 import { VisitTracker } from "@/lib/visits";
-import { HomePage } from "@/pages/HomePage";
+// La portada (Servicios) va en el paquete principal para que cargue sin esperas
+import { ServiciosPage } from "@/pages/ServiciosPage";
 import { Logo } from "@/components/layout/Logo";
 
 // Páginas que se descargan solo al abrirlas (paneles y páginas públicas secundarias): así cada página
@@ -43,7 +45,7 @@ const GuestDashboard = lazyPage(() => import("@/pages/guest/GuestDashboard"), "G
 const ShareView = lazyPage(() => import("@/pages/share/ShareView"), "ShareView");
 const UpdatePassword = lazyPage(() => import("@/pages/UpdatePassword"), "UpdatePassword");
 const PropietariosPage = lazyPage(() => import("@/pages/PropietariosPage"), "PropietariosPage");
-const ServiciosPage = lazyPage(() => import("@/pages/ServiciosPage"), "ServiciosPage");
+const ReservasPage = lazyPage(() => import("@/pages/ReservasPage"), "ReservasPage");
 const AppsPage = lazyPage(() => import("@/pages/AppsPage"), "AppsPage");
 const CanaDnaPage = lazyPage(() => import("@/pages/CanaDnaPage"), "CanaDnaPage");
 const ToursPage = lazyPage(() => import("@/pages/ToursPage"), "ToursPage");
@@ -116,10 +118,15 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(
     () => typeof window !== "undefined" && window.location.pathname === "/"
   );
+  // Tours 360 abre en otra pestaña: su carga muestra el distintivo 360 girando
+  const [showToursSplash, setShowToursSplash] = useState(
+    () => typeof window !== "undefined" && window.location.pathname === "/tours"
+  );
 
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
+      {showToursSplash && <ToursSplash onDone={() => setShowToursSplash(false)} />}
       <VisitTracker />
       <AuthProvider>
         <Suspense fallback={<PageLoader />}>
@@ -181,9 +188,11 @@ export default function App() {
           )}
 
           {/* Landing pages */}
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<ServiciosPage />} />
+          <Route path="/reservas" element={<ReservasPage />} />
           <Route path="/propietarios" element={<PropietariosPage />} />
-          <Route path="/servicios" element={<ServiciosPage />} />
+          {/* Servicios ahora es la portada */}
+          <Route path="/servicios" element={<Navigate to="/" replace />} />
           <Route path="/apps" element={<AppsPage />} />
           <Route path="/cana-dna" element={<CanaDnaPage />} />
           <Route path="/tours" element={<ToursPage />} />

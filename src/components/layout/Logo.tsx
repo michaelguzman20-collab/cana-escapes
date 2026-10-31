@@ -21,6 +21,7 @@ export function Logo({ className, size = "md", variant = "dark", compact = false
   const sunColor    = "#F0A030";
   const arcColor    = variant === "light" ? "rgba(240,160,48,0.9)"  : "#F0A030";
   const coordColor  = variant === "light" ? "rgba(240,160,48,0.85)" : "#F0A030";
+  const westColor   = variant === "light" ? "#7EC8E3"                : "#0F2B4C"; // 68° W va en azul, como el logo oficial
   const lineStrong  = variant === "light" ? "rgba(255,255,255,0.95)" : "#0F2B4C";
   const lineMid     = variant === "light" ? "rgba(255,255,255,0.5)"  : "#2D6A9F";
   const wordCana    = variant === "light" ? "#7EC8E3"                : "#2D6A9F";
@@ -120,7 +121,7 @@ export function Logo({ className, size = "md", variant = "dark", compact = false
           x="112" y="57"
           fontFamily="Georgia, 'Times New Roman', serif"
           fontSize="8.5"
-          fill={coordColor}
+          fill={westColor}
           textAnchor="start"
           fontWeight="bold"
         >
@@ -130,7 +131,7 @@ export function Logo({ className, size = "md", variant = "dark", compact = false
           x="129" y="57"
           fontFamily="Georgia, 'Times New Roman', serif"
           fontSize="8.5"
-          fill={lineMid}
+          fill={westColor}
           textAnchor="start"
           fontWeight="bold"
         >

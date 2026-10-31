@@ -141,16 +141,12 @@
 .psv-loader-text {
   display: none !important;
 }
+/* El giro va dentro del SVG (LOADER_IMG), igual que el logo animado de la intro */
 .psv-loader-image,
 .ce-loader-icon {
   width: 64px;
   height: 64px;
   order: 0;
-  animation: ce-spin360 1.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-}
-@keyframes ce-spin360 {
-  0% { transform: rotateY(0deg); }
-  100% { transform: rotateY(360deg); }
 }
 
 /* ── Pista de la primera visita (TourPage) ── */

@@ -13,28 +13,30 @@ export function LandingFooter() {
   const location = useLocation();
 
   const navLinks = [
-    { label: t("nav_book_short"), href: "#reservar" },
-    { label: t("nav_experiences"), href: "#experiencias" },
-    { label: t("nav_services"), href: "/servicios" },
+    { label: t("nav_services"), href: "/" },
+    { label: t("nav_reservas"), href: "/reservas" },
+    { label: t("nav_experiences"), href: "/reservas#experiencias" },
     { label: t("nav_apps"), href: "/apps" },
     { label: t("nav_cana_dna"), href: "/cana-dna" },
     { label: t("nav_tours"), href: "/tours" },
-    { label: t("nav_contact"), href: "#contacto" },
+    { label: t("nav_contact"), href: "/reservas#contacto" },
     { label: t("nav_owner_btn"), href: "/propietarios" },
   ];
 
   function go(href: string) {
-    if (href.startsWith("/")) {
-      navigate(href);
-      window.scrollTo(0, 0);
+    // Tours 360 es un área aparte: se abre en otra pestaña
+    if (href === "/tours") {
+      window.open(href, "_blank", "noopener");
       return;
     }
-    if (location.pathname !== "/") {
-      navigate("/" + href);
+    // Ancla dentro de una página (p. ej. /reservas#contacto): si ya estamos ahí, solo desplaza
+    const [path, hash] = href.split("#");
+    if (hash && location.pathname === path) {
+      document.querySelector("#" + hash)?.scrollIntoView({ behavior: "smooth" });
       return;
     }
-    const el = document.querySelector(href);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+    navigate(href);
+    if (!hash) window.scrollTo(0, 0);
   }
 
   return (
@@ -97,7 +99,7 @@ export function LandingFooter() {
       </footer>
 
       {/* Floating buttons: Tours 360 (new service) above WhatsApp */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-7 animate-float">
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-14 animate-float">
         {!location.pathname.startsWith("/tours") && (
         <button onClick={() => go("/tours")} aria-label={t("tours_float_label")} className="group flex items-center gap-3">
           <span className="hidden sm:flex items-center whitespace-nowrap px-4 py-2 rounded-full bg-white text-[#0F2B4C] text-sm font-semibold shadow-lg opacity-0 translate-x-3 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">

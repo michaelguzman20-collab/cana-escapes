@@ -75,9 +75,9 @@ const PERIODS = [
 ];
 
 const PAGE_NAMES: Record<string, string> = {
-  "/": "Inicio",
+  "/": "Inicio (Servicios)",
+  "/reservas": "Reservas",
   "/propietarios": "Propietarios",
-  "/servicios": "Servicios",
   "/tours": "Tours 360",
   "/apps": "Apps",
   "/cana-dna": "Cana DNA",

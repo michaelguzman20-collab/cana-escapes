@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Primary SEO -->
-    <title>Cana Escapes | Alquiler Vacacional y Gestión de Propiedades en Punta Cana</title>
+    <title>Cana Escapes | Servicios y Mantenimiento para Condominios en Punta Cana</title>
     <meta
       name="description"
-      content="Villas y apartamentos para tus vacaciones en Bávaro y Punta Cana, y gestión integral de propiedades para propietarios. Reserva tu escapada o maximiza los retornos de tu inversión con Cana Escapes."
+      content="Soluciones Integrales de Mantenimiento y Servicios Generales para condominios y propiedades en Bávaro y Punta Cana: eléctrico, plomería, aire acondicionado, obra civil, áreas verdes y más."
     />
     <meta name="keywords" content="alquiler vacacional Punta Cana, villas Bávaro, gestión de propiedades Punta Cana, renta vacacional República Dominicana, property management Punta Cana, Cana Escapes, Cana Rock" />
     <meta name="author" content="Cana Escapes" />
@@ -23,8 +23,8 @@
     <!-- Open Graph (Facebook, WhatsApp, LinkedIn) -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Cana Escapes" />
-    <meta property="og:title" content="Cana Escapes | Alquiler Vacacional y Gestión de Propiedades en Punta Cana" />
-    <meta property="og:description" content="Villas y apartamentos para tus vacaciones en Bávaro y Punta Cana, y gestión integral de propiedades para propietarios." />
+    <meta property="og:title" content="Cana Escapes | Servicios y Mantenimiento para Condominios en Punta Cana" />
+    <meta property="og:description" content="Mantenimiento y servicios generales para condominios y propiedades en Bávaro y Punta Cana, además de alquiler vacacional y gestión de propiedades." />
     <meta property="og:url" content="https://canaescapes.com/" />
     <meta property="og:image" content="https://canaescapes.com/og-image.jpg" />
     <meta property="og:image:width" content="1200" />
@@ -35,8 +35,8 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Cana Escapes | Alquiler Vacacional y Gestión de Propiedades en Punta Cana" />
-    <meta name="twitter:description" content="Villas y apartamentos para tus vacaciones en Bávaro y Punta Cana, y gestión integral de propiedades para propietarios." />
+    <meta name="twitter:title" content="Cana Escapes | Servicios y Mantenimiento para Condominios en Punta Cana" />
+    <meta name="twitter:description" content="Mantenimiento y servicios generales para condominios y propiedades en Bávaro y Punta Cana, además de alquiler vacacional y gestión de propiedades." />
     <meta name="twitter:image" content="https://canaescapes.com/og-image.jpg" />
 
     <!-- Fonts -->
@@ -80,6 +80,15 @@
         </div>
       </div>
       <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+      <script>
+        // "/" y "/tours" tienen su propia intro animada: el aviso previo queda liso (blanco / azul Tours 360)
+        (function () {
+          var p = location.pathname, el = document.querySelector("#root > div");
+          if (!el || (p !== "/" && p !== "/tours")) return;
+          el.innerHTML = "";
+          el.style.background = p === "/" ? "#fff" : "#0F2B4C";
+        })();
+      </script>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

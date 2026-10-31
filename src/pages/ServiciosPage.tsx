@@ -11,6 +11,7 @@ import { SEO_PAGES } from "@/lib/seoPages";
 import { LandingNavbar } from "@/components/cana/LandingNavbar";
 import { LandingFooter } from "@/components/cana/LandingFooter";
 import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
+import { PathSelector } from "@/components/cana/PathSelector";
 
 const WA_URL = "https://wa.me/18092102773";
 const MAIL = "mailto:michael@canaescapes.com";
@@ -371,15 +372,19 @@ function ServiciosContent() {
         </div>
       </section>
 
+      {/* Después de los servicios: Reservas, Propietarios, Apps, Cana DNA y Tours 360 */}
+      <PathSelector exclude="/" />
+
       <LandingFooter />
     </div>
   );
 }
 
+// Portada de canaescapes.com: Cana Escapes como empresa de servicios y mantenimiento
 export function ServiciosPage() {
   useSeo({
-    ...SEO_PAGES["/servicios"],
-    path: "/servicios",
+    ...SEO_PAGES["/"],
+    path: "/",
   });
 
   return (

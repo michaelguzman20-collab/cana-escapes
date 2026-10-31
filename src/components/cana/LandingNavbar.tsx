@@ -1,20 +1,22 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Menu, X, Globe, LogIn, Home, Smartphone, Dna, Rotate3d } from "lucide-react";
+import { Menu, X, Globe, LogIn, Home, Smartphone, Dna, Rotate3d, Wrench } from "lucide-react";
 import { useLang } from "@/lib/LangContext";
 
-// Guest-focused home sections (anchors live on the "/" route)
+// Secciones de la página de Reservas (anclas en /reservas); solo se muestran estando ahí
 const NAV_LINKS = [
   { key: "nav_book_short", href: "#reservar" },
   { key: "nav_experiences", href: "#experiencias" },
   { key: "nav_contact", href: "#contacto" },
 ];
 
-// Sub-page links, rendered with the same style right after the anchors:
-// Reservar · Experiencias · Contacto · Propietarios · Servicios · Apps
+// Servicios es la portada ("/"): primer enlace y destacado
+const SERVICES_LINK = { key: "nav_services", to: "/" };
+
+// Sub-page links: Servicios | Reservas · Propietarios · Apps · Cana DNA · Tours 360
 const ROUTE_LINKS = [
+  { key: "nav_reservas", to: "/reservas" },
   { key: "nav_owners", to: "/propietarios" },
-  { key: "nav_services", to: "/servicios" },
 ];
 
 // Downloadable Android apps (canaescapes.com/apps) — shown right after Servicios
@@ -23,7 +25,8 @@ const APPS_LINK = { key: "nav_apps", to: "/apps" };
 // Cana DNA market data (canaescapes.com/cana-dna) — shown right after Apps
 const DNA_LINK = { key: "nav_cana_dna", to: "/cana-dna" };
 
-// Recorridos virtuales 360 (canaescapes.com/tours) — shown right after Cana DNA
+// Recorridos virtuales 360 (canaescapes.com/tours) — shown right after Cana DNA.
+// Abre en otra pestaña: es un área aparte, con su propia pantalla de carga.
 const TOURS_LINK = { key: "nav_tours", to: "/tours" };
 
 export function LandingNavbar() {
@@ -33,6 +36,7 @@ export function LandingNavbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const isHome = location.pathname === "/";
+  const isReservas = location.pathname === "/reservas";
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -48,11 +52,11 @@ export function LandingNavbar() {
     };
   }, [mobileOpen]);
 
-  // Scroll to a home anchor; if we're on another route, go home first then scroll.
+  // Scroll to a Reservas anchor; if we're on another route, go there first then scroll.
   function scrollTo(href: string) {
     setMobileOpen(false);
-    if (location.pathname !== "/") {
-      navigate("/" + href);
+    if (!isReservas) {
+      navigate("/reservas" + href);
       return;
     }
     const el = document.querySelector(href);
@@ -86,8 +90,17 @@ export function LandingNavbar() {
 
           {/* Desktop nav */}
           <div className="hidden lg:flex items-center gap-1">
-            {/* Guest-facing links: Reservar · Experiencias · Contacto */}
-            {NAV_LINKS.map((link) => (
+            {/* Servicios: primer enlace y relleno ámbar */}
+            <Link
+              to={SERVICES_LINK.to}
+              className="mr-2 flex items-center gap-1.5 whitespace-nowrap px-3.5 py-1.5 text-sm font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-full transition-colors shadow-lg shadow-[#F0A030]/20"
+            >
+              <Wrench size={14} />
+              {t(SERVICES_LINK.key)}
+            </Link>
+
+            {/* Guest-facing links: Reservar · Experiencias · Contacto (solo en /reservas) */}
+            {isReservas && NAV_LINKS.map((link) => (
               <button
                 key={link.key}
                 onClick={() => scrollTo(link.href)}
@@ -99,9 +112,9 @@ export function LandingNavbar() {
             ))}
 
             {/* Divider separating guest links from the business sub-pages */}
-            <span className="mx-2 h-5 w-px bg-white/15" aria-hidden="true" />
+            {isReservas && <span className="mx-2 h-5 w-px bg-white/15" aria-hidden="true" />}
 
-            {/* Business sub-pages: Propietarios · Servicios — visually distinct (amber outline pills) */}
+            {/* Sub-pages: Reservas · Propietarios — visually distinct (amber outline pills) */}
             {ROUTE_LINKS.map((link) => (
               <Link
                 key={link.to}
@@ -133,6 +146,8 @@ export function LandingNavbar() {
             </Link>
             <Link
               to={TOURS_LINK.to}
+              target="_blank"
+              rel="noopener"
               title={t(TOURS_LINK.key)}
               aria-label={t(TOURS_LINK.key)}
               className="ml-1 flex items-center gap-1.5 whitespace-nowrap px-2.5 2xl:px-3.5 py-1.5 text-sm font-semibold text-[#F0A030] border border-[#F0A030]/40 rounded-full hover:bg-[#F0A030] hover:text-[#0F2B4C] transition-colors"
@@ -206,8 +221,17 @@ export function LandingNavbar() {
         }`}
       >
         <div className="flex flex-col px-6 py-8 gap-2">
-          {/* Guest-facing links */}
-          {NAV_LINKS.map((link) => (
+          <Link
+            to={SERVICES_LINK.to}
+            onClick={() => setMobileOpen(false)}
+            className="mb-2 flex items-center gap-2 px-4 py-3 text-lg font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-xl transition-colors"
+          >
+            <Wrench size={18} />
+            {t(SERVICES_LINK.key)}
+          </Link>
+
+          {/* Guest-facing links (solo en /reservas) */}
+          {isReservas && NAV_LINKS.map((link) => (
             <button
               key={link.key}
               onClick={() => scrollTo(link.href)}
@@ -220,7 +244,7 @@ export function LandingNavbar() {
           {/* Divider + label separating the business sub-pages */}
           <div className="mt-4 mb-1 px-4">
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[#F0A030]/80">
-              {lang === "es" ? "Para tu propiedad" : "For your property"}
+              {lang === "es" ? "Más de Cana Escapes" : "More from Cana Escapes"}
             </span>
           </div>
           {ROUTE_LINKS.map((link) => (
@@ -251,6 +275,8 @@ export function LandingNavbar() {
           </Link>
           <Link
             to={TOURS_LINK.to}
+            target="_blank"
+            rel="noopener"
             onClick={() => setMobileOpen(false)}
             className="flex items-center gap-2 text-left px-4 py-3 text-lg font-semibold text-[#F0A030] border border-[#F0A030]/30 hover:bg-[#F0A030]/10 rounded-xl transition-colors"
           >

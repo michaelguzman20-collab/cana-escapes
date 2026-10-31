@@ -8,7 +8,7 @@ declare const process: { env: Record<string, string | undefined> };
 
 const SITE = "https://canaescapes.com";
 
-const PRIORITY: Record<string, string> = { "/": "1.0", "/propietarios": "0.8", "/servicios": "0.8", "/tours": "0.8", "/cana-dna": "0.7" };
+const PRIORITY: Record<string, string> = { "/": "1.0", "/propietarios": "0.8", "/reservas": "0.8", "/tours": "0.8", "/cana-dna": "0.7" };
 
 async function publishedTours(): Promise<{ slug: string; updated_at: string }[]> {
   const url = process.env.VITE_SUPABASE_URL;

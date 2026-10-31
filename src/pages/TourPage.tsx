@@ -10,6 +10,7 @@ import { BrandLogo } from "@/components/tours/BrandLogo";
 import { recordSceneView, startPageVisit } from "@/lib/visits";
 import { AmbientMusic } from "@/components/tours/ambientMusic";
 import { LOADER_IMG } from "@/components/tours/markerHtml";
+import { Tours360Logo } from "@/components/tours/Tours360Logo";
 import "@/components/tours/tours.css";
 
 // Recorrido 360 público a pantalla completa: canaescapes.com/tour/:slug
@@ -216,9 +217,7 @@ function TourContent() {
         <div className="flex items-center gap-3 min-w-0 pointer-events-auto">
           {/* Distintivo Tours 360: lleva a la página del servicio */}
           <Link to="/tours" aria-label="Tours 360°" title="Tours 360°" className="shrink-0">
-            <span className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#0F2B4C] border-[3px] border-[#F0A030] shadow-lg">
-              <Rotate3d size={24} className="text-[#F0A030]" strokeWidth={1.8} />
-            </span>
+            <Tours360Logo size={44} className="sm:w-12 sm:h-12 drop-shadow-lg" />
           </Link>
           <div className="min-w-0 text-white drop-shadow">
             <p className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#F0A030] leading-none mb-1">Tours 360°</p>

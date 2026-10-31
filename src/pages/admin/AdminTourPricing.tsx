@@ -8,7 +8,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/tours";
 import {
-  DEFAULT_PRICING, PACKS, SIZES, fixedCosts, hasBank, linesFromQuote, mergeDoc, mergePricing, quote, quoteNumber, round5, usd as fmtUsd, rd as fmtRd,
+  DEFAULT_PRICING, NO_DISCOUNT, PACKS, SIZES, budgetAdvice, fixedCosts, hasBank, linesFromQuote, mergeDoc, mergePricing, quote, quoteNumber, round5, usd as fmtUsd, rd as fmtRd,
   type FixedCost, type PackKey, type Pricing, type QuoteDoc, type QuoteInput, type SizeKey,
 } from "@/lib/tourPricing";
 
@@ -66,9 +66,9 @@ function Seg<T extends string>({ value, onChange, options }: { value: T; onChang
   );
 }
 
-function Card({ title, desc, children, className }: { title: string; desc?: string; children: React.ReactNode; className?: string }) {
+function Card({ title, desc, children, className, id }: { title: string; desc?: string; children: React.ReactNode; className?: string; id?: string }) {
   return (
-    <section className={cn("bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 space-y-4", className)}>
+    <section id={id} className={cn("bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 space-y-4", className)}>
       <div>
         <h2 className="text-base font-bold text-[#0F2B4C]">{title}</h2>
         {desc && <p className="text-xs text-gray-500 mt-0.5 max-w-3xl">{desc}</p>}
@@ -100,7 +100,8 @@ export function AdminTourPricing() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [show, setShow] = useState<Show>("both");
-  const [q, setQ] = useState<QuoteInput>({ pack: "p", size: "m", pay: "unico", urgent: false, far: false, drone: false, extraScenes: 0, qty: 1, launch: false, manualPrice: null });
+  const [q, setQ] = useState<QuoteInput>({ pack: "p", size: "m", pay: "unico", urgent: false, far: false, drone: false, extraScenes: 0, qty: 1, ...NO_DISCOUNT, manualPrice: null });
+  const [budget, setBudget] = useState<{ amount: number; cur: "usd" | "rd" }>({ amount: 0, cur: "usd" });
 
   const [quotes, setQuotes] = useState<SavedQuote[]>([]);
   const [editor, setEditor] = useState<{ key: number; doc: QuoteDoc; saved: SavedQuote | null } | null>(null);
@@ -117,6 +118,7 @@ export function AdminTourPricing() {
     const merged = mergePricing(data?.data ?? {});
     setSaved(merged);
     setP(merged);
+    setQ((o) => ({ ...o, discountPct: merged.discounts.launch }));
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -142,7 +144,18 @@ export function AdminTourPricing() {
   const isSub = q.pay === "suscripcion";
 
   // Punto de equilibrio con todos los planes activos: cuántos trabajos o suscripciones cubren la parte de Tours
-  const refQuote = useMemo(() => quote(p, { ...q, pack: "p", size: "m", pay: "unico", urgent: false, far: false, drone: false, extraScenes: 0, qty: 1, launch: false, manualPrice: null }), [p, q]);
+  const refQuote = useMemo(() => quote(p, { ...q, pack: "p", size: "m", pay: "unico", urgent: false, far: false, drone: false, extraScenes: 0, qty: 1, discountOn: false, manualPrice: null }), [p, q]);
+
+  // Según el presupuesto del cliente (por propiedad, en US$)
+  const budgetUsd = budget.amount > 0 ? (budget.cur === "rd" ? budget.amount / rate : budget.amount) / Math.max(1, q.qty) : 0;
+  const advice = useMemo(() => (budgetUsd > 0 ? budgetAdvice(p, q, budgetUsd) : null), [p, q, budgetUsd]);
+  const packName = (k: PackKey) => PACKS.find((x) => x.key === k)!.name;
+
+  function applyOption(pack: PackKey, pay: "unico" | "suscripcion", amount: number) {
+    setQ((o) => ({ ...o, pack, pay, discountOn: false, manualPrice: amount }));
+    document.getElementById("cotizar")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    toast({ title: `${packName(pack)} · ${pay === "unico" ? "pago único" : "suscripción"} a ${fmtUsd(amount)}`, description: "Ya está en la calculadora. Desde ahí haces la cotización." });
+  }
   const refMargin = refQuote.price - (refQuote.cost - refQuote.costLines[2].usd);
   const toursNeeded = refMargin > 0 ? Math.ceil(fc.toursFull / refMargin) : null;
   const subsNeeded = p.monthly.m > 0 ? Math.ceil(fc.toursFull / p.monthly.m) : null;
@@ -248,7 +261,7 @@ export function AdminTourPricing() {
 
         {/* Calculadora */}
         <div className="grid lg:grid-cols-[1.25fr_1fr] gap-4 items-start">
-          <Card title="Cotizar" desc="Elige lo que pide el cliente. En el cuadro azul tienes el precio, hasta dónde bajar y cuánto te queda.">
+          <Card id="cotizar" title="Cotizar" className="scroll-mt-4" desc="Elige lo que pide el cliente. En el cuadro azul tienes el precio, hasta dónde bajar y cuánto te queda.">
             <div className="space-y-1.5"><p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Paquete</p>
               <Seg value={q.pack} onChange={(v) => setQi("pack", v as PackKey)} options={PACKS} /></div>
             <div className="space-y-1.5"><p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Tamaño</p>
@@ -260,7 +273,6 @@ export function AdminTourPricing() {
                 ["urgent", `Entrega urgente (48 h) · +${p.extras.urgentPct}%`],
                 ["far", `Fuera de Bávaro, Punta Cana y Cap Cana · +${fmtUsd(p.extras.far)}`],
                 ["drone", `Drone suelto (Esencial o Plus) · +${fmtUsd(p.extras.drone)}`],
-                ["launch", `Precio de lanzamiento · −${p.discounts.launch}%`],
               ] as [keyof QuoteInput, string][]).map(([k, label]) => (
                 <label key={k} className={cn("flex items-center gap-2", k === "drone" && q.pack === "l" && "opacity-40")}>
                   <Switch checked={!!q[k]} disabled={k === "drone" && q.pack === "l"} onCheckedChange={(v) => setQi(k, v as never)} /> <span>{label}</span>
@@ -268,6 +280,20 @@ export function AdminTourPricing() {
               ))}
               <label className="flex items-center gap-2">Fotos 360° de más <Num label="Fotos 360 de más" value={q.extraScenes} onChange={(n) => setQi("extraScenes", Math.max(0, Math.round(n)))} className="w-16" /><span className="text-xs text-gray-400">{fmtUsd(p.extras.scene)} c/u</span></label>
               <label className="flex items-center gap-2">Propiedades <Num label="Cantidad de propiedades" value={q.qty} min={1} onChange={(n) => setQi("qty", Math.max(1, Math.round(n)))} className="w-16" /><span className="text-xs text-gray-400">3+: −{p.discounts.vol3}% · 6+: −{p.discounts.vol6}%</span></label>
+            </div>
+            <div className={cn("flex flex-wrap items-center gap-2 rounded-xl border p-2.5", q.discountOn ? "border-[#F0A030] bg-[#FCEBD0]/50" : "border-gray-200")}>
+              <Switch checked={q.discountOn} onCheckedChange={(v) => setQi("discountOn", v)} aria-label="Aplicar descuento" />
+              <span className="font-semibold text-[#0F2B4C]">Descuento</span>
+              <input
+                value={q.discountReason} onChange={(e) => setQi("discountReason", e.target.value)} aria-label="Motivo del descuento"
+                placeholder="Motivo: lanzamiento, referido, cliente frecuente…" list="discount-reasons"
+                className="flex-1 min-w-[160px] rounded-md border border-gray-200 bg-white px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#F0A030]/50"
+              />
+              <datalist id="discount-reasons">
+                {["Lanzamiento", "Referido", "Cliente frecuente", "Pago por adelantado", "Temporada baja", "Promoción especial"].map((r) => <option key={r} value={r} />)}
+              </datalist>
+              <Num label="Porcentaje de descuento" suffix="%" value={q.discountPct} onChange={(n) => setQi("discountPct", Math.min(100, Math.max(0, n)))} className="w-20" />
+              <p className="w-full text-[11px] text-gray-500">Se aplica solo el mayor entre este y el de volumen. Sale en la cotización con su motivo.</p>
             </div>
           </Card>
 
@@ -313,6 +339,84 @@ export function AdminTourPricing() {
             <Button onClick={copyQuote} variant="outline" className="w-full bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white"><Copy size={15} /> Copiar resumen para WhatsApp</Button>
           </div>
         </div>
+
+        {/* Según el presupuesto del cliente */}
+        <Card title="Según el presupuesto del cliente" desc={`Escribe cuánto piensa pagar y te digo qué le puedes ofrecer sin que ninguno pierda: nunca baja de tu mínimo ni de tu costo. Usa el tamaño, los extras y la cantidad de propiedades de la calculadora${q.qty > 1 ? ` (el presupuesto se reparte entre las ${q.qty} propiedades)` : ""}.`}>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-semibold text-[#0F2B4C]">Presupuesto{q.qty > 1 ? " total" : ""}</span>
+            <Num label="Presupuesto del cliente" prefix={budget.cur === "rd" ? "RD$" : "US$"} step={budget.cur === "rd" ? 500 : 10} value={budget.amount} onChange={(n) => setBudget((b) => ({ ...b, amount: Math.max(0, n) }))} className="w-40" />
+            <div className="flex rounded-lg border border-gray-200 bg-white p-0.5" role="group" aria-label="Moneda del presupuesto">
+              {(["usd", "rd"] as const).map((k) => (
+                <button key={k} type="button" onClick={() => setBudget((b) => ({ amount: b.amount ? (k === "rd" && b.cur === "usd" ? Math.round(b.amount * rate) : k === "usd" && b.cur === "rd" ? Math.round(b.amount / rate) : b.amount) : 0, cur: k }))}
+                  className={cn("px-2.5 py-1 rounded-md text-xs font-semibold", budget.cur === k ? "bg-[#0F2B4C] text-white" : "text-[#0F2B4C]")}>{k === "usd" ? "US$" : "RD$"}</button>
+              ))}
+            </div>
+            {budgetUsd > 0 && <span className="text-xs text-gray-500 tabular-nums">= {fmtUsd(budgetUsd)}{q.qty > 1 ? " por propiedad" : ""} · {fmtRd(budgetUsd, rate)}</span>}
+          </div>
+
+          {!advice ? (
+            <p className="text-gray-500">Escribe el presupuesto para ver las opciones.</p>
+          ) : (
+            <div className="space-y-3">
+              <div className={cn("rounded-xl p-3", advice.rec ? "bg-emerald-50 border border-emerald-200 text-emerald-900" : "bg-red-50 border border-red-200 text-red-900")}>
+                {advice.rec ? (
+                  <p>
+                    <b>Recomendado:</b> {packName(advice.rec.pack)} en {advice.rec.pay === "unico" ? "pago único" : "suscripción"} por <b>{money(advice.rec.amount)}</b>
+                    {advice.rec.pay === "suscripcion" && <> al inicio + {money(advice.rows.find((r) => r.pack === advice.rec!.pack)!.sub.monthly)} al mes</>}.
+                    {advice.upgrade && <> O, con el mismo dinero, <b>{packName(advice.upgrade.pack)} en suscripción</b>: {money(advice.upgrade.amount)} al inicio + {money(advice.upgrade.monthly)} al mes.</>}
+                    {advice.spare && <> Le sobran {money(advice.spare.usd)}: puedes sumarle {advice.spare.drone ? "el drone o " : ""}{advice.spare.scenes} fotos 360° de más.</>}
+                    {advice.almost && (
+                      <span className="block mt-1.5">
+                        <b>Casi le alcanza {packName(advice.almost.pack)}</b> en pago único: le faltan solo {money(advice.almost.missing)} para tu mínimo de {money(advice.almost.amount)}. Proponle subir un poco o pagar en 2 partes.{" "}
+                        <button type="button" onClick={() => applyOption(advice.almost!.pack, "unico", advice.almost!.amount)} className="font-semibold underline decoration-[#F0A030] hover:text-[#b8761a]">Usar {packName(advice.almost.pack)} a {fmtUsd(advice.almost.amount)}</button>
+                      </span>
+                    )}
+                  </p>
+                ) : (
+                  <p><b>No alcanza para ningún paquete</b> sin que pierdas. Lo más cerca es Esencial en suscripción desde {money(advice.rows[2].sub.amount)} al inicio. Ofrécele menos fotos 360° o una propiedad más pequeña.</p>
+                )}
+              </div>
+
+              <div className="overflow-x-auto -mx-1 px-1">
+                <table className="w-full min-w-[640px]">
+                  <thead><tr className="text-left text-[11px] uppercase tracking-wider text-gray-500"><th className="py-2 pr-2">Paquete</th><th className="py-2 px-2">Pago único</th><th className="py-2 px-2">Suscripción</th></tr></thead>
+                  <tbody>
+                    {advice.rows.map((row) => {
+                      const isRec = advice.rec?.pack === row.pack;
+                      const cell = (kind: "unico" | "suscripcion") => {
+                        const c = kind === "unico" ? row.single : row.sub;
+                        const recHere = isRec && advice.rec!.pay === kind;
+                        if (c.fit === "no") return <div className="text-gray-400"><p>No alcanza</p><p className="text-[11px]">Faltan {money(c.missing)} (mínimo {money(c.amount)})</p></div>;
+                        return (
+                          <div className={cn("rounded-lg p-2 space-y-1", recHere ? "bg-emerald-50 ring-1 ring-emerald-300" : "bg-gray-50")}>
+                            <p className="font-bold text-[#0F2B4C] tabular-nums">{money(c.amount)}{kind === "suscripcion" && <span className="font-normal text-gray-600"> + {money(row.sub.monthly)}/mes</span>}</p>
+                            <p className="text-[11px] text-gray-600">
+                              {c.fit === "lista" ? "Precio de lista" : `Con ${c.pct}% de descuento`}
+                              {kind === "unico" && c.fit === "lista" && row.single.spare > 0 && ` · le sobran ${fmtUsd(row.single.spare)}`}
+                              {kind === "unico" && ` · o 2 pagos de ${fmtUsd(c.amount / 2)}`}
+                              {kind === "suscripcion" && row.sub.prepay > 0 && ` · puede adelantar ${row.sub.prepay} ${row.sub.prepay === 1 ? "mes" : "meses"}`}
+                            </p>
+                            <p className={cn("text-[11px] font-semibold", c.profit >= 0 ? "text-emerald-700" : "text-amber-700")}>
+                              {c.profit >= 0 ? `Te quedan ${fmtUsd(c.profit)}` : `Al inicio −${fmtUsd(-c.profit)}; lo recuperas en ${row.sub.recoverMonths} ${row.sub.recoverMonths === 1 ? "mes" : "meses"}`}
+                            </p>
+                            <button type="button" onClick={() => applyOption(row.pack, kind, kind === "suscripcion" && row.sub.prepay > 0 ? row.sub.amount : c.amount)} className="text-xs font-semibold text-[#0F2B4C] underline decoration-[#F0A030] hover:text-[#b8761a]">Usar esta opción</button>
+                          </div>
+                        );
+                      };
+                      return (
+                        <tr key={row.pack} className="border-t border-gray-100 align-top">
+                          <td className="py-2.5 pr-2"><b className="text-[#0F2B4C]">{packName(row.pack)}</b>{isRec && <span className="ml-1.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5">Recomendado</span>}<p className="text-[11px] text-gray-500">Lista {fmtUsd(row.list)} · mín. {fmtUsd(row.floor)}</p></td>
+                          <td className="py-2.5 px-2">{cell("unico")}</td>
+                          <td className="py-2.5 px-2">{cell("suscripcion")}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </Card>
 
         {/* Cotizaciones guardadas */}
         <Card title="Cotizaciones" desc="Las que has hecho. Ábrelas para descargarlas o compartirlas otra vez, y cambia el estado cuando el cliente responda.">
@@ -395,7 +499,7 @@ export function AdminTourPricing() {
               <label className="flex items-center justify-between gap-2">Foto 360° de más <Num label="Foto extra" prefix="US$" value={p.extras.scene} onChange={(n) => set("extras", { ...p.extras, scene: n })} className="w-24" /></label>
               <label className="flex items-center justify-between gap-2">Volumen 3 a 5 <Num label="Volumen 3" suffix="%" value={p.discounts.vol3} onChange={(n) => set("discounts", { ...p.discounts, vol3: n })} className="w-24" /></label>
               <label className="flex items-center justify-between gap-2">Volumen 6 o más <Num label="Volumen 6" suffix="%" value={p.discounts.vol6} onChange={(n) => set("discounts", { ...p.discounts, vol6: n })} className="w-24" /></label>
-              <label className="flex items-center justify-between gap-2">Lanzamiento <Num label="Lanzamiento" suffix="%" value={p.discounts.launch} onChange={(n) => set("discounts", { ...p.discounts, launch: n })} className="w-24" /></label>
+              <label className="flex items-center justify-between gap-2">Descuento sugerido <Num label="Descuento sugerido" suffix="%" value={p.discounts.launch} onChange={(n) => set("discounts", { ...p.discounts, launch: n })} className="w-24" /></label>
               <label className="flex items-center justify-between gap-2">Abrir arriba de lista <Num label="Abrir" suffix="%" value={p.openPct} onChange={(n) => set("openPct", n)} className="w-24" /></label>
               <label className="flex items-center justify-between gap-2">Mínimo bajo la lista <Num label="Mínimo" suffix="%" value={p.minPct} onChange={(n) => set("minPct", n)} className="w-24" /></label>
             </div>

@@ -205,9 +205,14 @@ export interface QuoteInput {
   drone: boolean;
   extraScenes: number;
   qty: number;
-  launch: boolean;
+  // Descuento propio de esta cotización: motivo y porcentaje (lanzamiento, cliente frecuente, referido…)
+  discountOn: boolean;
+  discountReason: string;
+  discountPct: number;
   manualPrice: number | null; // precio acordado a mano (por propiedad); null = el calculado
 }
+
+export const NO_DISCOUNT = { discountOn: false, discountReason: "Lanzamiento", discountPct: 20 } as const;
 
 export interface Quote {
   lines: { label: string; usd: number }[];
@@ -234,16 +239,17 @@ export function quote(p: Pricing, q: QuoteInput): Quote {
   if (q.extraScenes > 0) { const v = q.extraScenes * p.extras.scene; price += v; lines.push({ label: `${q.extraScenes} fotos 360° de más`, usd: v }); }
   if (q.far) { price += p.extras.far; lines.push({ label: "Traslado fuera de zona", usd: p.extras.far }); }
   if (q.urgent) { const v = round5((price * p.extras.urgentPct) / 100); price += v; lines.push({ label: "Entrega urgente", usd: v }); }
-  // Un solo descuento: el mayor entre volumen y lanzamiento
+  // Un solo descuento: el mayor entre el de volumen y el propio (con su motivo)
   const vol = q.qty >= 6 ? p.discounts.vol6 : q.qty >= 3 ? p.discounts.vol3 : 0;
-  const launch = q.launch ? p.discounts.launch : 0;
-  const disc = Math.max(vol, launch);
+  const own = q.discountOn ? Math.min(100, Math.max(0, Number(q.discountPct) || 0)) : 0;
+  const disc = Math.max(vol, own);
   let discountLabel: string | null = null;
   if (disc > 0) {
     const v = round5((price * disc) / 100);
     price -= v;
-    discountLabel = `${launch >= vol ? "Lanzamiento" : "Volumen"} −${disc}%`;
-    lines.push({ label: `Descuento ${launch >= vol ? "de lanzamiento" : "por volumen"} (−${disc}%)`, usd: -v });
+    const reason = own >= vol ? q.discountReason.trim() || "Descuento" : "Volumen";
+    discountLabel = `${reason} −${disc}%`;
+    lines.push({ label: own >= vol ? `Descuento: ${reason} (−${disc}%)` : `Descuento por volumen (−${disc}%)`, usd: -v });
   }
   price = round5(price);
   const isSub = q.pay === "suscripcion";
@@ -265,4 +271,91 @@ export function quote(p: Pricing, q: QuoteInput): Quote {
     lines, price, open, min, setup: base, monthly, charged, cost, costLines,
     profit: charged - cost, belowMin: charged < min, discountLabel,
   };
+}
+
+// ── Según el presupuesto del cliente ─────────────────────────────────────
+const floor5 = (n: number) => Math.floor(n / 5) * 5;
+const ceil5 = (n: number) => Math.ceil(n / 5) * 5;
+
+export type BudgetFit = "lista" | "descuento" | "no";
+
+export interface BudgetRow {
+  pack: PackKey;
+  list: number; // precio de lista por propiedad (con los extras elegidos)
+  cost: number; // tu costo por propiedad
+  floor: number; // lo mínimo que aceptas: el mínimo de la lista, y nunca por debajo de tu costo
+  single: { fit: BudgetFit; amount: number; pct: number; spare: number; missing: number; profit: number };
+  sub: { fit: BudgetFit; amount: number; pct: number; monthly: number; prepay: number; missing: number; profit: number; recoverMonths: number };
+}
+
+export interface BudgetAdvice {
+  rows: BudgetRow[];
+  rec: { pack: PackKey; pay: "unico" | "suscripcion"; amount: number } | null;
+  upgrade: { pack: PackKey; amount: number; monthly: number } | null; // un paquete mayor en suscripción
+  spare: { usd: number; scenes: number; drone: boolean } | null; // si le sobra presupuesto
+  almost: { pack: PackKey; amount: number; missing: number } | null; // un paquete mayor en pago único al que le falta poco (≤10%)
+}
+
+/**
+ * Qué se le puede ofrecer a un cliente con un presupuesto dado (US$ por propiedad, lo que paga al
+ * inicio): por paquete, en pago único y en suscripción. Nunca baja del mínimo de la lista ni de tu
+ * costo, así ninguno de los dos pierde. Usa el tamaño, los extras y la cantidad elegidos en la calculadora.
+ */
+export function budgetAdvice(p: Pricing, q: QuoteInput, budget: number): BudgetAdvice {
+  const B = Math.max(0, budget || 0);
+  const minF = 1 - p.minPct / 100;
+  const rows: BudgetRow[] = (["l", "p", "e"] as PackKey[]).map((pack) => {
+    const base = quote(p, { ...q, pack, pay: "unico", ...NO_DISCOUNT, manualPrice: null });
+    const L = base.price;
+    const cost = base.cost;
+    const floor = Math.max(round5(L * minF), ceil5(cost));
+    const s = B >= L
+      ? { fit: "lista" as BudgetFit, amount: L, pct: 0, spare: B - L, missing: 0 }
+      : B >= floor
+        ? { fit: "descuento" as BudgetFit, amount: floor5(B), pct: Math.round((1 - floor5(B) / L) * 100), spare: 0, missing: 0 }
+        : { fit: "no" as BudgetFit, amount: floor, pct: 0, spare: 0, missing: floor - B };
+    const S = round5(L / 2);
+    const monthly = p.monthly[q.size] + (pack === "l" ? p.luxuryMonthlyExtra : 0);
+    const subFloor = round5(S * minF);
+    const sub = B >= S
+      ? { fit: "lista" as BudgetFit, amount: S, pct: 0, prepay: monthly > 0 ? Math.min(12, Math.floor((B - S) / monthly)) : 0, missing: 0 }
+      : B >= subFloor
+        ? { fit: "descuento" as BudgetFit, amount: floor5(B), pct: Math.round((1 - floor5(B) / S) * 100), prepay: 0, missing: 0 }
+        : { fit: "no" as BudgetFit, amount: subFloor, pct: 0, prepay: 0, missing: subFloor - B };
+    const subProfit = sub.amount - cost; // lo que te queda con el pago inicial (sin contar meses adelantados)
+    return {
+      pack, list: L, cost, floor,
+      single: { ...s, profit: s.amount - cost },
+      sub: { ...sub, monthly, profit: subProfit, recoverMonths: subProfit < 0 && monthly > 0 ? Math.ceil(-subProfit / monthly) : 0 },
+    };
+  });
+
+  const singleFit = rows.find((r) => r.single.fit !== "no");
+  const subFit = rows.find((r) => r.sub.fit !== "no");
+  const rec = singleFit
+    ? { pack: singleFit.pack, pay: "unico" as const, amount: singleFit.single.amount }
+    : subFit
+      ? { pack: subFit.pack, pay: "suscripcion" as const, amount: subFit.sub.amount }
+      : null;
+  // Con el mismo dinero, un paquete mayor en suscripción
+  let upgrade: BudgetAdvice["upgrade"] = null;
+  if (rec?.pay === "unico") {
+    const i = rows.findIndex((r) => r.pack === rec.pack);
+    const better = rows.slice(0, i).find((r) => r.sub.fit !== "no");
+    if (better) upgrade = { pack: better.pack, amount: better.sub.amount, monthly: better.sub.monthly };
+  }
+  // Si le sobra: fotos 360° de más o el drone
+  let spare: BudgetAdvice["spare"] = null;
+  if (singleFit && singleFit.single.fit === "lista" && singleFit.single.spare >= p.extras.scene) {
+    const left = singleFit.single.spare;
+    spare = { usd: left, scenes: p.extras.scene > 0 ? Math.floor(left / p.extras.scene) : 0, drone: singleFit.pack !== "l" && !q.drone && left >= p.extras.drone };
+  }
+  // Casi le alcanza: el paquete justo encima, en pago único, a menos de 10% de su mínimo
+  let almost: BudgetAdvice["almost"] = null;
+  const recIdx = rec ? rows.findIndex((r) => r.pack === rec.pack) : rows.length;
+  const above = recIdx > 0 ? rows[recIdx - 1] : null;
+  if (above && above.single.fit === "no" && above.single.missing <= above.floor * 0.1) {
+    almost = { pack: above.pack, amount: above.floor, missing: above.single.missing };
+  }
+  return { rows, rec, upgrade, spare, almost };
 }

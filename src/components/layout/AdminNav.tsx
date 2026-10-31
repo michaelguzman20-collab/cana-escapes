@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, CalendarDays, CalendarRange, Settings, LogOut, User, Users, Globe, UserCheck, Receipt, TrendingUp, Landmark, Wrench, Banknote, Bell, CheckCheck, KeyRound, MessageCircle, Calculator, MapPin, Dna, Rotate3d, BarChart3, ChevronDown } from "lucide-react";
+import { LayoutDashboard, CalendarDays, CalendarRange, Settings, LogOut, User, Users, Globe, UserCheck, Receipt, TrendingUp, Landmark, Wrench, Banknote, Bell, CheckCheck, KeyRound, MessageCircle, Calculator, MapPin, Dna, Rotate3d, BarChart3, BadgeDollarSign, ChevronDown } from "lucide-react";
 import { Logo } from "./Logo";
 import { PropertySwitcher } from "./PropertySwitcher";
 import { Button } from "@/components/ui/button";
@@ -30,8 +30,9 @@ const navGroups = [
     { to: "/admin/contabilidad",  icon: Landmark,        label: "Financiero"      },
   ] },
   { id: "tours", label: "Tours 360", items: [
-    { to: "/admin/tours",         icon: Rotate3d,        label: "Tours 360"       },
+    { to: "/admin/tours",         icon: Rotate3d,        label: "Tours 360", end: true },
     { to: "/admin/visitas",       icon: BarChart3,       label: "Visitas"         },
+    { to: "/admin/tours/precios", icon: BadgeDollarSign, label: "Precios Tours 360" },
   ] },
   { id: "herramientas", label: "Herramientas", items: [
     { to: "/admin/whatsapp",      icon: MessageCircle,   label: "WhatsApp Bot"    },
@@ -229,10 +230,11 @@ export function AdminNav() {
                 </button>
                 {expanded && (
                   <div className="space-y-0.5 pb-1">
-                    {g.items.map(({ to, icon: Icon, label }) => (
+                    {g.items.map(({ to, icon: Icon, label, end }) => (
                       <NavLink
                         key={to}
                         to={to}
+                        end={end}
                         className={({ isActive }) =>
                           cn(
                             "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
@@ -305,10 +307,11 @@ export function AdminNav() {
       {/* ══ MOBILE BOTTOM NAV (< md) ══════════════════════════════════════ */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0F2B4C] border-t border-white/10">
         <div className="flex overflow-x-auto scrollbar-none" style={{ scrollbarWidth: "none" }}>
-          {navItems.map(({ to, icon: Icon, label }) => (
+          {navItems.map(({ to, icon: Icon, label, end }) => (
             <NavLink
               key={to}
               to={to}
+              end={end}
               className={({ isActive }) =>
                 cn(
                   "shrink-0 min-w-[72px] flex flex-col items-center justify-center py-2 px-2 gap-1 transition-colors",

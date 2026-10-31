@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Calculator, Copy, FilePlus2, FileText, Loader2, Plus, RotateCcw, Save, Trash2, TrendingUp } from "lucide-react";
+import { ArrowLeft, BadgeDollarSign, Calculator, Copy, FilePlus2, FileText, Loader2, Plus, RotateCcw, Save, Trash2, TrendingUp } from "lucide-react";
 import { QuoteDialog, type QuoteStatus, type SavedQuote } from "@/components/tours/QuoteDialog";
+import { SalesPanel, type SaleDraft } from "@/components/tours/SalesPanel";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
@@ -32,17 +33,30 @@ function fail(title: string, e: unknown) {
   toast({ title, description: (e as { message?: string })?.message ?? String(e), variant: "destructive" });
 }
 
-/** Campo numérico corto */
-function Num({ value, onChange, step = 1, min = 0, className, prefix, suffix, label }: {
+/**
+ * Campo numérico corto. Mientras se escribe guarda el texto tal cual, así se puede poner punto
+ * o coma decimal (62.75 o 62,75) sin que el campo lo borre; el número se manda en cuanto es válido.
+ */
+function Num({ value, onChange, className, prefix, suffix, label }: {
   value: number; onChange: (n: number) => void; step?: number; min?: number; className?: string; prefix?: string; suffix?: string; label: string;
 }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const shown = draft ?? (Number.isFinite(value) ? String(Math.round(value * 100) / 100) : "0");
   return (
     <label className={cn("inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 focus-within:ring-2 focus-within:ring-[#F0A030]/50", className)}>
       {prefix && <span className="text-gray-400 text-xs">{prefix}</span>}
       <input
-        type="number" inputMode="decimal" aria-label={label} step={step} min={min}
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(e) => onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+        type="text" inputMode="decimal" aria-label={label}
+        value={shown}
+        onChange={(e) => {
+          const raw = e.target.value.replace(/[^\d.,-]/g, "");
+          setDraft(raw);
+          const n = Number(raw.replace(",", "."));
+          if (raw === "") onChange(0);
+          else if (Number.isFinite(n)) onChange(n);
+        }}
+        onBlur={() => setDraft(null)}
+        onFocus={(e) => e.target.select()}
         className="w-full min-w-0 bg-transparent outline-none tabular-nums text-right"
       />
       {suffix && <span className="text-gray-400 text-xs">{suffix}</span>}
@@ -105,6 +119,8 @@ export function AdminTourPricing() {
 
   const [quotes, setQuotes] = useState<SavedQuote[]>([]);
   const [editor, setEditor] = useState<{ key: number; doc: QuoteDoc; saved: SavedQuote | null } | null>(null);
+  const [saleDraft, setSaleDraft] = useState<SaleDraft | null>(null);
+  const clearSaleDraft = useCallback(() => setSaleDraft(null), []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -118,7 +134,8 @@ export function AdminTourPricing() {
     const merged = mergePricing(data?.data ?? {});
     setSaved(merged);
     setP(merged);
-    setQ((o) => ({ ...o, discountPct: merged.discounts.launch }));
+    const first = merged.discountPresets[0];
+    if (first) setQ((o) => ({ ...o, discountReason: first.name, discountPct: first.pct }));
     setLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
@@ -197,6 +214,30 @@ export function AdminTourPricing() {
         date: todayDR(),
       },
     });
+  }
+
+  function saleFromCalculator() {
+    const variable = r.cost - r.costLines[2].usd; // sin la parte de los costos fijos: esa se cuenta por mes
+    setSaleDraft({
+      sale_date: todayDR(), client_name: "", pack: q.pack, size: q.size, pay: q.pay, qty: q.qty,
+      amount_usd: Math.round(r.charged * q.qty * 100) / 100,
+      monthly_usd: isSub ? r.monthly * q.qty : 0, months: 12,
+      cost_usd: Math.round(variable * q.qty * 100) / 100,
+      status: "activa", quote_id: null, notes: r.discountLabel ? `Descuento: ${r.discountLabel}` : null,
+    });
+  }
+
+  function saleFromQuote(sq: SavedQuote) {
+    const doc = mergeDoc(sq.data);
+    const subtotal = doc.lines.reduce((s2, l) => s2 + (Number(l.qty) || 0) * (Number(l.unit) || 0), 0);
+    setSaleDraft({
+      sale_date: todayDR(), client_name: doc.client.company.trim() || doc.client.name.trim(), pack: null, size: null,
+      pay: doc.monthlyNote.trim() ? "suscripcion" : "unico", qty: 1,
+      amount_usd: Math.round(subtotal * 100) / 100, monthly_usd: 0, months: 12,
+      cost_usd: Math.round((refQuote.cost - refQuote.costLines[2].usd) * 100) / 100,
+      status: "activa", quote_id: sq.id, notes: `Cotización ${quoteNumber(sq.number, sq.created_at)} (sin ITBIS). Revisa tu costo y, si es suscripción, la cuota.`,
+    });
+    if (sq.status === "borrador" || sq.status === "enviada") setQuoteStatus(sq, "aceptada");
   }
 
   function onQuoteSaved(sq: SavedQuote) {
@@ -286,13 +327,21 @@ export function AdminTourPricing() {
               <span className="font-semibold text-[#0F2B4C]">Descuento</span>
               <input
                 value={q.discountReason} onChange={(e) => setQi("discountReason", e.target.value)} aria-label="Motivo del descuento"
-                placeholder="Motivo: lanzamiento, referido, cliente frecuente…" list="discount-reasons"
+                placeholder="Motivo: lanzamiento, referido, cliente frecuente…"
                 className="flex-1 min-w-[160px] rounded-md border border-gray-200 bg-white px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#F0A030]/50"
               />
-              <datalist id="discount-reasons">
-                {["Lanzamiento", "Referido", "Cliente frecuente", "Pago por adelantado", "Temporada baja", "Promoción especial"].map((r) => <option key={r} value={r} />)}
-              </datalist>
               <Num label="Porcentaje de descuento" suffix="%" value={q.discountPct} onChange={(n) => setQi("discountPct", Math.min(100, Math.max(0, n)))} className="w-20" />
+              <div className="w-full flex flex-wrap gap-1.5">
+                {p.discountPresets.map((d) => {
+                  const on = q.discountOn && q.discountReason === d.name && q.discountPct === d.pct;
+                  return (
+                    <button key={d.id} type="button" onClick={() => setQ((o) => ({ ...o, discountOn: true, discountReason: d.name, discountPct: d.pct }))}
+                      className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold", on ? "border-[#F0A030] bg-[#F0A030] text-[#0F2B4C]" : "border-gray-200 bg-white text-[#0F2B4C] hover:border-[#F0A030]")}>
+                      {d.name} −{d.pct}%
+                    </button>
+                  );
+                })}
+              </div>
               <p className="w-full text-[11px] text-gray-500">Se aplica solo el mayor entre este y el de volumen. Sale en la cotización con su motivo.</p>
             </div>
           </Card>
@@ -336,6 +385,7 @@ export function AdminTourPricing() {
             </div>
 
             <Button onClick={newQuote} className="w-full bg-[#F0A030] text-[#0F2B4C] hover:bg-[#e5952a]"><FilePlus2 size={15} /> Hacer cotización (PDF)</Button>
+            <Button onClick={saleFromCalculator} variant="outline" className="w-full bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white"><BadgeDollarSign size={15} /> Registrar como venta</Button>
             <Button onClick={copyQuote} variant="outline" className="w-full bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white"><Copy size={15} /> Copiar resumen para WhatsApp</Button>
           </div>
         </div>
@@ -418,43 +468,6 @@ export function AdminTourPricing() {
           )}
         </Card>
 
-        {/* Cotizaciones guardadas */}
-        <Card title="Cotizaciones" desc="Las que has hecho. Ábrelas para descargarlas o compartirlas otra vez, y cambia el estado cuando el cliente responda.">
-          {quotes.length === 0 ? (
-            <p className="text-gray-500">Todavía no hay cotizaciones. Arma una en la calculadora y pulsa “Hacer cotización (PDF)”.</p>
-          ) : (
-            <div className="overflow-x-auto -mx-1 px-1">
-              <table className="w-full min-w-[640px]">
-                <thead><tr className="text-left text-[11px] uppercase tracking-wider text-gray-500"><th className="py-2">Número</th><th className="py-2">Fecha</th><th className="py-2">Cliente</th><th className="py-2 text-right">Total</th><th className="py-2 pl-4">Estado</th><th /></tr></thead>
-                <tbody>
-                  {quotes.map((sq) => (
-                    <tr key={sq.id} className="border-t border-gray-100">
-                      <td className="py-2 font-semibold text-[#0F2B4C] whitespace-nowrap">{quoteNumber(sq.number, sq.created_at)}</td>
-                      <td className="py-2 text-gray-600 whitespace-nowrap">{new Date(sq.created_at).toLocaleDateString("es-DO", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                      <td className="py-2">{sq.client_name || <span className="text-gray-400">Sin nombre</span>}</td>
-                      <td className="py-2 text-right tabular-nums">{money(Number(sq.total_usd))}</td>
-                      <td className="py-2 pl-4">
-                        <select value={sq.status} onChange={(e) => setQuoteStatus(sq, e.target.value as QuoteStatus)} aria-label="Estado"
-                          className={cn("rounded-full px-2.5 py-1 text-xs font-semibold border-0 outline-none cursor-pointer", QUOTE_STATUS[sq.status].cls)}>
-                          {(Object.keys(QUOTE_STATUS) as QuoteStatus[]).map((k) => <option key={k} value={k}>{QUOTE_STATUS[k].label}</option>)}
-                        </select>
-                      </td>
-                      <td className="py-2 text-right whitespace-nowrap">
-                        <button type="button" onClick={() => setEditor({ key: Date.now(), doc: mergeDoc(sq.data), saved: sq })} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[#0F2B4C] font-semibold hover:bg-gray-100"><FileText size={14} /> Abrir</button>
-                        <button type="button" onClick={() => { if (window.confirm(`¿Borrar la cotización ${quoteNumber(sq.number, sq.created_at)}?`)) deleteQuote(sq); }} className="p-1.5 text-gray-400 hover:text-red-500" aria-label="Borrar cotización"><Trash2 size={14} /></button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
-
-        {editor && (
-          <QuoteDialog key={editor.key} open onClose={() => setEditor(null)} pricing={p} initial={editor.doc} saved={editor.saved} onSaved={onQuoteSaved} />
-        )}
-
         {/* Lista de precios */}
         <Card title="Lista de precios · pago único" desc="Lo que dices primero. Incluye visita, fotos, montaje del tour y 12 meses en línea. Debajo de cada precio: tu mínimo y el equivalente en pesos.">
           <div className="overflow-x-auto -mx-1 px-1">
@@ -479,6 +492,20 @@ export function AdminTourPricing() {
 
         <div className="grid lg:grid-cols-2 gap-4">
           <Card title="Suscripción flexible" desc="El cliente paga el 50% del pago único al inicio y una cuota al mes (mínimo 6 meses). Incluye reporte de visitas, cambios y una visita al año para fotos nuevas.">
+            {(() => {
+              const one = p.list.p.m, start = round5(one / 2), mo = p.monthly.m;
+              return (
+                <div className="rounded-xl bg-[#eef3f9] p-3 space-y-1.5 text-gray-700">
+                  <p className="font-semibold text-[#0F2B4C]">Cómo funciona (ejemplo: Plus, propiedad mediana)</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li><b>Pago único:</b> paga {fmtUsd(one)} una vez y tiene el tour 12 meses.</li>
+                    <li><b>Suscripción:</b> paga {fmtUsd(start)} al inicio (el 50%) y luego {fmtUsd(mo)} cada mes. <b>El otro 50% no se cobra</b>: lo reemplaza la cuota mensual, que además le da el reporte de visitas, cambios y fotos nuevas una vez al año.</li>
+                    <li>En 12 meses la suscripción te deja {fmtUsd(start + mo * 12)} contra {fmtUsd(one)} del pago único. Al cliente le conviene porque paga menos al principio; a ti, porque es un ingreso que se repite.</li>
+                    <li>Si lo que quieres es cobrar el precio completo en partes (50% ahora y el resto en 2 o 3 meses), eso es un <b>pago en cuotas</b>: usa “Pago único” y escribe las cuotas en las condiciones de la cotización.</li>
+                  </ul>
+                </div>
+              );
+            })()}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {SIZES.map((s) => (
                 <label key={s.key} className="space-y-1"><span className="text-xs text-gray-500">{s.name}</span>
@@ -491,7 +518,7 @@ export function AdminTourPricing() {
             </div>
           </Card>
 
-          <Card title="Extras, descuentos y margen" desc="Solo se aplica un descuento: el mayor entre volumen y lanzamiento.">
+          <Card title="Extras, descuentos y margen" desc="Solo se aplica un descuento: el mayor entre el de volumen y el que elijas en la calculadora.">
             <div className="grid sm:grid-cols-2 gap-x-4 gap-y-2">
               <label className="flex items-center justify-between gap-2">Entrega urgente <Num label="Urgente" suffix="%" value={p.extras.urgentPct} onChange={(n) => set("extras", { ...p.extras, urgentPct: n })} className="w-24" /></label>
               <label className="flex items-center justify-between gap-2">Fuera de zona <Num label="Fuera de zona" prefix="US$" value={p.extras.far} onChange={(n) => set("extras", { ...p.extras, far: n })} className="w-24" /></label>
@@ -499,9 +526,21 @@ export function AdminTourPricing() {
               <label className="flex items-center justify-between gap-2">Foto 360° de más <Num label="Foto extra" prefix="US$" value={p.extras.scene} onChange={(n) => set("extras", { ...p.extras, scene: n })} className="w-24" /></label>
               <label className="flex items-center justify-between gap-2">Volumen 3 a 5 <Num label="Volumen 3" suffix="%" value={p.discounts.vol3} onChange={(n) => set("discounts", { ...p.discounts, vol3: n })} className="w-24" /></label>
               <label className="flex items-center justify-between gap-2">Volumen 6 o más <Num label="Volumen 6" suffix="%" value={p.discounts.vol6} onChange={(n) => set("discounts", { ...p.discounts, vol6: n })} className="w-24" /></label>
-              <label className="flex items-center justify-between gap-2">Descuento sugerido <Num label="Descuento sugerido" suffix="%" value={p.discounts.launch} onChange={(n) => set("discounts", { ...p.discounts, launch: n })} className="w-24" /></label>
               <label className="flex items-center justify-between gap-2">Abrir arriba de lista <Num label="Abrir" suffix="%" value={p.openPct} onChange={(n) => set("openPct", n)} className="w-24" /></label>
               <label className="flex items-center justify-between gap-2">Mínimo bajo la lista <Num label="Mínimo" suffix="%" value={p.minPct} onChange={(n) => set("minPct", n)} className="w-24" /></label>
+            </div>
+            <div className="space-y-2 border-t border-gray-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Tus descuentos</p>
+              <p className="text-xs text-gray-500">Aparecen como botones en la calculadora. Cambia el nombre o el porcentaje, o agrega otro.</p>
+              {p.discountPresets.map((d, i) => (
+                <div key={d.id} className="flex items-center gap-2">
+                  <input value={d.name} aria-label="Nombre del descuento" onChange={(e) => set("discountPresets", p.discountPresets.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
+                    className="flex-1 min-w-0 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#F0A030]/50" />
+                  <Num label={`Porcentaje ${d.name}`} suffix="%" value={d.pct} onChange={(n) => set("discountPresets", p.discountPresets.map((x, j) => (j === i ? { ...x, pct: Math.min(100, Math.max(0, n)) } : x)))} className="w-20" />
+                  <button type="button" onClick={() => set("discountPresets", p.discountPresets.filter((_, j) => j !== i))} className="p-1.5 text-gray-400 hover:text-red-500" aria-label={`Quitar ${d.name}`}><Trash2 size={14} /></button>
+                </div>
+              ))}
+              <button type="button" onClick={() => set("discountPresets", [...p.discountPresets, { id: `d${Date.now()}`, name: "Otro", pct: 10 }])} className="inline-flex items-center gap-1.5 text-[#0F2B4C] font-semibold hover:text-[#b8761a]"><Plus size={14} /> Agregar otro descuento</button>
             </div>
           </Card>
         </div>
@@ -573,8 +612,28 @@ export function AdminTourPricing() {
             <div className="rounded-xl bg-[#eef3f9] p-3"><p className="text-[11px] text-gray-500">Pagas hoy al mes</p><p className="text-lg font-bold text-[#0F2B4C] tabular-nums">{money(fc.total)}</p></div>
             <div className="rounded-xl bg-[#eef3f9] p-3"><p className="text-[11px] text-gray-500">Con todos los planes activos</p><p className="text-lg font-bold text-[#0F2B4C] tabular-nums">{money(fc.allIfActive)}</p></div>
             <div className="rounded-xl bg-[#eef3f9] p-3"><p className="text-[11px] text-gray-500">Le toca a Tours 360 ({p.toursShare}%)</p><p className="text-lg font-bold text-[#0F2B4C] tabular-nums">{money(fc.toursFull)}</p></div>
-            <div className="rounded-xl bg-[#eef3f9] p-3"><p className="text-[11px] text-gray-500">Por cada tour vendido</p><p className="text-lg font-bold text-[#0F2B4C] tabular-nums">{money(fc.perTour)}</p></div>
+            <div className="rounded-xl bg-[#eef3f9] p-3"><p className="text-[11px] text-gray-500">Por cada tour (vendiendo {p.toursPerMonth} al mes)</p><p className="text-lg font-bold text-[#0F2B4C] tabular-nums">{money(fc.perTour)}</p></div>
           </div>
+          {(() => {
+            // Proyección del mes: N tours Plus medianos (la referencia) con lo que pagas hoy y con todos los planes
+            const n = p.toursPerMonth;
+            const income = refQuote.price * n;
+            const variable = (refQuote.cost - refQuote.costLines[2].usd) * n;
+            const today = income - variable - fc.tours;
+            const full = income - variable - fc.toursFull;
+            return (
+              <div className="rounded-xl border border-gray-200 p-3 space-y-2">
+                <p className="font-semibold text-[#0F2B4C]">Si vendes {n} tour{n === 1 ? "" : "s"} al mes <span className="font-normal text-gray-500">(Plus mediano a {fmtUsd(refQuote.price)} como referencia)</span></p>
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 tabular-nums">
+                  <div><p className="text-[11px] text-gray-500">Ingresos</p><p className="font-bold text-[#0F2B4C]">{money(income)}</p></div>
+                  <div><p className="text-[11px] text-gray-500">Tu tiempo y traslados</p><p className="font-bold text-[#0F2B4C]">−{money(variable)}</p></div>
+                  <div><p className="text-[11px] text-gray-500">Costos fijos de Tours (hoy)</p><p className="font-bold text-[#0F2B4C]">−{money(fc.tours)}</p></div>
+                  <div><p className="text-[11px] text-gray-500">Te queda hoy</p><p className={cn("font-bold", today >= 0 ? "text-emerald-700" : "text-red-600")}>{today < 0 ? "−" : ""}{money(Math.abs(today))}</p></div>
+                  <div><p className="text-[11px] text-gray-500">Con todos los planes</p><p className={cn("font-bold", full >= 0 ? "text-emerald-700" : "text-red-600")}>{full < 0 ? "−" : ""}{money(Math.abs(full))}</p></div>
+                </div>
+              </div>
+            );
+          })()}
           <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 flex gap-3 items-start">
             <TrendingUp size={18} className="text-emerald-700 shrink-0 mt-0.5" />
             <p className="text-emerald-900">
@@ -584,6 +643,51 @@ export function AdminTourPricing() {
             </p>
           </div>
         </Card>
+
+        {/* Ventas y ganancias del mes */}
+        <SalesPanel
+          fixedToday={fc.tours} fixedFull={fc.toursFull} money={money}
+          refPrice={refQuote.price} refVariable={refQuote.cost - refQuote.costLines[2].usd} minPct={p.minPct}
+          draft={saleDraft} onDraftUsed={clearSaleDraft}
+        />
+
+        {/* Cotizaciones guardadas */}
+        <Card title="Cotizaciones" desc="Las que has hecho. Ábrelas para descargarlas o compartirlas otra vez, y cambia el estado cuando el cliente responda.">
+          {quotes.length === 0 ? (
+            <p className="text-gray-500">Todavía no hay cotizaciones. Arma una en la calculadora y pulsa “Hacer cotización (PDF)”.</p>
+          ) : (
+            <div className="overflow-x-auto -mx-1 px-1">
+              <table className="w-full min-w-[640px]">
+                <thead><tr className="text-left text-[11px] uppercase tracking-wider text-gray-500"><th className="py-2">Número</th><th className="py-2">Fecha</th><th className="py-2">Cliente</th><th className="py-2 text-right">Total</th><th className="py-2 pl-4">Estado</th><th /></tr></thead>
+                <tbody>
+                  {quotes.map((sq) => (
+                    <tr key={sq.id} className="border-t border-gray-100">
+                      <td className="py-2 font-semibold text-[#0F2B4C] whitespace-nowrap">{quoteNumber(sq.number, sq.created_at)}</td>
+                      <td className="py-2 text-gray-600 whitespace-nowrap">{new Date(sq.created_at).toLocaleDateString("es-DO", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                      <td className="py-2">{sq.client_name || <span className="text-gray-400">Sin nombre</span>}</td>
+                      <td className="py-2 text-right tabular-nums">{money(Number(sq.total_usd))}</td>
+                      <td className="py-2 pl-4">
+                        <select value={sq.status} onChange={(e) => setQuoteStatus(sq, e.target.value as QuoteStatus)} aria-label="Estado"
+                          className={cn("rounded-full px-2.5 py-1 text-xs font-semibold border-0 outline-none cursor-pointer", QUOTE_STATUS[sq.status].cls)}>
+                          {(Object.keys(QUOTE_STATUS) as QuoteStatus[]).map((k) => <option key={k} value={k}>{QUOTE_STATUS[k].label}</option>)}
+                        </select>
+                      </td>
+                      <td className="py-2 text-right whitespace-nowrap">
+                        <button type="button" onClick={() => setEditor({ key: Date.now(), doc: mergeDoc(sq.data), saved: sq })} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[#0F2B4C] font-semibold hover:bg-gray-100"><FileText size={14} /> Abrir</button>
+                        <button type="button" onClick={() => saleFromQuote(sq)} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[#0F2B4C] font-semibold hover:bg-gray-100" title="Registrar como venta"><BadgeDollarSign size={14} /> Venta</button>
+                        <button type="button" onClick={() => { if (window.confirm(`¿Borrar la cotización ${quoteNumber(sq.number, sq.created_at)}?`)) deleteQuote(sq); }} className="p-1.5 text-gray-400 hover:text-red-500" aria-label="Borrar cotización"><Trash2 size={14} /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
+        {editor && (
+          <QuoteDialog key={editor.key} open onClose={() => setEditor(null)} pricing={p} initial={editor.doc} saved={editor.saved} onSaved={onQuoteSaved} />
+        )}
 
         <div className="grid lg:grid-cols-2 gap-4">
           <Card title="Cuándo activar cada plan" desc="Paga solo lo que ya necesitas; las ventas van liberando cada paso.">

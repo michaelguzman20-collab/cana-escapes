@@ -35,7 +35,8 @@ export interface Pricing {
   minPct: number; // no bajar más de este % del precio de lista
   openPct: number; // abrir este % arriba de la lista
   extras: { urgentPct: number; far: number; drone: number; scene: number };
-  discounts: { vol3: number; vol6: number; launch: number }; // %
+  discounts: { vol3: number; vol6: number; launch: number }; // % (launch: ya no se usa, quedó por compatibilidad)
+  discountPresets: { id: string; name: string; pct: number }[]; // tus descuentos con nombre (botones en la calculadora)
   renewalYear: number; // pago único: mantenerlo en línea después del primer año
   // Costos por trabajo (para saber cuánto te queda)
   hourValue: number; // lo que vale tu hora
@@ -67,6 +68,13 @@ export const DEFAULT_PRICING: Pricing = {
   openPct: 10,
   extras: { urgentPct: 25, far: 50, drone: 180, scene: 12 },
   discounts: { vol3: 10, vol6: 15, launch: 20 },
+  discountPresets: [
+    { id: "lanzamiento", name: "Lanzamiento", pct: 20 },
+    { id: "referido", name: "Referido", pct: 10 },
+    { id: "frecuente", name: "Cliente frecuente", pct: 10 },
+    { id: "adelantado", name: "Pago por adelantado", pct: 5 },
+    { id: "temporada", name: "Temporada baja", pct: 10 },
+  ],
   renewalYear: 60,
   hourValue: 15,
   hours: { s: 2.5, m: 3.5, l: 5, x: 7 },

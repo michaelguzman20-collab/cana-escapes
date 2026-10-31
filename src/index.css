@@ -162,23 +162,24 @@ html {
   from { opacity: 0; transform: scale(0.85); }
   to { opacity: 1; transform: scale(1); }
 }
-.splash-name { animation: splash-rise 0.7s ease-out both; }
+/* --splash-s escala todos los tiempos: 1 = primera entrada, menos = carga rápida al cambiar de pestaña */
+.splash-name { animation: splash-rise calc(0.7s * var(--splash-s, 1)) ease-out both; }
 .splash-line {
   transform-box: fill-box;
   transform-origin: center;
-  animation: splash-draw 0.6s ease-out both;
+  animation: splash-draw calc(0.6s * var(--splash-s, 1)) ease-out both;
 }
 .splash-sun {
   transform-box: fill-box;
-  animation: splash-sunrise 1.1s cubic-bezier(0.22, 1, 0.36, 1) 1.05s both;
+  animation: splash-sunrise calc(1.1s * var(--splash-s, 1)) cubic-bezier(0.22, 1, 0.36, 1) calc(1.05s * var(--splash-s, 1)) both;
 }
 .splash-rays {
   transform-box: view-box;
   transform-origin: 747px 200px;
-  animation: splash-pop 0.5s ease-out 1.9s both;
+  animation: splash-pop calc(0.5s * var(--splash-s, 1)) ease-out calc(1.9s * var(--splash-s, 1)) both;
 }
 .splash-num {
-  animation: splash-rise 0.55s ease-out 2.3s both;
+  animation: splash-rise calc(0.55s * var(--splash-s, 1)) ease-out calc(2.3s * var(--splash-s, 1)) both;
 }
 
 /* Logo Tours 360 animado (Tours360Logo): las dos flechas dan un giro seco a la vez, con la misma pausa */

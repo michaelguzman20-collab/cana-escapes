@@ -15,6 +15,7 @@ import { PropertyArt, CustomCover } from "@/components/tours/PropertyArt";
 import { DemoScheduler } from "@/components/tours/DemoScheduler";
 import { Tours360Mark } from "@/components/tours/Tours360Mark";
 import { Tours360Logo } from "@/components/tours/Tours360Logo";
+import { ToursCursor } from "@/components/tours/ToursCursor";
 
 // Página de Tours 360 como servicio aparte (canaescapes.com/tours): está pensada para propietarios,
 // inmobiliarias, brokers y anfitriones de renta corta. No usa el menú de Cana Escapes.
@@ -240,6 +241,7 @@ function ToursContent() {
 
   return (
     <div ref={page} className="min-h-screen bg-[#F5F7FA] text-[#0F2B4C] overflow-x-hidden">
+      <ToursCursor />
       {/* Encabezado fijo: el logo vuelve al inicio; idioma y WhatsApp siempre a mano */}
       <header
         className={cn(
@@ -300,7 +302,8 @@ function ToursContent() {
         <div aria-hidden className="absolute -left-40 bottom-[-240px] w-[500px] h-[500px] rounded-full border border-dashed border-[#F0A030]/15 tours360-orbit [animation-direction:reverse]" />
         <Rotate3d aria-hidden size={420} strokeWidth={0.6} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white/[0.03]" />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <div className="inline-flex animate-slide-up"><Tours360Logo size={77} /></div>
+          {/* Quieto a propósito: solo el logo del encabezado lleva la animación */}
+          <div className="inline-flex animate-slide-up"><Tours360Mark size={77} /></div>
           <div className="mt-6 animate-slide-up [animation-delay:80ms]">
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[#F0A030]/40 bg-[#0F2B4C]/40 text-[#F0A030] text-xs font-semibold uppercase tracking-[0.18em]">
               {tx.badge}

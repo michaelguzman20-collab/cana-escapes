@@ -1,5 +1,5 @@
-import { lazy, Suspense, useState, type ComponentType } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SplashScreen } from "@/components/cana/SplashScreen";
 import { ToursSplash } from "@/components/tours/ToursSplash";
@@ -109,6 +109,24 @@ VITE_SUPABASE_ANON_KEY=eyJ...`}
   );
 }
 
+// Pestañas de la web de Cana Escapes: al pasar de una a otra se ve el logo de nuevo, en versión rápida
+const TAB_PATHS = new Set(["/", "/reservas", "/propietarios", "/apps", "/cana-dna"]);
+
+function TabSplash() {
+  const { pathname } = useLocation();
+  const prev = useRef(pathname);
+  const [shownAt, setShownAt] = useState<number | null>(null);
+  const done = useCallback(() => setShownAt(null), []);
+
+  useEffect(() => {
+    if (pathname === prev.current) return; // la primera carga ya tiene su intro; las anclas (#) no cuentan
+    prev.current = pathname;
+    if (TAB_PATHS.has(pathname)) setShownAt(Date.now());
+  }, [pathname]);
+
+  return shownAt ? <SplashScreen key={shownAt} speed={0.35} onDone={done} /> : null;
+}
+
 export default function App() {
   if (!supabaseConfigured) return <SetupScreen />;
 
@@ -127,6 +145,7 @@ export default function App() {
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
       {showToursSplash && <ToursSplash onDone={() => setShowToursSplash(false)} />}
+      <TabSplash />
       <VisitTracker />
       <AuthProvider>
         <Suspense fallback={<PageLoader />}>

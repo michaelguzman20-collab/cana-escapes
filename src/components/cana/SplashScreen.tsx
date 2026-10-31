@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 interface SplashScreenProps {
   /** Called once the splash has fully faded out and should be unmounted. */
   onDone: () => void;
   /** How long the intro plays before fading, in ms (the animation finishes at ~2.9s). */
   hold?: number;
+  /** Escala de tiempos: 1 = primera entrada (lenta, se ve todo); 0.4 = carga rápida entre pestañas. */
+  speed?: number;
 }
 
 // Colores del logo oficial (public/brand/logo-dark.png)
@@ -18,7 +20,10 @@ const SUN = "#F4A623";
  * 3) aparecen los rayos y por último las coordenadas 18° N / 68° W.
  * Todo es CSS (clases splash-* en index.css), sin librerías.
  */
-export function SplashScreen({ onDone, hold = 3500 }: SplashScreenProps) {
+// Retraso de cada pieza, escalado con --splash-s (ver index.css)
+const d = (s: number) => `calc(${s}s * var(--splash-s, 1))`;
+
+export function SplashScreen({ onDone, hold = 3500, speed = 1 }: SplashScreenProps) {
   const [fading, setFading] = useState(false);
 
   useEffect(() => {
@@ -28,21 +33,23 @@ export function SplashScreen({ onDone, hold = 3500 }: SplashScreenProps) {
       return;
     }
 
-    const fadeTimer = window.setTimeout(() => setFading(true), hold);
-    const doneTimer = window.setTimeout(onDone, hold + 600); // +600ms fade-out
+    const fade = Math.round(600 * Math.max(speed, 0.5));
+    const fadeTimer = window.setTimeout(() => setFading(true), hold * speed);
+    const doneTimer = window.setTimeout(onDone, hold * speed + fade);
     return () => {
       window.clearTimeout(fadeTimer);
       window.clearTimeout(doneTimer);
     };
-  }, [hold, onDone]);
+  }, [hold, onDone, speed]);
 
   const mono = "ui-monospace, 'DejaVu Sans Mono', Menlo, Consolas, monospace";
 
   return (
     <div
-      className={`fixed inset-0 z-[100] flex items-center justify-center bg-white transition-opacity [transition-duration:600ms] ease-out ${
+      className={`fixed inset-0 z-[100] flex items-center justify-center bg-white transition-opacity ease-out ${
         fading ? "opacity-0" : "opacity-100"
       }`}
+      style={{ "--splash-s": speed, transitionDuration: `${Math.round(600 * Math.max(speed, 0.5))}ms` } as CSSProperties}
       aria-hidden="true"
     >
       <div className="flex w-[min(88vw,560px)] flex-col items-center">
@@ -70,20 +77,20 @@ export function SplashScreen({ onDone, hold = 3500 }: SplashScreenProps) {
           </g>
 
           {/* Horizonte y reflejos en el agua */}
-          <line className="splash-line" style={{ animationDelay: "0.55s" }} x1="516" y1="200" x2="978" y2="200" stroke={NAVY} strokeWidth="5" strokeLinecap="round" />
+          <line className="splash-line" style={{ animationDelay: d(0.55) }} x1="516" y1="200" x2="978" y2="200" stroke={NAVY} strokeWidth="5" strokeLinecap="round" />
           <g className="splash-rays">
             <line x1="614" y1="200" x2="651" y2="200" stroke={SUN} strokeWidth="5" />
             <line x1="843" y1="200" x2="880" y2="200" stroke={SUN} strokeWidth="5" />
           </g>
-          <line className="splash-line" style={{ animationDelay: "0.7s" }} x1="570" y1="236" x2="923" y2="236" stroke={BLUE} strokeWidth="4" strokeLinecap="round" />
-          <line className="splash-line" style={{ animationDelay: "0.85s" }} x1="618" y1="268" x2="876" y2="268" stroke={BLUE} strokeOpacity="0.6" strokeWidth="2.5" strokeLinecap="round" />
-          <line className="splash-line" style={{ animationDelay: "1s" }} x1="670" y1="300" x2="823" y2="300" stroke={BLUE} strokeOpacity="0.25" strokeWidth="2" strokeLinecap="round" />
+          <line className="splash-line" style={{ animationDelay: d(0.7) }} x1="570" y1="236" x2="923" y2="236" stroke={BLUE} strokeWidth="4" strokeLinecap="round" />
+          <line className="splash-line" style={{ animationDelay: d(0.85) }} x1="618" y1="268" x2="876" y2="268" stroke={BLUE} strokeOpacity="0.6" strokeWidth="2.5" strokeLinecap="round" />
+          <line className="splash-line" style={{ animationDelay: d(1) }} x1="670" y1="300" x2="823" y2="300" stroke={BLUE} strokeOpacity="0.25" strokeWidth="2" strokeLinecap="round" />
 
           {/* Coordenadas: 18° N (ámbar) arriba, 68° W (azul) a la derecha */}
           <text className="splash-num" x="747" y="28" textAnchor="middle" fontFamily={mono} fontWeight="700" fontSize="30" letterSpacing="5" fill={SUN}>
             18° N
           </text>
-          <g className="splash-num" style={{ animationDelay: "2.45s" }}>
+          <g className="splash-num" style={{ animationDelay: d(2.45) }}>
             <line x1="986" y1="200" x2="1002" y2="200" stroke={NAVY} strokeWidth="5" strokeLinecap="round" />
             <text x="1016" y="212" fontFamily={mono} fontSize="30" letterSpacing="5" fill={NAVY}>
               68° W
@@ -96,10 +103,10 @@ export function SplashScreen({ onDone, hold = 3500 }: SplashScreenProps) {
           <span className="font-serif italic" style={{ color: BLUE, letterSpacing: "0.04em" }}>Cana</span>
           <span className="font-sans font-bold" style={{ color: NAVY }}>Escapes</span>
         </div>
-        <div className="splash-name mt-3 h-px w-full bg-[#1F6FA6]/15" style={{ animationDelay: "0.25s" }} />
+        <div className="splash-name mt-3 h-px w-full bg-[#1F6FA6]/15" style={{ animationDelay: d(0.25) }} />
         <p
           className="splash-name mt-3 font-sans uppercase tracking-[0.42em] text-[clamp(0.55rem,2vw,0.8rem)] text-[#1F6FA6]/80 text-center"
-          style={{ animationDelay: "0.35s" }}
+          style={{ animationDelay: d(0.35) }}
         >
           Punta Cana · Luxury · Experiences
         </p>

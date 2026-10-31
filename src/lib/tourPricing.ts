@@ -45,7 +45,14 @@ export interface Pricing {
   costs: FixedCost[];
   toursShare: number; // % de los costos fijos que le toca a Tours 360 (el resto es del resto de Cana Escapes)
   toursPerMonth: number; // tours que esperas vender al mes, para repartir el costo fijo
+  // Cotizaciones
+  company: { name: string; rnc: string; phone: string; email: string; address: string; web: string };
+  bank: { bank: string; holder: string; accountType: string; account: string; currency: string; holderId: string };
+  quoteValidityDays: number;
+  quoteConditions: string;
 }
+
+export const ITBIS_RATE = 0.18;
 
 export const DEFAULT_PRICING: Pricing = {
   rate: 60,
@@ -73,7 +80,92 @@ export const DEFAULT_PRICING: Pricing = {
   ],
   toursShare: 50,
   toursPerMonth: 4,
+  company: { name: "Cana Escapes", rnc: "133-70382-3", phone: "+1 (809) 210-2773", email: "michael@canaescapes.com", address: "Punta Cana, La Altagracia, República Dominicana", web: "canaescapes.com/tours" },
+  bank: { bank: "", holder: "", accountType: "", account: "", currency: "", holderId: "" },
+  quoteValidityDays: 15,
+  quoteConditions:
+    "50% al reservar la visita de fotos y 50% al entregar el enlace del tour.\n" +
+    "El pago único incluye el tour en línea por 12 meses; después, la renovación es anual.\n" +
+    "La fecha de la visita se coordina al confirmar la cotización.",
 };
+
+export const hasBank = (p: Pricing) => !!(p.bank.bank.trim() && p.bank.account.trim());
+
+// ── Cotizaciones ─────────────────────────────────────────────────────────
+export interface QuoteLine {
+  desc: string;
+  qty: number;
+  unit: number; // US$ (negativo = descuento)
+}
+
+export interface QuoteClient {
+  name: string;
+  company: string;
+  taxId: string; // RNC o cédula
+  phone: string;
+  email: string;
+}
+
+export interface QuoteDoc {
+  client: QuoteClient;
+  lines: QuoteLine[];
+  itbis: boolean;
+  currency: "usd" | "rd" | "both";
+  rate: number;
+  monthlyNote: string; // suscripción: lo que paga luego cada mes (fuera del total)
+  conditions: string;
+  validityDays: number;
+  includeBank: boolean;
+  date: string; // AAAA-MM-DD
+}
+
+/** Una cotización guardada, con valores por defecto si le falta algún campo */
+export function mergeDoc(raw: unknown): QuoteDoc {
+  const d = (isObj(raw) ? raw : {}) as Partial<QuoteDoc>;
+  return {
+    client: { name: "", company: "", taxId: "", phone: "", email: "", ...(isObj(d.client) ? d.client : {}) },
+    lines: Array.isArray(d.lines) ? d.lines : [],
+    itbis: d.itbis ?? true,
+    currency: d.currency ?? "usd",
+    rate: d.rate ?? DEFAULT_PRICING.rate,
+    monthlyNote: d.monthlyNote ?? "",
+    conditions: d.conditions ?? DEFAULT_PRICING.quoteConditions,
+    validityDays: d.validityDays ?? DEFAULT_PRICING.quoteValidityDays,
+    includeBank: d.includeBank ?? false,
+    date: d.date ?? new Date().toISOString().slice(0, 10),
+  };
+}
+
+export function quoteTotals(d: QuoteDoc) {
+  const subtotal = d.lines.reduce((s, l) => s + (Number(l.qty) || 0) * (Number(l.unit) || 0), 0);
+  const itbis = d.itbis ? Math.round(subtotal * ITBIS_RATE * 100) / 100 : 0;
+  return { subtotal, itbis, total: subtotal + itbis };
+}
+
+export const quoteNumber = (n: number, createdAt?: string) => `COT-${(createdAt ? new Date(createdAt) : new Date()).getFullYear()}-${String(n).padStart(4, "0")}`;
+
+/** Las líneas de la cotización a partir de lo elegido en la calculadora */
+export function linesFromQuote(q: QuoteInput, r: Quote): QuoteLine[] {
+  const pack = PACKS.find((x) => x.key === q.pack)!.name;
+  const size = SIZES.find((x) => x.key === q.size)!;
+  const sub = q.pay === "suscripcion";
+  const what = q.pack === "e" ? "tour virtual 360° con tu logo y enlace" : q.pack === "p" ? "tour virtual 360° + fotografía de interiores + acompañamiento" : "tour virtual 360° + fotografía de interiores + fotos y video con drone + acompañamiento extendido";
+  if (q.manualPrice != null && q.manualPrice > 0) {
+    return [{ desc: `Tours 360° · Paquete ${pack}${sub ? " (pago inicial de la suscripción)" : ""}: ${what}. Propiedad ${size.name.toLowerCase()} (${size.hint.split(" · ")[0]}).`, qty: q.qty, unit: q.manualPrice }];
+  }
+  const factor = sub ? 0.5 : 1;
+  const lines: QuoteLine[] = r.lines.map((l, i) => ({
+    desc: i === 0 ? `Tours 360° · Paquete ${pack}${sub ? " (pago inicial de la suscripción)" : ""}: ${what}. Propiedad ${size.name.toLowerCase()} (${size.hint.split(" · ")[0]}).` : l.label,
+    qty: q.qty,
+    unit: Math.round(l.usd * factor * 100) / 100,
+  }));
+  // Lo calculado se redondea a US$5: la diferencia va en la última línea (el descuento, si hay) para que el total coincida
+  const sum = lines.reduce((s, l) => s + l.unit, 0);
+  const diff = Math.round((r.setup - sum) * 100) / 100;
+  const last = lines[lines.length - 1];
+  if (diff !== 0) last.unit = Math.round((last.unit + diff) * 100) / 100;
+  return lines;
+}
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 

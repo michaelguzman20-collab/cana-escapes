@@ -1,4 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
 import {
   Plus, Search, X, Pencil, Trash2,
   ChevronLeft, ChevronRight, AlertTriangle,
@@ -37,9 +39,11 @@ function fmtDate(d: string) {
 
 // ── Invoice Form Dialog ─────────────────────────────────────────────
 function InvoiceFormDialog({
-  open, onClose, editing,
+  open, onClose, editing, prefill, onCreated,
 }: {
   open: boolean; onClose: () => void; editing: FiscalInvoice | null;
+  // Datos iniciales de una factura nueva (por ejemplo, desde una cotización de Tours 360)
+  prefill?: Partial<FiscalInvoiceInsert> | null; onCreated?: () => void;
 }) {
   const { data: properties = [] } = useProperties();
   const create = useCreateFiscalInvoice();
@@ -47,21 +51,21 @@ function InvoiceFormDialog({
   const nextNcf = useNextNcf();
 
   const [propertyId, setPropertyId] = useState(editing?.property_id ?? "");
-  const [tipoNcf, setTipoNcf] = useState(editing?.tipo_ncf ?? "E32");
+  const [tipoNcf, setTipoNcf] = useState(editing?.tipo_ncf ?? prefill?.tipo_ncf ?? "E32");
   const [ncf, setNcf] = useState(editing?.ncf ?? "");
   const [tipoIngreso, setTipoIngreso] = useState(editing?.tipo_ingreso ?? "01");
   const [fecha, setFecha] = useState(editing?.fecha ?? new Date().toISOString().slice(0, 10));
-  const [clienteRnc, setClienteRnc] = useState(editing?.cliente_rnc ?? "");
-  const [clienteTipoId, setClienteTipoId] = useState(editing?.cliente_tipo_id ?? 2);
-  const [clienteNombre, setClienteNombre] = useState(editing?.cliente_nombre ?? "");
-  const [montoGravado18, setMontoGravado18] = useState(editing?.monto_gravado_18 ?? 0);
+  const [clienteRnc, setClienteRnc] = useState(editing?.cliente_rnc ?? prefill?.cliente_rnc ?? "");
+  const [clienteTipoId, setClienteTipoId] = useState(editing?.cliente_tipo_id ?? prefill?.cliente_tipo_id ?? 2);
+  const [clienteNombre, setClienteNombre] = useState(editing?.cliente_nombre ?? prefill?.cliente_nombre ?? "");
+  const [montoGravado18, setMontoGravado18] = useState(editing?.monto_gravado_18 ?? prefill?.monto_gravado_18 ?? 0);
   const [montoGravado16, setMontoGravado16] = useState(editing?.monto_gravado_16 ?? 0);
   const [montoExento, setMontoExento] = useState(editing?.monto_exento ?? 0);
   const [montoEfectivo, setMontoEfectivo] = useState(editing?.monto_efectivo ?? 0);
   const [montoTransferencia, setMontoTransferencia] = useState(editing?.monto_cheque_transferencia ?? 0);
   const [montoTarjeta, setMontoTarjeta] = useState(editing?.monto_tarjeta ?? 0);
   const [montoCredito, setMontoCredito] = useState(editing?.monto_credito ?? 0);
-  const [notas, setNotas] = useState(editing?.notas ?? "");
+  const [notas, setNotas] = useState(editing?.notas ?? prefill?.notas ?? "");
 
   const itbis18 = +(montoGravado18 * 0.18).toFixed(2);
   const itbis16 = +(montoGravado16 * 0.16).toFixed(2);
@@ -124,6 +128,7 @@ function InvoiceFormDialog({
       } else {
         await create.mutateAsync(invoice);
         toast({ title: "Ingreso registrado" });
+        onCreated?.();
       }
       onClose();
     } catch (err: any) {
@@ -294,6 +299,25 @@ export function IngresosTab({ fiscalPropertyId }: { fiscalPropertyId: string }) 
   const [editing, setEditing] = useState<FiscalInvoice | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<FiscalInvoice | null>(null);
 
+  // Llegada desde una cotización aceptada de Tours 360: abre una factura nueva con sus datos
+  const location = useLocation();
+  const navigate = useNavigate();
+  const fromQuote = location.state as { fromQuoteId?: string; invoicePrefill?: Partial<FiscalInvoiceInsert> } | null;
+  const [prefill, setPrefill] = useState<{ quoteId: string; data: Partial<FiscalInvoiceInsert> } | null>(null);
+  useEffect(() => {
+    if (fromQuote?.fromQuoteId && fromQuote.invoicePrefill) {
+      setPrefill({ quoteId: fromQuote.fromQuoteId, data: fromQuote.invoicePrefill });
+      setEditing(null);
+      setFormOpen(true);
+      navigate(location.pathname + location.search, { replace: true, state: null }); // que no se repita al recargar
+    }
+  }, [fromQuote, location.pathname, location.search, navigate]);
+
+  async function markQuoteInvoiced() {
+    if (!prefill) return;
+    await (supabase as any).from("tour_quotes").update({ status: "facturada", updated_at: new Date().toISOString() }).eq("id", prefill.quoteId);
+  }
+
   const selectedPropertyId = fiscalPropertyId;
   const { data: invoices = [], isLoading } = useFiscalInvoices();
   const deleteInvoice = useDeleteFiscalInvoice();
@@ -435,8 +459,10 @@ export function IngresosTab({ fiscalPropertyId }: { fiscalPropertyId: string }) 
       {formOpen && (
         <InvoiceFormDialog
           open={formOpen}
-          onClose={() => { setFormOpen(false); setEditing(null); }}
+          onClose={() => { setFormOpen(false); setEditing(null); setPrefill(null); }}
           editing={editing}
+          prefill={prefill?.data}
+          onCreated={markQuoteInvoiced}
         />
       )}
 

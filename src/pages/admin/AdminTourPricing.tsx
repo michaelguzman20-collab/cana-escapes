@@ -1,15 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Calculator, Copy, Loader2, Plus, RotateCcw, Save, Trash2, TrendingUp } from "lucide-react";
+import { ArrowLeft, Calculator, Copy, FilePlus2, FileText, Loader2, Plus, RotateCcw, Save, Trash2, TrendingUp } from "lucide-react";
+import { QuoteDialog, type QuoteStatus, type SavedQuote } from "@/components/tours/QuoteDialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/tours";
 import {
-  DEFAULT_PRICING, PACKS, SIZES, fixedCosts, mergePricing, quote, round5, usd as fmtUsd, rd as fmtRd,
-  type FixedCost, type PackKey, type Pricing, type QuoteInput, type SizeKey,
+  DEFAULT_PRICING, PACKS, SIZES, fixedCosts, hasBank, linesFromQuote, mergeDoc, mergePricing, quote, quoteNumber, round5, usd as fmtUsd, rd as fmtRd,
+  type FixedCost, type PackKey, type Pricing, type QuoteDoc, type QuoteInput, type SizeKey,
 } from "@/lib/tourPricing";
+
+const QUOTE_STATUS: Record<QuoteStatus, { label: string; cls: string }> = {
+  borrador: { label: "Borrador", cls: "bg-gray-100 text-gray-600" },
+  enviada: { label: "Enviada", cls: "bg-blue-100 text-blue-700" },
+  aceptada: { label: "Aceptada", cls: "bg-amber-100 text-amber-800" },
+  rechazada: { label: "Rechazada", cls: "bg-red-100 text-red-700" },
+  facturada: { label: "Facturada", cls: "bg-green-100 text-green-700" },
+};
+
+const todayDR = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Santo_Domingo" });
 
 // Precios de Tours 360 (solo admin): calculadora para cotizar en la cita, tasa del dólar, lista de
 // precios editable y los costos fijos del negocio para saber cuánto queda y cuándo pagar cada plan.
@@ -91,10 +102,18 @@ export function AdminTourPricing() {
   const [show, setShow] = useState<Show>("both");
   const [q, setQ] = useState<QuoteInput>({ pack: "p", size: "m", pay: "unico", urgent: false, far: false, drone: false, extraScenes: 0, qty: 1, launch: false, manualPrice: null });
 
+  const [quotes, setQuotes] = useState<SavedQuote[]>([]);
+  const [editor, setEditor] = useState<{ key: number; doc: QuoteDoc; saved: SavedQuote | null } | null>(null);
+
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await db.from("tour_pricing").select("data").eq("id", 1).maybeSingle();
+    const [{ data, error }, qs] = await Promise.all([
+      db.from("tour_pricing").select("data").eq("id", 1).maybeSingle(),
+      db.from("tour_quotes").select("*").order("created_at", { ascending: false }).limit(50),
+    ]);
     if (error) fail("Error al cargar los precios", error);
+    if (qs.error) fail("Error al cargar las cotizaciones", qs.error);
+    setQuotes(qs.data ?? []);
     const merged = mergePricing(data?.data ?? {});
     setSaved(merged);
     setP(merged);
@@ -146,6 +165,42 @@ export function AdminTourPricing() {
       () => toast({ title: "Cotización copiada", description: "Pégala en WhatsApp." }),
       () => toast({ title: "No se pudo copiar", description: text }),
     );
+  }
+
+  function newQuote() {
+    setEditor({
+      key: Date.now(),
+      saved: null,
+      doc: {
+        client: { name: "", company: "", taxId: "", phone: "", email: "" },
+        lines: linesFromQuote(q, r),
+        itbis: true,
+        currency: show === "rd" ? "rd" : show === "both" ? "both" : "usd",
+        rate,
+        monthlyNote: isSub ? `Luego ${fmtUsd(r.monthly)} al mes${q.qty > 1 ? " por propiedad" : ""}, mínimo 6 meses (incluye reporte de visitas, cambios y una visita al año para fotos nuevas).` : "",
+        conditions: p.quoteConditions,
+        validityDays: p.quoteValidityDays,
+        includeBank: hasBank(p),
+        date: todayDR(),
+      },
+    });
+  }
+
+  function onQuoteSaved(sq: SavedQuote) {
+    setQuotes((list) => [sq, ...list.filter((x) => x.id !== sq.id)].sort((a, b) => b.created_at.localeCompare(a.created_at)));
+  }
+
+  async function setQuoteStatus(sq: SavedQuote, status: QuoteStatus) {
+    const { data, error } = await db.from("tour_quotes").update({ status, updated_at: new Date().toISOString() }).eq("id", sq.id).select().single();
+    if (error) return fail("No se pudo cambiar el estado", error);
+    onQuoteSaved(data);
+  }
+
+  async function deleteQuote(sq: SavedQuote) {
+    const { error } = await db.from("tour_quotes").delete().eq("id", sq.id);
+    if (error) return fail("No se pudo borrar la cotización", error);
+    setQuotes((list) => list.filter((x) => x.id !== sq.id));
+    toast({ title: `Cotización ${quoteNumber(sq.number, sq.created_at)} borrada` });
   }
 
   function setCost(i: number, patch: Partial<FixedCost>) {
@@ -254,9 +309,47 @@ export function AdminTourPricing() {
               {isSub && <p className="text-xs text-[#BFD0E3]">Después, cada mes te quedan casi completos los {fmtUsd(r.monthly)} (el alojamiento de las fotos cuesta centavos).</p>}
             </div>
 
-            <Button onClick={copyQuote} className="w-full bg-[#F0A030] text-[#0F2B4C] hover:bg-[#e5952a]"><Copy size={15} /> Copiar cotización para WhatsApp</Button>
+            <Button onClick={newQuote} className="w-full bg-[#F0A030] text-[#0F2B4C] hover:bg-[#e5952a]"><FilePlus2 size={15} /> Hacer cotización (PDF)</Button>
+            <Button onClick={copyQuote} variant="outline" className="w-full bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white"><Copy size={15} /> Copiar resumen para WhatsApp</Button>
           </div>
         </div>
+
+        {/* Cotizaciones guardadas */}
+        <Card title="Cotizaciones" desc="Las que has hecho. Ábrelas para descargarlas o compartirlas otra vez, y cambia el estado cuando el cliente responda.">
+          {quotes.length === 0 ? (
+            <p className="text-gray-500">Todavía no hay cotizaciones. Arma una en la calculadora y pulsa “Hacer cotización (PDF)”.</p>
+          ) : (
+            <div className="overflow-x-auto -mx-1 px-1">
+              <table className="w-full min-w-[640px]">
+                <thead><tr className="text-left text-[11px] uppercase tracking-wider text-gray-500"><th className="py-2">Número</th><th className="py-2">Fecha</th><th className="py-2">Cliente</th><th className="py-2 text-right">Total</th><th className="py-2 pl-4">Estado</th><th /></tr></thead>
+                <tbody>
+                  {quotes.map((sq) => (
+                    <tr key={sq.id} className="border-t border-gray-100">
+                      <td className="py-2 font-semibold text-[#0F2B4C] whitespace-nowrap">{quoteNumber(sq.number, sq.created_at)}</td>
+                      <td className="py-2 text-gray-600 whitespace-nowrap">{new Date(sq.created_at).toLocaleDateString("es-DO", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                      <td className="py-2">{sq.client_name || <span className="text-gray-400">Sin nombre</span>}</td>
+                      <td className="py-2 text-right tabular-nums">{money(Number(sq.total_usd))}</td>
+                      <td className="py-2 pl-4">
+                        <select value={sq.status} onChange={(e) => setQuoteStatus(sq, e.target.value as QuoteStatus)} aria-label="Estado"
+                          className={cn("rounded-full px-2.5 py-1 text-xs font-semibold border-0 outline-none cursor-pointer", QUOTE_STATUS[sq.status].cls)}>
+                          {(Object.keys(QUOTE_STATUS) as QuoteStatus[]).map((k) => <option key={k} value={k}>{QUOTE_STATUS[k].label}</option>)}
+                        </select>
+                      </td>
+                      <td className="py-2 text-right whitespace-nowrap">
+                        <button type="button" onClick={() => setEditor({ key: Date.now(), doc: mergeDoc(sq.data), saved: sq })} className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[#0F2B4C] font-semibold hover:bg-gray-100"><FileText size={14} /> Abrir</button>
+                        <button type="button" onClick={() => { if (window.confirm(`¿Borrar la cotización ${quoteNumber(sq.number, sq.created_at)}?`)) deleteQuote(sq); }} className="p-1.5 text-gray-400 hover:text-red-500" aria-label="Borrar cotización"><Trash2 size={14} /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+
+        {editor && (
+          <QuoteDialog key={editor.key} open onClose={() => setEditor(null)} pricing={p} initial={editor.doc} saved={editor.saved} onSaved={onQuoteSaved} />
+        )}
 
         {/* Lista de precios */}
         <Card title="Lista de precios · pago único" desc="Lo que dices primero. Incluye visita, fotos, montaje del tour y 12 meses en línea. Debajo de cada precio: tu mínimo y el equivalente en pesos.">
@@ -308,6 +401,42 @@ export function AdminTourPricing() {
             </div>
           </Card>
         </div>
+
+        {/* Datos para cotizaciones */}
+        <Card title="Datos para cotizaciones" desc="Lo que sale en cada cotización. Los datos bancarios son opcionales: si los llenas, puedes agregarlos o no a cada cotización con un botón. Se guardan con “Guardar cambios” y solo los ve el administrador.">
+          <div className="grid lg:grid-cols-2 gap-5">
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Tu empresa</p>
+              {([
+                ["name", "Nombre"], ["rnc", "RNC"], ["phone", "Teléfono"], ["email", "Correo"], ["address", "Dirección"], ["web", "Web"],
+              ] as [keyof Pricing["company"], string][]).map(([k, label]) => (
+                <label key={k} className="grid grid-cols-[110px_1fr] items-center gap-2">
+                  <span className="text-gray-600">{label}</span>
+                  <input value={p.company[k]} onChange={(e) => set("company", { ...p.company, [k]: e.target.value })} className="rounded-md border border-gray-200 bg-white px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#F0A030]/50" />
+                </label>
+              ))}
+            </div>
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Datos bancarios (opcional)</p>
+              {([
+                ["bank", "Banco", "Banco Popular, Banreservas, BHD…"], ["holder", "Titular", "Nombre en la cuenta"], ["accountType", "Tipo de cuenta", "Corriente / Ahorros"],
+                ["account", "Número", "Número de cuenta"], ["currency", "Moneda", "RD$ o US$"], ["holderId", "RNC / cédula", "Del titular"],
+              ] as [keyof Pricing["bank"], string, string][]).map(([k, label, ph]) => (
+                <label key={k} className="grid grid-cols-[110px_1fr] items-center gap-2">
+                  <span className="text-gray-600">{label}</span>
+                  <input value={p.bank[k]} placeholder={ph} onChange={(e) => set("bank", { ...p.bank, [k]: e.target.value })} className="rounded-md border border-gray-200 bg-white px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#F0A030]/50" />
+                </label>
+              ))}
+              <p className="text-xs text-gray-500">{hasBank(p) ? "Listos: puedes agregarlos a las cotizaciones." : "Con banco y número de cuenta ya se pueden agregar."}</p>
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-[180px_1fr] gap-3 items-start border-t border-gray-100 pt-3">
+            <label className="flex items-center justify-between gap-2 sm:flex-col sm:items-start">Válida por <Num label="Días de validez" suffix="días" value={p.quoteValidityDays} min={1} onChange={(n) => set("quoteValidityDays", Math.max(1, Math.round(n)))} className="w-28" /></label>
+            <label className="flex flex-col gap-1">Condiciones por defecto
+              <textarea rows={3} value={p.quoteConditions} onChange={(e) => set("quoteConditions", e.target.value)} className="rounded-md border border-gray-200 bg-white px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#F0A030]/50 resize-y" />
+            </label>
+          </div>
+        </Card>
 
         {/* Costos */}
         <Card title="Costos del negocio" desc="Lo que pagas cada mes para que la web, las fotos y las herramientas funcionen. Enciende cada plan cuando empieces a pagarlo. Parte de estos costos le toca a Tours 360 y el resto al resto de Cana Escapes.">

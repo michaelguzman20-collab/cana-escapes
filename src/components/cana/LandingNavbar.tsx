@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Menu, X, Globe, LogIn, Home, Smartphone, Dna, Rotate3d, Wrench } from "lucide-react";
+import { Menu, X, Globe, LogIn, Smartphone, Dna, Rotate3d, Wrench } from "lucide-react";
 import { useLang } from "@/lib/LangContext";
 
 // Secciones de la página de Reservas (anclas en /reservas); solo se muestran estando ahí
@@ -28,6 +28,16 @@ const DNA_LINK = { key: "nav_cana_dna", to: "/cana-dna" };
 // Recorridos virtuales 360 (canaescapes.com/tours) — shown right after Cana DNA.
 // Abre en otra pestaña: es un área aparte, con su propia pantalla de carga.
 const TOURS_LINK = { key: "nav_tours", to: "/tours" };
+
+// La pestaña en la que estás va rellena en ámbar; las demás, solo con borde
+const pillDesktop = (active: boolean) =>
+  active
+    ? "text-[#0F2B4C] bg-[#F0A030] border border-[#F0A030] hover:bg-[#e5952a] shadow-lg shadow-[#F0A030]/20"
+    : "text-[#F0A030] border border-[#F0A030]/40 hover:bg-[#F0A030] hover:text-[#0F2B4C]";
+const pillMobile = (active: boolean) =>
+  active
+    ? "text-[#0F2B4C] bg-[#F0A030] border border-[#F0A030]"
+    : "text-[#F0A030] border border-[#F0A030]/30 hover:bg-[#F0A030]/10";
 
 export function LandingNavbar() {
   const { lang, setLang, t } = useLang();
@@ -85,15 +95,15 @@ export function LandingNavbar() {
             }}
             className="flex-shrink-0"
           >
-            <img src="/brand/logo-light-mark.png" alt="Cana Escapes" className="h-11 sm:h-14 w-auto" />
+            <img src="/brand/logo-light-mark.png" alt="Cana Escapes" className="h-[48px] sm:h-[60px] w-auto" />
           </Link>
 
           {/* Desktop nav */}
           <div className="hidden lg:flex items-center gap-1">
-            {/* Servicios: primer enlace y relleno ámbar */}
+            {/* Servicios (la portada): primer enlace */}
             <Link
               to={SERVICES_LINK.to}
-              className="mr-2 flex items-center gap-1.5 whitespace-nowrap px-3.5 py-1.5 text-sm font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-full transition-colors shadow-lg shadow-[#F0A030]/20"
+              className={`mr-2 flex items-center gap-1.5 whitespace-nowrap px-3.5 py-1.5 text-sm font-semibold rounded-full transition-colors ${pillDesktop(isHome)}`}
             >
               <Wrench size={14} />
               {t(SERVICES_LINK.key)}
@@ -119,7 +129,7 @@ export function LandingNavbar() {
               <Link
                 key={link.to}
                 to={link.to}
-                className="ml-1 px-3.5 py-1.5 text-sm font-semibold text-[#F0A030] border border-[#F0A030]/40 rounded-full hover:bg-[#F0A030] hover:text-[#0F2B4C] transition-colors"
+                className={`ml-1 px-3.5 py-1.5 text-sm font-semibold rounded-full transition-colors ${pillDesktop(location.pathname === link.to)}`}
               >
                 {t(link.key)}
               </Link>
@@ -128,7 +138,7 @@ export function LandingNavbar() {
               to={APPS_LINK.to}
               title={t(APPS_LINK.key)}
               aria-label={t(APPS_LINK.key)}
-              className="ml-1 flex items-center gap-1.5 px-2.5 2xl:px-3.5 py-1.5 text-sm font-semibold text-[#F0A030] border border-[#F0A030]/40 rounded-full hover:bg-[#F0A030] hover:text-[#0F2B4C] transition-colors"
+              className={`ml-1 flex items-center gap-1.5 px-2.5 2xl:px-3.5 py-1.5 text-sm font-semibold rounded-full transition-colors ${pillDesktop(location.pathname === APPS_LINK.to)}`}
             >
               <Smartphone size={14} />
               {/* Icon-only below 2xl so the nav fits with the Apps · Cana DNA · Tours 360 pills */}
@@ -138,7 +148,7 @@ export function LandingNavbar() {
               to={DNA_LINK.to}
               title={t(DNA_LINK.key)}
               aria-label={t(DNA_LINK.key)}
-              className="ml-1 flex items-center gap-1.5 whitespace-nowrap px-2.5 2xl:px-3.5 py-1.5 text-sm font-semibold text-[#F0A030] border border-[#F0A030]/40 rounded-full hover:bg-[#F0A030] hover:text-[#0F2B4C] transition-colors"
+              className={`ml-1 flex items-center gap-1.5 whitespace-nowrap px-2.5 2xl:px-3.5 py-1.5 text-sm font-semibold rounded-full transition-colors ${pillDesktop(location.pathname === DNA_LINK.to)}`}
             >
               <Dna size={14} />
               {/* Icon-only below 2xl so the nav fits with the Apps · Cana DNA · Tours 360 pills */}
@@ -179,18 +189,6 @@ export function LandingNavbar() {
               <span className="hidden xl:inline">{t("nav_login")}</span>
             </Link>
 
-            {!isHome && (
-              <Link
-                to="/"
-                aria-label={t("nav_back_home")}
-                title={t("nav_back_home")}
-                className="flex items-center gap-2 whitespace-nowrap px-3 xl:px-5 py-2 text-sm font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-lg transition-colors shadow-lg shadow-[#F0A030]/20"
-              >
-                <Home size={14} />
-                {/* Icon-only between lg and xl so the nav fits with the Apps pill */}
-                <span className="hidden xl:inline">{t("nav_back_home")}</span>
-              </Link>
-            )}
           </div>
 
           {/* Mobile right: language toggle (outside menu) + menu button */}
@@ -224,7 +222,7 @@ export function LandingNavbar() {
           <Link
             to={SERVICES_LINK.to}
             onClick={() => setMobileOpen(false)}
-            className="mb-2 flex items-center gap-2 px-4 py-3 text-lg font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-xl transition-colors"
+            className={`mb-2 flex items-center gap-2 px-4 py-3 text-lg font-semibold rounded-xl transition-colors ${pillMobile(isHome)}`}
           >
             <Wrench size={18} />
             {t(SERVICES_LINK.key)}
@@ -252,7 +250,7 @@ export function LandingNavbar() {
               key={link.to}
               to={link.to}
               onClick={() => setMobileOpen(false)}
-              className="text-left px-4 py-3 text-lg font-semibold text-[#F0A030] border border-[#F0A030]/30 hover:bg-[#F0A030]/10 rounded-xl transition-colors"
+              className={`text-left px-4 py-3 text-lg font-semibold rounded-xl transition-colors ${pillMobile(location.pathname === link.to)}`}
             >
               {t(link.key)}
             </Link>
@@ -260,7 +258,7 @@ export function LandingNavbar() {
           <Link
             to={APPS_LINK.to}
             onClick={() => setMobileOpen(false)}
-            className="flex items-center gap-2 text-left px-4 py-3 text-lg font-semibold text-[#F0A030] border border-[#F0A030]/30 hover:bg-[#F0A030]/10 rounded-xl transition-colors"
+            className={`flex items-center gap-2 text-left px-4 py-3 text-lg font-semibold rounded-xl transition-colors ${pillMobile(location.pathname === APPS_LINK.to)}`}
           >
             <Smartphone size={18} />
             {t(APPS_LINK.key)}
@@ -268,7 +266,7 @@ export function LandingNavbar() {
           <Link
             to={DNA_LINK.to}
             onClick={() => setMobileOpen(false)}
-            className="flex items-center gap-2 text-left px-4 py-3 text-lg font-semibold text-[#F0A030] border border-[#F0A030]/30 hover:bg-[#F0A030]/10 rounded-xl transition-colors"
+            className={`flex items-center gap-2 text-left px-4 py-3 text-lg font-semibold rounded-xl transition-colors ${pillMobile(location.pathname === DNA_LINK.to)}`}
           >
             <Dna size={18} />
             {t(DNA_LINK.key)}
@@ -299,16 +297,6 @@ export function LandingNavbar() {
             <LogIn size={16} />
             {t("nav_login")}
           </Link>
-          {!isHome && (
-            <Link
-              to="/"
-              onClick={() => setMobileOpen(false)}
-              className="mt-2 flex items-center justify-center gap-2 px-6 py-3 text-center font-semibold text-[#0F2B4C] bg-[#F0A030] hover:bg-[#e5952a] rounded-xl transition-colors"
-            >
-              <Home size={16} />
-              {t("nav_back_home")}
-            </Link>
-          )}
         </div>
       </div>
     </nav>

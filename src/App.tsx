@@ -124,7 +124,7 @@ function TabSplash() {
     if (TAB_PATHS.has(pathname)) setShownAt(Date.now());
   }, [pathname]);
 
-  return shownAt ? <SplashScreen key={shownAt} speed={0.35} onDone={done} /> : null;
+  return shownAt ? <SplashScreen key={shownAt} speed={0.18} onDone={done} /> : null;
 }
 
 export default function App() {

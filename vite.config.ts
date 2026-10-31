@@ -56,7 +56,14 @@ function seoHtmlPages(): Plugin {
       const routes = allSeoRoutes();
       for (const r of routes) {
         if (r.path === "/") continue; // la portada ya es el index.html general
-        const html = injectSeo(base, { title: r.title, description: r.description, url: SITE + r.path });
+        const html = injectSeo(base, {
+          title: r.title,
+          description: r.description,
+          url: SITE + r.path,
+          image: r.image && SITE + r.image,
+          imageAlt: r.imageAlt,
+          jsonLd: r.jsonLd,
+        });
         const dir = path.join(dist, ...r.path.split("/").filter(Boolean));
         fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(path.join(dir, "index.html"), html);

@@ -7,7 +7,20 @@
 export interface SeoMeta {
   title: string;
   description: string;
+  /** Imagen propia al compartir (ruta en public/); sin ella se usa og-image.jpg */
+  image?: string;
+  imageAlt?: string;
+  /** Datos estructurados schema.org que solo lleva esta página */
+  jsonLd?: object;
 }
+
+const SITE = "https://canaescapes.com";
+
+const TOURS_PACKS = [
+  ["Esencial", "Tour virtual 360° con tu logo, botones a WhatsApp e Instagram y enlace para compartir."],
+  ["Plus", "Todo lo de Esencial, más fotografía de interiores y acompañamiento."],
+  ["Premium", "Todo lo de Plus, más fotos y video con drone, acompañamiento y seguimiento."],
+];
 
 export const SEO_PAGES = {
   "/": {
@@ -39,6 +52,36 @@ export const SEO_PAGES = {
     title: "Tours 360 — Recorridos virtuales 360° para propiedades en Punta Cana y Bávaro",
     description:
       "Recorridos virtuales 360° con tu marca para inmobiliarias, rentas cortas y propiedades en venta en Bávaro y Punta Cana. Fotos y video con drone y fotografía arquitectónica.",
+    image: "/og-tours.jpg",
+    imageAlt: "Tours 360° — recorridos virtuales 360° de propiedades en Bávaro y Punta Cana",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      name: "Tours 360° — Recorridos virtuales 360° para propiedades",
+      serviceType: "Recorridos virtuales 360° y fotografía inmobiliaria",
+      description:
+        "Recorridos virtuales 360° con la marca del cliente para inmobiliarias, agentes, rentas cortas y propiedades en venta. Incluye fotografía de interiores y fotos y video con drone.",
+      url: `${SITE}/tours`,
+      image: `${SITE}/og-tours.jpg`,
+      areaServed: ["Bávaro", "Punta Cana", "Cap Cana", "República Dominicana"].map((name) => ({ "@type": "Place", name })),
+      audience: { "@type": "BusinessAudience", name: "Inmobiliarias, agentes, rentas cortas y propietarios" },
+      availableLanguage: ["es", "en"],
+      provider: {
+        "@type": "LocalBusiness",
+        name: "Cana Escapes",
+        url: `${SITE}/`,
+        telephone: "+1-809-210-2773",
+        address: { "@type": "PostalAddress", addressLocality: "Punta Cana", addressRegion: "La Altagracia", addressCountry: "DO" },
+      },
+      hasOfferCatalog: {
+        "@type": "OfferCatalog",
+        name: "Paquetes Tours 360°",
+        itemListElement: TOURS_PACKS.map(([name, description]) => ({
+          "@type": "Offer",
+          itemOffered: { "@type": "Service", name: `Tours 360° ${name}`, description },
+        })),
+      },
+    },
   },
   "/apps/cana-track/borrar-cuenta": {
     title: "Borrar cuenta de Cana Track — Cana Escapes",

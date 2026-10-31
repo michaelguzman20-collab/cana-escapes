@@ -9,6 +9,7 @@ export interface PageSeo {
   image?: string; // URL completa de la imagen para compartir
   imageAlt?: string;
   noindex?: boolean;
+  jsonLd?: object; // datos estructurados (schema.org) propios de la página
 }
 
 const esc = (s: string) =>
@@ -37,5 +38,10 @@ export function injectSeo(html: string, seo: PageSeo) {
     if (seo.imageAlt) out = setMeta(out, "property", "og:image:alt", seo.imageAlt);
   }
   if (seo.noindex) out = setMeta(out, "name", "robots", "noindex, follow");
+  if (seo.jsonLd) {
+    // "<" escapado para que un texto con "</script>" no pueda cerrar la etiqueta
+    const json = JSON.stringify(seo.jsonLd).replace(/</g, "\\u003c");
+    out = out.replace("</head>", `  <script type="application/ld+json">${json}</script>\n  </head>`);
+  }
   return out;
 }

@@ -49,23 +49,48 @@ function summary(t: TourRow) {
   return text.length > 300 ? text.slice(0, 297).trimEnd() + "…" : text;
 }
 
+// Datos estructurados del tour: la página con su foto principal y la propiedad que muestra.
+// Sin el nombre de Cana Escapes: los tours de clientes llevan solo su marca.
+function tourJsonLd(t: TourRow, url: string, desc: string) {
+  const image = imageUrl(t.cover_url);
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: `${t.title} — Tour virtual 360°`,
+    description: desc,
+    url,
+    inLanguage: "es",
+    ...(image && { primaryImageOfPage: { "@type": "ImageObject", url: image } }),
+    about: {
+      "@type": "Accommodation",
+      name: t.title,
+      ...(image && { image }),
+      ...(t.bedrooms != null && { numberOfBedrooms: t.bedrooms }),
+      ...(t.bathrooms != null && { numberOfBathroomsTotal: t.bathrooms }),
+      address: { "@type": "PostalAddress", ...(t.location && { addressLocality: t.location }), addressCountry: "DO" },
+    },
+  };
+}
+
 export async function GET(req: Request) {
   const origin = new URL(req.url).origin;
   const slug = (new URL(req.url).searchParams.get("slug") ?? "").toLowerCase();
   // index.html del mismo despliegue (los nombres de los archivos JS cambian en cada versión)
   const [page, tour] = await Promise.all([fetch(`${origin}/index.html`).then((r) => r.text()), fetchTour(slug)]);
+  const url = `${SITE}/tour/${slug}`;
   const html = tour
     ? injectSeo(page, {
         title: `${tour.title} — Tour 360`,
         description: summary(tour),
-        url: `${SITE}/tour/${slug}`,
-        image: imageUrl(tour.cover_url),
+        url,
+        image: imageUrl(tour.cover_url) ?? `${SITE}/og-tours.jpg`,
         imageAlt: `${tour.title} — recorrido virtual 360°`,
+        jsonLd: tourJsonLd(tour, url, summary(tour)),
       })
     : injectSeo(page, {
         title: "Tour 360 · Punta Cana",
         description: DEFAULT_DESC,
-        url: `${SITE}/tour/${slug}`,
+        url,
         noindex: true, // borrador o inexistente: que no aparezca en buscadores
       });
   return new Response(html, {

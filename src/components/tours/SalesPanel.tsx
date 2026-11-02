@@ -59,7 +59,7 @@ export function monthSummary(sales: Sale[], k: string, fixed: number) {
 
 const inputCls = "rounded-md border border-gray-200 bg-white px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-[#F0A030]/50";
 
-export function SalesPanel({ fixedToday, fixedFull, money, refPrice, refVariable, minPct, draft, onDraftUsed }: {
+export function SalesPanel({ fixedToday, fixedFull, money, refPrice, refVariable, minPct, draft, onDraftUsed, onSaved }: {
   fixedToday: number; // costos fijos de Tours al mes con lo que pagas hoy
   fixedFull: number; // con todos los planes activos
   money: (n: number) => string;
@@ -68,6 +68,7 @@ export function SalesPanel({ fixedToday, fixedFull, money, refPrice, refVariable
   minPct: number;
   draft: SaleDraft | null; // una venta propuesta desde la calculadora o una cotización
   onDraftUsed: () => void;
+  onSaved?: (s: Sale) => void; // para ligar la venta al prospecto
 }) {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,6 +119,7 @@ export function SalesPanel({ fixedToday, fixedFull, money, refPrice, refVariable
     setForm(null);
     setMonth(monthKey(data.sale_date));
     toast({ title: "Venta registrada" });
+    onSaved?.(data);
   }
 
   async function patch(s: Sale, changes: Partial<Sale>) {

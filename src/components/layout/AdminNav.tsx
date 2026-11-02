@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { NavLink, Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, CalendarDays, CalendarRange, Settings, LogOut, User, Users, Globe, UserCheck, Receipt, TrendingUp, Landmark, Wrench, Banknote, Bell, CheckCheck, KeyRound, MessageCircle, Calculator, MapPin, Dna, Rotate3d, BarChart3, BadgeDollarSign, ChevronDown } from "lucide-react";
+import { LayoutDashboard, CalendarDays, CalendarRange, Settings, LogOut, User, Users, Globe, UserCheck, Receipt, TrendingUp, Landmark, Wrench, Banknote, Bell, CheckCheck, KeyRound, MessageCircle, Calculator, MapPin, Dna, Rotate3d, BarChart3, BadgeDollarSign, ChevronDown, UserRoundSearch } from "lucide-react";
 import { Logo } from "./Logo";
 import { PropertySwitcher } from "./PropertySwitcher";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ const navGroups = [
     { to: "/admin/tours",         icon: Rotate3d,        label: "Tours 360", end: true },
     { to: "/admin/visitas",       icon: BarChart3,       label: "Visitas"         },
     { to: "/admin/tours/precios", icon: BadgeDollarSign, label: "Precios Tours 360" },
+    { to: "/admin/tours/prospectos", icon: UserRoundSearch, label: "Prospectos / Seguimiento" },
   ] },
   { id: "herramientas", label: "Herramientas", items: [
     { to: "/admin/whatsapp",      icon: MessageCircle,   label: "WhatsApp Bot"    },

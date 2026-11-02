@@ -39,6 +39,7 @@ const AdminTours = lazyPage(() => import("@/pages/admin/AdminTours"), "AdminTour
 const AdminTourIntakes = lazyPage(() => import("@/pages/admin/AdminTourIntakes"), "AdminTourIntakes");
 const AdminTourDemos = lazyPage(() => import("@/pages/admin/AdminTourDemos"), "AdminTourDemos");
 const AdminTourPricing = lazyPage(() => import("@/pages/admin/AdminTourPricing"), "AdminTourPricing");
+const AdminTourProspects = lazyPage(() => import("@/pages/admin/AdminTourProspects"), "AdminTourProspects");
 const AdminVisitas = lazyPage(() => import("@/pages/admin/AdminVisitas"), "AdminVisitas");
 const TrackTeamPage = lazyPage(() => import("@/pages/TrackTeamPage"), "TrackTeamPage");
 const GuestDashboard = lazyPage(() => import("@/pages/guest/GuestDashboard"), "GuestDashboard");
@@ -177,6 +178,7 @@ export default function App() {
               <Route path="/admin/tours/fichas" element={<AdminTourIntakes />} />
               <Route path="/admin/tours/agenda" element={<AdminTourDemos />} />
               <Route path="/admin/tours/precios" element={<AdminTourPricing />} />
+              <Route path="/admin/tours/prospectos" element={<AdminTourProspects />} />
               <Route path="/admin/visitas" element={<AdminVisitas />} />
               <Route path="/admin/configuracion" element={<AdminConfiguracion />} />
             </Route>

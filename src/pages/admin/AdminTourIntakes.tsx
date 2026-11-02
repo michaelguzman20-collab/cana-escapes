@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/tours";
+import { addEvent, getProspect, setLink } from "@/lib/tourProspects";
 import {
   INTAKE_SECTIONS, isChecks, isRow, isTable, picked, text, summaryOf, filledCount, readIntakePdf, uploadAttachment,
   attachmentUrl, removeAttachment, createDraftTour, type IntakeData, type TourIntake,
@@ -40,6 +41,31 @@ export function AdminTourIntakes() {
     setOpenId(id);
     setParams({}, { replace: true });
   }, [params, setParams]);
+
+  // ?prospecto=<id> crea la ficha con sus datos, la liga al prospecto y la abre
+  const fromProspect = useRef<string | null>(null);
+  useEffect(() => {
+    const pid = params.get("prospecto");
+    if (!pid || fromProspect.current === pid) return;
+    fromProspect.current = pid;
+    setParams({}, { replace: true });
+    (async () => {
+      try {
+        const p = await getProspect(pid);
+        if (!p) return toast({ title: "No se encontró el prospecto", variant: "destructive" });
+        const intake = await create({
+          cliente_nombre: p.name, cliente_empresa: p.company ?? "", cliente_telefono: p.phone ?? "", cliente_whatsapp: p.phone ?? "", cliente_correo: p.email ?? "",
+        });
+        await setLink("tour_intakes", intake.id, p.id);
+        await addEvent({ prospect_id: p.id, kind: "nota", note: "Ficha creada" });
+        setOpenId(intake.id);
+        toast({ title: `Ficha de ${p.name} creada`, description: "Ya tiene sus datos; completa el resto en la cita." });
+      } catch (e) {
+        fail("No se pudo crear la ficha", e);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
 
   const load = useCallback(async () => {
     setLoading(true);

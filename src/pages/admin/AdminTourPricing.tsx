@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft, BadgeDollarSign, Calculator, Copy, FilePlus2, FileText, Loader2, Plus, RotateCcw, Save, Trash2, TrendingUp } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { ArrowLeft, BadgeDollarSign, Calculator, Copy, FilePlus2, FileText, Loader2, Plus, RotateCcw, Save, Trash2, TrendingUp, UserRoundSearch } from "lucide-react";
 import { QuoteDialog, type QuoteStatus, type SavedQuote } from "@/components/tours/QuoteDialog";
-import { SalesPanel, type SaleDraft } from "@/components/tours/SalesPanel";
+import { SalesPanel, type Sale, type SaleDraft } from "@/components/tours/SalesPanel";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/tours";
+import { addEvent, getProspect, loadLinkables, raiseStatus, saveProspect, setLink, type Prospect } from "@/lib/tourProspects";
 import {
   DEFAULT_PRICING, NO_DISCOUNT, PACKS, SIZES, budgetAdvice, fixedCosts, hasBank, linesFromQuote, mergeDoc, mergePricing, quote, quoteNumber, round5, usd as fmtUsd, rd as fmtRd,
   type FixedCost, type PackKey, type Pricing, type QuoteDoc, type QuoteInput, type SizeKey,
@@ -122,6 +123,40 @@ export function AdminTourPricing() {
   const [saleDraft, setSaleDraft] = useState<SaleDraft | null>(null);
   const clearSaleDraft = useCallback(() => setSaleDraft(null), []);
 
+  // ?prospecto=<id>: se cotiza para un prospecto; la cotización y la venta quedan ligadas a él
+  const [params] = useSearchParams();
+  const prospectId = params.get("prospecto");
+  const [forProspect, setForProspect] = useState<Prospect | null>(null);
+  const linkedQuotes = useRef(new Set<string>());
+  useEffect(() => {
+    if (prospectId) getProspect(prospectId).then(setForProspect, (e) => fail("No se encontró el prospecto", e));
+  }, [prospectId]);
+
+  /** Liga la cotización o la venta al prospecto, lo anota en su bitácora y sube su estado */
+  async function linkToProspect(pid: string, table: "tour_quotes" | "tour_sales", rowId: string, note: string) {
+    try {
+      await setLink(table, rowId, pid);
+      await addEvent({ prospect_id: pid, kind: "envio", note });
+      const pr = forProspect?.id === pid ? forProspect : await getProspect(pid);
+      if (pr) {
+        const status = raiseStatus(pr.status, table === "tour_sales" ? "cliente" : "propuesta");
+        if (status !== pr.status) {
+          const saved = await saveProspect({ ...pr, status, last_contact_at: todayDR() });
+          if (forProspect?.id === pid) setForProspect(saved);
+        }
+      }
+      toast({ title: `Ligada a ${pr?.name ?? "el prospecto"}` });
+    } catch (e) {
+      fail("No se pudo ligar al prospecto", e);
+    }
+  }
+
+  async function onSaleSaved(s: Sale) {
+    let pid = forProspect?.id ?? null;
+    if (!pid && s.quote_id) pid = (await loadLinkables()).quotes.find((q) => q.id === s.quote_id)?.prospect_id ?? null;
+    if (pid) linkToProspect(pid, "tour_sales", s.id, `Venta registrada: ${fmtUsd(s.amount_usd)}${s.monthly_usd ? ` + ${fmtUsd(s.monthly_usd)}/mes` : ""}`);
+  }
+
   const load = useCallback(async () => {
     setLoading(true);
     const [{ data, error }, qs] = await Promise.all([
@@ -202,7 +237,7 @@ export function AdminTourPricing() {
       key: Date.now(),
       saved: null,
       doc: {
-        client: { name: "", company: "", taxId: "", phone: "", email: "" },
+        client: { name: forProspect?.name ?? "", company: forProspect?.company ?? "", taxId: "", phone: forProspect?.phone ?? "", email: forProspect?.email ?? "" },
         lines: linesFromQuote(q, r),
         itbis: true,
         currency: show === "rd" ? "rd" : show === "both" ? "both" : "usd",
@@ -219,7 +254,7 @@ export function AdminTourPricing() {
   function saleFromCalculator() {
     const variable = r.cost - r.costLines[2].usd; // sin la parte de los costos fijos: esa se cuenta por mes
     setSaleDraft({
-      sale_date: todayDR(), client_name: "", pack: q.pack, size: q.size, pay: q.pay, qty: q.qty,
+      sale_date: todayDR(), client_name: forProspect?.company || forProspect?.name || "", pack: q.pack, size: q.size, pay: q.pay, qty: q.qty,
       amount_usd: Math.round(r.charged * q.qty * 100) / 100,
       monthly_usd: isSub ? r.monthly * q.qty : 0, months: 12,
       cost_usd: Math.round(variable * q.qty * 100) / 100,
@@ -241,6 +276,10 @@ export function AdminTourPricing() {
   }
 
   function onQuoteSaved(sq: SavedQuote) {
+    if (forProspect && !linkedQuotes.current.has(sq.id) && !(sq as SavedQuote & { prospect_id?: string | null }).prospect_id) {
+      linkedQuotes.current.add(sq.id);
+      linkToProspect(forProspect.id, "tour_quotes", sq.id, `Cotización ${quoteNumber(sq.number, sq.created_at)}: ${fmtUsd(sq.total_usd)}`);
+    }
     setQuotes((list) => [sq, ...list.filter((x) => x.id !== sq.id)].sort((a, b) => b.created_at.localeCompare(a.created_at)));
   }
 
@@ -295,6 +334,17 @@ export function AdminTourPricing() {
             </Button>
           </div>
         </div>
+
+        {forProspect && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#F0A030] bg-white px-3 py-2.5">
+            <UserRoundSearch size={16} className="text-[#0F2B4C]" />
+            <p className="flex-1 min-w-[220px]">
+              Cotizando para <b className="text-[#0F2B4C]">{forProspect.name}</b>{forProspect.company ? ` · ${forProspect.company}` : ""}.{" "}
+              <span className="text-gray-500">La cotización y la venta que hagas aquí quedan ligadas a este prospecto.</span>
+            </p>
+            <Link to={`/admin/tours/prospectos?abrir=${forProspect.id}`} className="text-[#0F2B4C] font-semibold hover:text-[#b8761a]">Volver al prospecto</Link>
+          </div>
+        )}
 
         <p className="text-xs text-gray-600 bg-[#FCEBD0] rounded-lg px-3 py-2 max-w-4xl">
           Los precios sugeridos salen de lo que cobran fotógrafos inmobiliarios y de drone en RD y de precios publicados de tours 360° (referencias al final). Son un punto de partida: ajústalos después de tus primeros clientes. Lo que cambies en la calculadora no se guarda; lo de las tablas se guarda con “Guardar cambios”.
@@ -648,7 +698,7 @@ export function AdminTourPricing() {
         <SalesPanel
           fixedToday={fc.tours} fixedFull={fc.toursFull} money={money}
           refPrice={refQuote.price} refVariable={refQuote.cost - refQuote.costLines[2].usd} minPct={p.minPct}
-          draft={saleDraft} onDraftUsed={clearSaleDraft}
+          draft={saleDraft} onDraftUsed={clearSaleDraft} onSaved={onSaleSaved}
         />
 
         {/* Cotizaciones guardadas */}

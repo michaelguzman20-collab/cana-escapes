@@ -88,7 +88,7 @@ export const DEFAULT_PRICING: Pricing = {
   ],
   toursShare: 50,
   toursPerMonth: 4,
-  company: { name: "Cana Escapes", rnc: "133-70382-3", phone: "+1 (809) 210-2773", email: "michael@canaescapes.com", address: "Punta Cana, La Altagracia, República Dominicana", web: "canaescapes.com/tours" },
+  company: { name: "Cana Escapes", rnc: "133-70382-3", phone: "+1 (809) 210-2773", email: "canaescapes@gmail.com", address: "Punta Cana, La Altagracia, República Dominicana", web: "canaescapes.com/tours" },
   bank: { bank: "", holder: "", accountType: "", account: "", currency: "", holderId: "" },
   quoteValidityDays: 15,
   quoteConditions:

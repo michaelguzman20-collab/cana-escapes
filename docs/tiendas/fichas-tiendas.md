@@ -18,7 +18,7 @@ Privacy tienen que coincidir con la política publicada.
 Versión en inglés de cualquier página: agregar `?lang=en` (por ejemplo `.../privacidad?lang=en`).
 
 Datos del desarrollador: Cana Escapes · RNC 133-70382-3 · Punta Cana, República Dominicana ·
-michael@canaescapes.com · WhatsApp +1 (809) 210-2773.
+canaescapes@gmail.com · WhatsApp +1 (809) 210-2773.
 
 ---
 
@@ -349,7 +349,7 @@ ubicación mantiene el envío de la ubicación mientras el usuario comparte; lo 
 
 - Confirmar los plazos que promete la página de borrado: **7 días** para borrar y **90 días** como
   máximo en respaldos (depende de cuánto tiempo se guardan las copias de `backup-completo.mjs`).
-- Confirmar que el correo de contacto público para privacidad sea `michael@canaescapes.com` (o
+- Confirmar que el correo de contacto público para privacidad sea `canaescapes@gmail.com` (o
   crear uno tipo `privacidad@canaescapes.com`).
 - Revisar la página de divulgación de datos de ML Kit para cerrar la respuesta de Data safety de
   Cana Scanner.

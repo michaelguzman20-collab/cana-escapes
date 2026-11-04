@@ -9,7 +9,7 @@ import type { GuideSection } from "./appGuides";
 export const POLICY_CONTACT = {
   whatsapp: "18092102773",
   whatsappLabel: "+1 (809) 210-2773",
-  email: "michael@canaescapes.com",
+  email: "canaescapes@gmail.com",
   company: "Cana Escapes",
   rnc: "133-70382-3",
   address: { es: "Punta Cana, República Dominicana", en: "Punta Cana, Dominican Republic" },

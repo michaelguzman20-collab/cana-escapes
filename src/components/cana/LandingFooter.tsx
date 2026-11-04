@@ -83,7 +83,7 @@ export function LandingFooter() {
               <h4 className="font-semibold text-white mb-4">{t("footer_contact")}</h4>
               <div className="space-y-2 text-sm text-white/50">
                 <p>+1 (809) 210-2773</p>
-                <p>michael@canaescapes.com</p>
+                <p>canaescapes@gmail.com</p>
                 <p>Punta Cana, Rep. Dominicana</p>
               </div>
             </div>

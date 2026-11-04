@@ -14,7 +14,7 @@ import { WhatsAppIcon } from "@/components/cana/WhatsAppIcon";
 import { PathSelector } from "@/components/cana/PathSelector";
 
 const WA_URL = "https://wa.me/18092102773";
-const MAIL = "mailto:michael@canaescapes.com";
+const MAIL = "mailto:canaescapes@gmail.com";
 
 // Residential condominium structures / common areas backdrop
 const HERO_IMG =
@@ -361,7 +361,7 @@ function ServiciosContent() {
                 className="inline-flex items-center justify-center gap-2.5 px-8 py-4 border-2 border-[#0F2B4C]/15 hover:border-[#0F2B4C]/30 text-[#0F2B4C] font-semibold rounded-xl transition-all"
               >
                 <Mail size={18} />
-                michael@canaescapes.com
+                canaescapes@gmail.com
               </a>
             </div>
             <div className="flex items-center justify-center gap-2 text-xs text-gray-400 mt-6">

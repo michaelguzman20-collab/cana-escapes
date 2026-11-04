@@ -174,7 +174,7 @@ export function ContactSection({ defaultTab = "guest" }: { defaultTab?: Tab }) {
                 </div>
                 <div className="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-xl">
                   <Mail size={14} className="text-[#F0A030]" />
-                  <span className="text-sm text-white/70">michael@canaescapes.com</span>
+                  <span className="text-sm text-white/70">canaescapes@gmail.com</span>
                 </div>
                 <div className="flex items-center gap-3 px-4 py-3 bg-white/5 rounded-xl">
                   <MapPin size={14} className="text-[#F0A030]" />

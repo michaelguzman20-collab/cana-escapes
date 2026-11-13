@@ -3,7 +3,8 @@
 // se vea la vista previa del tour y no la de la portada. React carga igual que siempre.
 // Variables de entorno: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY (solo se leen tours publicados).
 
-import { injectSeo } from "./_seo";
+// Con ".js": Node (ESM) en Vercel no encuentra el módulo sin extensión cuando la función se compila allá
+import { injectSeo } from "./_seo.js";
 // La carpeta que se publica en Vercel no lleva @types/node: solo se usa process.env
 declare const process: { env: Record<string, string | undefined> };
 

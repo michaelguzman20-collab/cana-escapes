@@ -208,6 +208,10 @@ function TourContent() {
           onStripToggle={setStripOpen}
           onStripLift={setStripLift}
           onSceneView={(sceneId) => recordSceneView(`/tour/${slug}`, full.tour.id, sceneId)}
+          autoLabels={{
+            start: t("tours_auto"), pause: t("tours_auto_pause"), resume: t("tours_auto_resume"), done: t("tours_auto_done"),
+            doneText: t("tours_auto_done_text"), again: t("tours_auto_again"), explore: t("tours_auto_explore"),
+          }}
           lang={lang}
         />
       </Suspense>

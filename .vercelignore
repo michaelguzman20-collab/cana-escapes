@@ -1,0 +1,13 @@
+# Lo que NUNCA se sube a Vercel con `vercel deploy` (sin este archivo la CLI subía los .env con claves).
+# Las variables de entorno viven en el panel de Vercel, no en archivos.
+.env
+.env.*
+*.local
+scripts/
+BACKUP_COMPLETO.md
+docs/
+dist/
+node_modules/
+.claude/
+.netlify/
+*.tsbuildinfo

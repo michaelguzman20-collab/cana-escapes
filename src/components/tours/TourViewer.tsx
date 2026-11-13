@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Crosshair, GalleryHorizontal, Smartphone, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Crosshair, GalleryHorizontal, Pause, Play, Smartphone, X } from "lucide-react";
 import { Viewer } from "@photo-sphere-viewer/core";
 import { MarkersPlugin, type MarkerConfig } from "@photo-sphere-viewer/markers-plugin";
 import { VirtualTourPlugin, type VirtualTourNode } from "@photo-sphere-viewer/virtual-tour-plugin";
@@ -12,6 +12,7 @@ import "./tours.css";
 import { LOADER_IMG, nadirLogoUrl, nadirMarker } from "./markerHtml";
 import { addonElement, addonMarker } from "./tourAddons";
 import { PanoThumb } from "./PanoThumb";
+import { TourAutomatico, type EstadoAuto } from "./autoTour";
 import { limitTexturesOnPhones, PSV_LANG_EN, PSV_LANG_ES } from "./viewerSetup";
 import {
   addonsForScene, areaIn, clampPitch, mediaRetryUrl, mediaUrl, viewerImage, sphereCorrection, startScene, zoomLevelFor, type FullTour, type TourHotspot, type TourScene,
@@ -39,7 +40,14 @@ interface Props {
   onStripLift?(px: number): void;
   /** Avisa cada vez que se muestra una foto (para contar qué fotos se miran) */
   onSceneView?(sceneId: string): void;
+  /** Textos del tour automático */
+  autoLabels?: { start: string; pause: string; resume: string; done: string; doneText: string; again: string; explore: string };
 }
+
+const AUTO_ES = {
+  start: "Tour automático", pause: "Pausar", resume: "Seguir tour", done: "¡Recorrido completo!",
+  doneText: "Ya vio todos los espacios.", again: "Ver otra vez", explore: "Explorar por mi cuenta",
+};
 
 // Pie de foto: solo el área (Sala, Cocina…); el nombre del tour ya está arriba
 const captionOf = (s: TourScene, lang: string) => areaIn(s, lang) || s.title;
@@ -82,7 +90,10 @@ function Card({ addon, onClose }: { addon: TourHotspot; onClose(): void }) {
   );
 }
 
-export default function TourViewer({ full, loadingText, startLabel, lang = "es", gyroLabel, stripLabels, onStripToggle, onStripLift, onSceneView }: Props) {
+export default function TourViewer({ full, loadingText, startLabel, lang = "es", gyroLabel, stripLabels, onStripToggle, onStripLift, onSceneView, autoLabels = AUTO_ES }: Props) {
+  // Tour automático: recorre solo todas las fotos; si la persona toca la pantalla, se pausa
+  const autoRef = useRef<TourAutomatico | null>(null);
+  const [auto, setAuto] = useState<EstadoAuto | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const tourRef = useRef<VirtualTourPlugin | null>(null);
   const viewerRef = useRef<Viewer | null>(null);
@@ -234,6 +245,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
       viewerRef.current = viewer;
       tour.addEventListener("node-changed", ({ node }) => {
         setCurrent(node.id);
+        autoRef.current?.marcarVista(node.id);
         onSceneViewRef.current?.(node.id);
         const s = sceneById.get(node.id);
         if (s) {
@@ -246,6 +258,7 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
       let wanted = first.id;
       const fails = new Map<string, number>();
       goRef.current = (id) => {
+        autoRef.current?.pausar(); // ir a una foto por su cuenta pausa el tour automático
         wanted = id;
         tour.setCurrentNode(id).catch(() => undefined);
       };
@@ -269,7 +282,30 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
       const gyro = viewer.getPlugin(GyroscopePlugin) as GyroscopePlugin;
       gyroRef.current = gyro;
       gyro.isSupported().then((ok) => !cancelled && setGyroSupported(ok));
-      gyro.addEventListener("gyroscope-updated", ({ gyroscopeEnabled }) => setGyroOn(gyroscopeEnabled));
+      gyro.addEventListener("gyroscope-updated", ({ gyroscopeEnabled }) => {
+        setGyroOn(gyroscopeEnabled);
+        if (gyroscopeEnabled) autoRef.current?.pausar();
+      });
+      // Tour automático. Mientras corre, el giro automático del tour se apaga para que no se peleen.
+      const autorotate = viewer.getPlugin(AutorotatePlugin) as AutorotatePlugin;
+      // null = no arrancar solo (el plugin lo acepta aunque su tipo diga number)
+      const sinArranque = null as unknown as number;
+      const arranqueOriginal = full.tour.autorotate ? 8000 : sinArranque;
+      const recorrido = new TourAutomatico(full, first.id, viewer, tour, (e) => !cancelled && setAuto(e),
+        () => {
+          if (gyro.isEnabled()) gyro.stop();
+          autorotate.stop();
+          autorotate.setOptions({ autostartDelay: sinArranque, autostartOnIdle: false });
+        },
+        () => autorotate.setOptions({ autostartDelay: arranqueOriginal, autostartOnIdle: full.tour.autorotate }),
+      );
+      if (recorrido.disponible) {
+        autoRef.current = recorrido;
+        setAuto({ corriendo: false, vistos: 1, total: recorrido.total, terminado: false });
+      }
+      // Tocar, arrastrar, la rueda o el teclado: la persona toma el control
+      const tomarControl = () => autoRef.current?.pausar();
+      for (const ev of ["pointerdown", "wheel", "keydown"]) containerRef.current?.addEventListener(ev, tomarControl, { capture: true, passive: true });
       // Límite vertical de la escena actual
       viewer.addEventListener("before-rotate", (e) => {
         e.position.pitch = clampPitch(e.position.pitch, currentScene.pitch_limit);
@@ -287,6 +323,8 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      autoRef.current?.destruir();
+      autoRef.current = null;
       tourRef.current = null;
       relabelRef.current = () => undefined;
       viewerRef.current = null;
@@ -312,6 +350,22 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
     <div className="absolute inset-0">
       <div ref={containerRef} className="absolute inset-0" />
       {card && <Card addon={card} onClose={() => setCard(null)} />}
+      {/* Avance del tour automático: barra fina arriba */}
+      {auto && (auto.corriendo || auto.vistos > 1) && !auto.terminado && (
+        <div className="absolute top-0 left-0 z-30 h-[3px] bg-[#F0A030] transition-[width] duration-700" style={{ width: `${(auto.vistos / auto.total) * 100}%` }} />
+      )}
+      {auto?.terminado && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/55 backdrop-blur-[2px] p-4">
+          <div className="text-center text-white">
+            <p className="font-serif font-bold text-2xl">{autoLabels.done}</p>
+            <p className="mt-1 mb-5 text-sm text-white/85">{autoLabels.doneText}</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <button onClick={() => autoRef.current?.empezar(true)} className="h-10 px-5 rounded-full bg-[#F0A030] text-[#0F2B4C] text-sm font-bold">{autoLabels.again}</button>
+              <button onClick={() => setAuto((a) => a && { ...a, terminado: false, vistos: 1 })} className="h-10 px-5 rounded-full bg-white/15 border border-white/30 text-sm font-semibold">{autoLabels.explore}</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="absolute left-3 z-10 flex items-center gap-2" style={{ bottom: hasStrip && stripOpen ? 48 + stripH + 8 : 56 }}>
         <button
           onClick={() => {
@@ -324,6 +378,20 @@ export default function TourViewer({ full, loadingText, startLabel, lang = "es",
         >
           <Crosshair size={15} /> <span className="hidden sm:inline">{startLabel ?? "Punto de inicio"}</span>
         </button>
+        {auto && (
+          <button
+            onClick={() => (auto.corriendo ? autoRef.current?.pausar() : autoRef.current?.empezar())}
+            aria-pressed={auto.corriendo}
+            title={auto.corriendo ? autoLabels.pause : autoLabels.start}
+            className={cn(
+              "flex items-center gap-1.5 h-9 px-3 rounded-full text-xs font-semibold backdrop-blur-sm",
+              auto.corriendo ? "bg-black/55 text-white hover:bg-black/70" : "bg-[#F0A030] text-[#0F2B4C] hover:bg-[#f5b04a]"
+            )}
+          >
+            {auto.corriendo ? <Pause size={14} /> : <Play size={14} />}
+            <span>{auto.corriendo ? `${autoLabels.pause} · ${auto.vistos}/${auto.total}` : auto.vistos > 1 ? autoLabels.resume : autoLabels.start}</span>
+          </button>
+        )}
         {/* Giroscopio: al activarlo, la vista se mueve girando el teléfono (en iPhone pide permiso) */}
         {gyroSupported && (
           <button
